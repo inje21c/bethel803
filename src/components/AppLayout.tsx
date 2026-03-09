@@ -11,6 +11,7 @@ const navItems = [
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
   { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
+  { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
