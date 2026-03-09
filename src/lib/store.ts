@@ -41,6 +41,35 @@ export interface BibleReadingLog {
   chapters: number;
 }
 
+export interface Schedule {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  memo: string;
+  attendanceCheck: boolean;
+  attachment?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Attendance {
+  scheduleId: string;
+  userId: string;
+  userName: string;
+  status: 'attending' | 'absent' | 'pending';
+  updatedAt: string;
+}
+
+export interface WeeklyAttendance {
+  id: string;
+  userId: string;
+  userName: string;
+  weekDate: string;
+  attended: boolean;
+}
+
 // Mock data
 export const mockStudies: BibleStudy[] = [
   {
