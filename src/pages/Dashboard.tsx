@@ -137,9 +137,23 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Latest study preview */}
+        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
+          <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-display font-semibold group-hover:text-primary transition-colors">
+                📖 {latestStudy.title}
+              </h2>
+              <span className="text-xs text-muted-foreground">{latestStudy.weekNumber}주차</span>
+            </div>
+            <p className="text-sm text-muted-foreground">{latestStudy.scripture}</p>
+            <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
+          </Link>
+        </motion.div>
+
         {/* Upcoming schedules */}
         {upcomingSchedules.length > 0 && (
-          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
             <div className="card-elevated p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-display font-semibold flex items-center gap-2">
@@ -167,20 +181,6 @@ export default function Dashboard() {
             </div>
           </motion.div>
         )}
-
-        {/* Latest study preview */}
-        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
-          <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-display font-semibold group-hover:text-primary transition-colors">
-                📖 {latestStudy.title}
-              </h2>
-              <span className="text-xs text-muted-foreground">{latestStudy.weekNumber}주차</span>
-            </div>
-            <p className="text-sm text-muted-foreground">{latestStudy.scripture}</p>
-            <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
-          </Link>
-        </motion.div>
 
         {/* Schedule popup */}
         <AnimatePresence>
