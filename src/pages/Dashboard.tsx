@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X } from 'lucide-react';
 import { store, mockStudies } from '@/lib/store';
 import AppLayout from '@/components/AppLayout';
+import { Button } from '@/components/ui/button';
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -16,6 +17,35 @@ export default function Dashboard() {
   const latestStudy = mockStudies[0];
   const studyCompleted = answers.some(a => a.studyId === latestStudy.id && a.completed);
   const unansweredPrayers = prayers.filter(p => !p.answered);
+
+  // Upcoming schedules (next 2 months)
+  const schedules = store.getSchedules();
+  const now = new Date();
+  const twoMonthsLater = new Date(now);
+  twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
+  const upcomingSchedules = useMemo(() =>
+    schedules
+      .filter(s => { const d = new Date(s.date); return d >= new Date(now.toISOString().split('T')[0]) && d <= twoMonthsLater; })
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 3),
+    [schedules]
+  );
+
+  // Schedule popup on login
+  const [showPopup, setShowPopup] = useState(false);
+  useEffect(() => {
+    const popupKey = `bethel-popup-${now.toISOString().split('T')[0]}`;
+    if (upcomingSchedules.length > 0 && !sessionStorage.getItem(popupKey)) {
+      setShowPopup(true);
+      sessionStorage.setItem(popupKey, '1');
+    }
+  }, []);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+  };
 
   const todayQT = useMemo(() => ({
     title: '오늘의 묵상',
@@ -107,6 +137,37 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Upcoming schedules */}
+        {upcomingSchedules.length > 0 && (
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
+            <div className="card-elevated p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-semibold flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-primary" /> 다가오는 일정
+                </h2>
+                <Link to="/schedule" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
+              </div>
+              <div className="space-y-3">
+                {upcomingSchedules.map(s => (
+                  <div key={s.id} className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary leading-none">{new Date(s.date).getDate()}</span>
+                      <span className="text-[10px] text-primary/70">{['일','월','화','수','목','금','토'][new Date(s.date).getDay()]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold truncate">{s.title}</h4>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        {s.time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{s.time}</span>}
+                        {s.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{s.location}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Latest study preview */}
         <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
           <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
@@ -120,6 +181,57 @@ export default function Dashboard() {
             <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
           </Link>
         </motion.div>
+
+        {/* Schedule popup */}
+        <AnimatePresence>
+          {showPopup && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+              onClick={() => setShowPopup(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-card rounded-2xl border p-6 w-full max-w-sm space-y-4"
+                style={{ boxShadow: 'var(--shadow-elevated)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display font-bold text-lg flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-primary" /> 다가오는 일정
+                  </h3>
+                  <button onClick={() => setShowPopup(false)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {upcomingSchedules.map(s => (
+                    <div key={s.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-primary leading-none">{new Date(s.date).getDate()}</span>
+                        <span className="text-[10px] text-primary/70">{['일','월','화','수','목','금','토'][new Date(s.date).getDay()]}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold">{s.title}</h4>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          {s.time && <span>{s.time}</span>}
+                          {s.location && <span>· {s.location}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/schedule" onClick={() => setShowPopup(false)}>
+                  <Button variant="outline" className="w-full">일정 전체보기</Button>
+                </Link>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AppLayout>
   );

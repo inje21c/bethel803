@@ -9,6 +9,7 @@ import BibleStudyList from "./pages/BibleStudyList";
 import BibleStudyDetail from "./pages/BibleStudyDetail";
 import PrayerRequests from "./pages/PrayerRequests";
 import BibleReading from "./pages/BibleReading";
+import ScheduleManagement from "./pages/ScheduleManagement";
 import NotFound from "./pages/NotFound";
 import { store } from "./lib/store";
 
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/bible-study" element={<ProtectedRoute><BibleStudyList /></ProtectedRoute>} />
           <Route path="/bible-study/:id" element={<ProtectedRoute><BibleStudyDetail /></ProtectedRoute>} />
           <Route path="/prayer-requests" element={<ProtectedRoute><PrayerRequests /></ProtectedRoute>} />
+          <Route path="/schedule" element={<ProtectedRoute><ScheduleManagement /></ProtectedRoute>} />
           <Route path="/bible-reading" element={<ProtectedRoute><BibleReading /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
