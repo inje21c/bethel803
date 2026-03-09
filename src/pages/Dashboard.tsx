@@ -137,6 +137,37 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Upcoming schedules */}
+        {upcomingSchedules.length > 0 && (
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
+            <div className="card-elevated p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-semibold flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-primary" /> 다가오는 일정
+                </h2>
+                <Link to="/schedule" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
+              </div>
+              <div className="space-y-3">
+                {upcomingSchedules.map(s => (
+                  <div key={s.id} className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary leading-none">{new Date(s.date).getDate()}</span>
+                      <span className="text-[10px] text-primary/70">{['일','월','화','수','목','금','토'][new Date(s.date).getDay()]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold truncate">{s.title}</h4>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        {s.time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{s.time}</span>}
+                        {s.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{s.location}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Latest study preview */}
         <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
           <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
@@ -150,6 +181,57 @@ export default function Dashboard() {
             <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
           </Link>
         </motion.div>
+
+        {/* Schedule popup */}
+        <AnimatePresence>
+          {showPopup && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+              onClick={() => setShowPopup(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-card rounded-2xl border p-6 w-full max-w-sm space-y-4"
+                style={{ boxShadow: 'var(--shadow-elevated)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display font-bold text-lg flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-primary" /> 다가오는 일정
+                  </h3>
+                  <button onClick={() => setShowPopup(false)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {upcomingSchedules.map(s => (
+                    <div key={s.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-primary leading-none">{new Date(s.date).getDate()}</span>
+                        <span className="text-[10px] text-primary/70">{['일','월','화','수','목','금','토'][new Date(s.date).getDay()]}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold">{s.title}</h4>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          {s.time && <span>{s.time}</span>}
+                          {s.location && <span>· {s.location}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/schedule" onClick={() => setShowPopup(false)}>
+                  <Button variant="outline" className="w-full">일정 전체보기</Button>
+                </Link>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AppLayout>
   );
