@@ -33,6 +33,7 @@ const App = () => (
           <Route path="/bible-study" element={<ProtectedRoute><BibleStudyList /></ProtectedRoute>} />
           <Route path="/bible-study/:id" element={<ProtectedRoute><BibleStudyDetail /></ProtectedRoute>} />
           <Route path="/prayer-requests" element={<ProtectedRoute><PrayerRequests /></ProtectedRoute>} />
+          <Route path="/schedule" element={<ProtectedRoute><ScheduleManagement /></ProtectedRoute>} />
           <Route path="/bible-reading" element={<ProtectedRoute><BibleReading /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
