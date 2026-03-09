@@ -207,4 +207,37 @@ export const store = {
       .filter(r => r.userId === userId && r.date.startsWith('2026'))
       .reduce((sum, r) => sum + r.chapters, 0);
   },
+
+  // Schedule
+  getSchedules: (): Schedule[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.schedules);
+    return data ? JSON.parse(data) : mockSchedules;
+  },
+  addSchedule: (schedule: Schedule) => {
+    const schedules = store.getSchedules();
+    schedules.push(schedule);
+    localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify(schedules));
+  },
+  updateSchedule: (schedule: Schedule) => {
+    const schedules = store.getSchedules().map(s => s.id === schedule.id ? schedule : s);
+    localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify(schedules));
+  },
+  deleteSchedule: (id: string) => {
+    const schedules = store.getSchedules().filter(s => s.id !== id);
+    localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify(schedules));
+  },
+
+  // Attendance
+  getAttendances: (scheduleId: string): Attendance[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.attendances);
+    const all: Attendance[] = data ? JSON.parse(data) : [];
+    return all.filter(a => a.scheduleId === scheduleId);
+  },
+  saveAttendance: (attendance: Attendance) => {
+    const data = localStorage.getItem(STORAGE_KEYS.attendances);
+    const all: Attendance[] = data ? JSON.parse(data) : [];
+    const filtered = all.filter(a => !(a.scheduleId === attendance.scheduleId && a.userId === attendance.userId));
+    filtered.push(attendance);
+    localStorage.setItem(STORAGE_KEYS.attendances, JSON.stringify(filtered));
+  },
 };
