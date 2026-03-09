@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
   { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
+  { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -39,6 +40,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map(item => {
+              if (item.leaderOnly && user?.role !== 'leader') return null;
               const active = location.pathname.startsWith(item.path);
               return (
                 <Link
@@ -81,6 +83,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             >
               <div className="p-2 space-y-1">
                 {navItems.map(item => {
+                  if (item.leaderOnly && user?.role !== 'leader') return null;
                   const active = location.pathname.startsWith(item.path);
                   return (
                     <Link
