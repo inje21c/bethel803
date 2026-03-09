@@ -19,6 +19,8 @@ export interface BibleStudy {
 
 export interface StudyAnswer {
   studyId: string;
+  userId: string;
+  userName: string;
   answers: Record<number, string>;
   completed: boolean;
 }
@@ -173,14 +175,17 @@ export const store = {
   setUser: (user: User) => localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user)),
   logout: () => localStorage.removeItem(STORAGE_KEYS.user),
 
-  getAnswers: (): StudyAnswer[] => {
+  getAnswers: (userId?: string): StudyAnswer[] => {
     const data = localStorage.getItem(STORAGE_KEYS.answers);
-    return data ? JSON.parse(data) : [];
+    const all: StudyAnswer[] = data ? JSON.parse(data) : [];
+    return userId ? all.filter(a => a.userId === userId) : all;
   },
   saveAnswer: (answer: StudyAnswer) => {
-    const answers = store.getAnswers().filter(a => a.studyId !== answer.studyId);
-    answers.push(answer);
-    localStorage.setItem(STORAGE_KEYS.answers, JSON.stringify(answers));
+    const data = localStorage.getItem(STORAGE_KEYS.answers);
+    const all: StudyAnswer[] = data ? JSON.parse(data) : [];
+    const filtered = all.filter(a => !(a.studyId === answer.studyId && a.userId === answer.userId));
+    filtered.push(answer);
+    localStorage.setItem(STORAGE_KEYS.answers, JSON.stringify(filtered));
   },
 
   getPrayers: (): PrayerRequest[] => {
