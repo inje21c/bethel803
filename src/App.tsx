@@ -36,6 +36,7 @@ const App = () => (
           <Route path="/prayer-requests" element={<ProtectedRoute><PrayerRequests /></ProtectedRoute>} />
           <Route path="/schedule" element={<ProtectedRoute><ScheduleManagement /></ProtectedRoute>} />
           <Route path="/bible-reading" element={<ProtectedRoute><BibleReading /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

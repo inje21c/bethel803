@@ -83,6 +83,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             >
               <div className="p-2 space-y-1">
                 {navItems.map(item => {
+                  if (item.leaderOnly && user?.role !== 'leader') return null;
                   const active = location.pathname.startsWith(item.path);
                   return (
                     <Link
