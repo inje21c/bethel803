@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X } from 'lucide-react';
 import { store, mockStudies } from '@/lib/store';
 import AppLayout from '@/components/AppLayout';
+import { Button } from '@/components/ui/button';
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -16,6 +17,35 @@ export default function Dashboard() {
   const latestStudy = mockStudies[0];
   const studyCompleted = answers.some(a => a.studyId === latestStudy.id && a.completed);
   const unansweredPrayers = prayers.filter(p => !p.answered);
+
+  // Upcoming schedules (next 2 months)
+  const schedules = store.getSchedules();
+  const now = new Date();
+  const twoMonthsLater = new Date(now);
+  twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
+  const upcomingSchedules = useMemo(() =>
+    schedules
+      .filter(s => { const d = new Date(s.date); return d >= new Date(now.toISOString().split('T')[0]) && d <= twoMonthsLater; })
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 3),
+    [schedules]
+  );
+
+  // Schedule popup on login
+  const [showPopup, setShowPopup] = useState(false);
+  useEffect(() => {
+    const popupKey = `bethel-popup-${now.toISOString().split('T')[0]}`;
+    if (upcomingSchedules.length > 0 && !sessionStorage.getItem(popupKey)) {
+      setShowPopup(true);
+      sessionStorage.setItem(popupKey, '1');
+    }
+  }, []);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+  };
 
   const todayQT = useMemo(() => ({
     title: '오늘의 묵상',
