@@ -11,13 +11,14 @@ import { toast } from 'sonner';
 export default function BibleStudyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const user = store.getUser();
   const study = mockStudies.find(s => s.id === id);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
-    if (!study) return;
-    const saved = store.getAnswers().find(a => a.studyId === study.id);
+    if (!study || !user) return;
+    const saved = store.getAnswers(user.id).find(a => a.studyId === study.id);
     if (saved) {
       setAnswers(saved.answers);
       setCompleted(saved.completed);
@@ -29,7 +30,8 @@ export default function BibleStudyDetail() {
   }
 
   const handleSave = () => {
-    store.saveAnswer({ studyId: study.id, answers, completed: true });
+    if (!user) return;
+    store.saveAnswer({ studyId: study.id, userId: user.id, userName: user.name, answers, completed: true });
     setCompleted(true);
     toast.success('성경공부 답변이 저장되었습니다!');
   };

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked, 
+import {
+  BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked,
   CalendarDays, AlertCircle, CheckCircle2, Clock, TrendingUp,
-  RefreshCw, Plus, Edit, Trash2, Eye, Download
+  RefreshCw, Plus, Edit, Trash2, Eye, Download, MessageCircle
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { store, mockStudies } from '@/lib/store';
+import KakaoNoticeGenerator from '@/components/KakaoNoticeGenerator';
 import { format, subDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 h-auto gap-1">
+          <TabsList className="grid grid-cols-4 lg:grid-cols-7 h-auto gap-1">
             <TabsTrigger value="overview" className="text-xs px-2 py-1.5">
               <BarChart3 className="w-3 h-3 mr-1" />
               대시보드
@@ -101,6 +102,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="schedule" className="text-xs px-2 py-1.5">
               <CalendarDays className="w-3 h-3 mr-1" />
               일정관리
+            </TabsTrigger>
+            <TabsTrigger value="kakao" className="text-xs px-2 py-1.5">
+              <MessageCircle className="w-3 h-3 mr-1" />
+              공지생성
             </TabsTrigger>
           </TabsList>
 
@@ -346,14 +351,23 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockStudies.map((study) => (
+                    {mockStudies.map((study) => {
+                      const allAnswers = store.getAnswers();
+                      const studyAnswers = allAnswers.filter(a => a.studyId === study.id && a.completed);
+                      const completionRate = mockMemberStats.length > 0
+                        ? Math.round((studyAnswers.length / mockMemberStats.length) * 100)
+                        : 0;
+                      return (
                       <TableRow key={study.id}>
                         <TableCell>{study.weekNumber}주차</TableCell>
                         <TableCell className="font-medium">{study.title}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{study.scripture}</TableCell>
                         <TableCell>{study.questions.length}개</TableCell>
                         <TableCell>
-                          <Progress value={60} className="h-2 w-16" />
+                          <div className="flex items-center gap-2">
+                            <Progress value={completionRate} className="h-2 w-16" />
+                            <span className="text-xs text-muted-foreground">{studyAnswers.length}명</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -369,7 +383,8 @@ export default function AdminDashboard() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -607,6 +622,10 @@ export default function AdminDashboard() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+          {/* Kakao Notice Tab */}
+          <TabsContent value="kakao" className="space-y-4">
+            <KakaoNoticeGenerator />
           </TabsContent>
         </Tabs>
       </div>

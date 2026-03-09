@@ -1,7 +1,8 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { store } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const user = store.getUser();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
     store.logout();
@@ -63,6 +65,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <span className="text-xs text-muted-foreground hidden sm:inline">
               {user?.name} {user?.role === 'leader' ? '(구역장)' : ''}
             </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="text-muted-foreground"
+              aria-label="다크 모드 토글"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground">
               <LogOut className="w-4 h-4" />
             </Button>
