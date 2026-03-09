@@ -40,6 +40,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map(item => {
+              if (item.leaderOnly && user?.role !== 'leader') return null;
               const active = location.pathname.startsWith(item.path);
               return (
                 <Link
