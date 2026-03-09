@@ -41,6 +41,35 @@ export interface BibleReadingLog {
   chapters: number;
 }
 
+export interface Schedule {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  memo: string;
+  attendanceCheck: boolean;
+  attachment?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Attendance {
+  scheduleId: string;
+  userId: string;
+  userName: string;
+  status: 'attending' | 'absent' | 'pending';
+  updatedAt: string;
+}
+
+export interface WeeklyAttendance {
+  id: string;
+  userId: string;
+  userName: string;
+  weekDate: string;
+  attended: boolean;
+}
+
 // Mock data
 export const mockStudies: BibleStudy[] = [
   {
@@ -91,11 +120,49 @@ export const mockStudies: BibleStudy[] = [
   },
 ];
 
+export const mockSchedules: Schedule[] = [
+  {
+    id: 'sched-1',
+    title: '구역예배',
+    date: '2026-03-13',
+    time: '20:00',
+    location: '김성민 집사님 댁',
+    memo: '이번 주 구역예배 후 간단한 교제가 있습니다.',
+    attendanceCheck: true,
+    createdBy: '1',
+    createdAt: '2026-03-08',
+  },
+  {
+    id: 'sched-2',
+    title: '교회 부활절 특별새벽기도회',
+    date: '2026-03-30',
+    time: '06:00',
+    location: '벧엘교회 본당',
+    memo: '3/30(월)~4/4(토) 6일간 진행됩니다.',
+    attendanceCheck: false,
+    createdBy: '1',
+    createdAt: '2026-03-05',
+  },
+  {
+    id: 'sched-3',
+    title: '구역 야외예배',
+    date: '2026-04-19',
+    time: '11:00',
+    location: '일산호수공원',
+    memo: '도시락을 준비해주세요. 우천 시 교회 소예배실에서 진행합니다.',
+    attendanceCheck: true,
+    createdBy: '1',
+    createdAt: '2026-03-01',
+  },
+];
+
 const STORAGE_KEYS = {
   user: 'bethel-user',
   answers: 'bethel-answers',
   prayers: 'bethel-prayers',
   readings: 'bethel-readings',
+  schedules: 'bethel-schedules',
+  attendances: 'bethel-attendances',
 };
 
 export const store = {
@@ -139,5 +206,38 @@ export const store = {
     return store.getReadings()
       .filter(r => r.userId === userId && r.date.startsWith('2026'))
       .reduce((sum, r) => sum + r.chapters, 0);
+  },
+
+  // Schedule
+  getSchedules: (): Schedule[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.schedules);
+    return data ? JSON.parse(data) : mockSchedules;
+  },
+  addSchedule: (schedule: Schedule) => {
+    const schedules = store.getSchedules();
+    schedules.push(schedule);
+    localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify(schedules));
+  },
+  updateSchedule: (schedule: Schedule) => {
+    const schedules = store.getSchedules().map(s => s.id === schedule.id ? schedule : s);
+    localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify(schedules));
+  },
+  deleteSchedule: (id: string) => {
+    const schedules = store.getSchedules().filter(s => s.id !== id);
+    localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify(schedules));
+  },
+
+  // Attendance
+  getAttendances: (scheduleId: string): Attendance[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.attendances);
+    const all: Attendance[] = data ? JSON.parse(data) : [];
+    return all.filter(a => a.scheduleId === scheduleId);
+  },
+  saveAttendance: (attendance: Attendance) => {
+    const data = localStorage.getItem(STORAGE_KEYS.attendances);
+    const all: Attendance[] = data ? JSON.parse(data) : [];
+    const filtered = all.filter(a => !(a.scheduleId === attendance.scheduleId && a.userId === attendance.userId));
+    filtered.push(attendance);
+    localStorage.setItem(STORAGE_KEYS.attendances, JSON.stringify(filtered));
   },
 };

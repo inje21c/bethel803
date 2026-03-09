@@ -1,13 +1,14 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, LogOut, Menu, X } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { path: '/dashboard', label: '대시보드', icon: Home },
   { path: '/bible-study', label: '구역성경공부', icon: BookOpen },
+  { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
   { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
 ];
