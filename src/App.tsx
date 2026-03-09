@@ -10,6 +10,7 @@ import BibleStudyDetail from "./pages/BibleStudyDetail";
 import PrayerRequests from "./pages/PrayerRequests";
 import BibleReading from "./pages/BibleReading";
 import ScheduleManagement from "./pages/ScheduleManagement";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import { store } from "./lib/store";
 
