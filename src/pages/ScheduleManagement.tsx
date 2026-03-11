@@ -1,7 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, Paperclip, ChevronRight, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
-import { store, Schedule, Attendance } from '@/lib/store';
+import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, Paperclip, CheckCircle2, XCircle, HelpCircle, Upload } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/authContext';
+import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance, uploadScheduleAttachment } from '@/lib/api';
+import type { Schedule, Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +24,22 @@ function ScheduleForm({ schedule, onSave, onClose }: { schedule?: Schedule; onSa
   const [memo, setMemo] = useState(schedule?.memo || '');
   const [attendanceCheck, setAttendanceCheck] = useState(schedule?.attendanceCheck ?? false);
   const [attachment, setAttachment] = useState(schedule?.attachment || '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadScheduleAttachment(file);
+      setAttachment(url);
+    } catch {
+      // 업로드 실패 시 URL 필드 유지
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,35 +77,73 @@ function ScheduleForm({ schedule, onSave, onClose }: { schedule?: Schedule; onSa
         <Switch id="attendance" checked={attendanceCheck} onCheckedChange={setAttendanceCheck} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="attachment">첨부자료 (URL)</Label>
-        <Input id="attachment" value={attachment} onChange={e => setAttachment(e.target.value)} placeholder="첨부 파일 링크" maxLength={500} />
+        <Label>첨부자료</Label>
+        <div className="flex gap-2">
+          <Input
+            value={attachment}
+            onChange={e => setAttachment(e.target.value)}
+            placeholder="URL 직접 입력 또는 파일 업로드"
+            maxLength={500}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploading
+              ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              : <Upload className="w-4 h-4" />
+            }
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+            onChange={handleFileChange}
+          />
+        </div>
+        {attachment && (
+          <p className="text-xs text-muted-foreground truncate">{attachment}</p>
+        )}
       </div>
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onClose} className="flex-1">취소</Button>
-        <Button type="submit" className="flex-1">저장</Button>
+        <Button type="submit" className="flex-1" disabled={uploading}>저장</Button>
       </div>
     </form>
   );
 }
 
 function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
-  const user = store.getUser();
-  const attendances = store.getAttendances(scheduleId);
-  const myAttendance = attendances.find(a => a.userId === user?.id);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: attendances = [] } = useQuery({
+    queryKey: ['attendances', scheduleId],
+    queryFn: () => getAttendances(scheduleId),
+  });
+
+  const myAttendance = attendances.find((a: Attendance) => a.userId === user?.id);
+
+  const attendanceMutation = useMutation({
+    mutationFn: (status: 'attending' | 'absent') => saveAttendance({
+      scheduleId,
+      userId: user!.id,
+      status,
+    }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendances', scheduleId] }),
+  });
 
   const handleRespond = (status: 'attending' | 'absent') => {
-    store.saveAttendance({
-      scheduleId,
-      userId: user?.id || '',
-      userName: user?.name || '',
-      status,
-      updatedAt: new Date().toISOString().split('T')[0],
-    });
-    window.location.reload();
+    if (!user) return;
+    attendanceMutation.mutate(status);
   };
 
-  const attendingCount = attendances.filter(a => a.status === 'attending').length;
-  const absentCount = attendances.filter(a => a.status === 'absent').length;
+  const attendingCount = attendances.filter((a: Attendance) => a.status === 'attending').length;
+  const absentCount = attendances.filter((a: Attendance) => a.status === 'absent').length;
 
   return (
     <div className="mt-3 pt-3 border-t">
@@ -99,10 +156,10 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
       </div>
       {!myAttendance || myAttendance.status === 'pending' ? (
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleRespond('attending')}>
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleRespond('attending')} disabled={attendanceMutation.isPending}>
             <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success" /> 참석
           </Button>
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleRespond('absent')}>
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleRespond('absent')} disabled={attendanceMutation.isPending}>
             <XCircle className="w-3.5 h-3.5 mr-1 text-destructive" /> 불참
           </Button>
         </div>
@@ -111,7 +168,7 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
           <span className={`text-xs font-medium ${myAttendance.status === 'attending' ? 'text-success' : 'text-destructive'}`}>
             {myAttendance.status === 'attending' ? '✓ 참석으로 응답함' : '✗ 불참으로 응답함'}
           </span>
-          <Button size="sm" variant="ghost" className="text-xs ml-auto h-7" onClick={() => handleRespond(myAttendance.status === 'attending' ? 'absent' : 'attending')}>
+          <Button size="sm" variant="ghost" className="text-xs ml-auto h-7" onClick={() => handleRespond(myAttendance.status === 'attending' ? 'absent' : 'attending')} disabled={attendanceMutation.isPending}>
             변경
           </Button>
         </div>
@@ -119,7 +176,7 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
       {/* Show all responses for leader */}
       {user?.role === 'leader' && attendances.length > 0 && (
         <div className="mt-2 space-y-1">
-          {attendances.map(a => (
+          {attendances.map((a: Attendance) => (
             <div key={a.userId} className="flex items-center gap-2 text-xs">
               {a.status === 'attending' ? <CheckCircle2 className="w-3 h-3 text-success" /> : a.status === 'absent' ? <XCircle className="w-3 h-3 text-destructive" /> : <HelpCircle className="w-3 h-3 text-muted-foreground" />}
               <span>{a.userName}</span>
@@ -132,13 +189,45 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
 }
 
 export default function ScheduleManagement() {
-  const user = store.getUser();
+  const { user } = useAuth();
   const isLeader = user?.role === 'leader';
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | undefined>();
   const { toast } = useToast();
 
-  const schedules = store.getSchedules();
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: getSchedules,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) => addSchedule({
+      ...data,
+      createdBy: user!.id,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast({ title: '일정이 등록되었습니다.' });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (schedule: Schedule) => updateSchedule(schedule),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast({ title: '일정이 수정되었습니다.' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteSchedule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast({ title: '일정이 삭제되었습니다.', variant: 'destructive' });
+    },
+  });
+
   const now = new Date();
 
   const upcomingSchedules = useMemo(() =>
@@ -158,23 +247,15 @@ export default function ScheduleManagement() {
 
   const handleSave = (data: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) => {
     if (editingSchedule) {
-      store.updateSchedule({ ...editingSchedule, ...data });
-      toast({ title: '일정이 수정되었습니다.' });
+      updateMutation.mutate({ ...editingSchedule, ...data });
     } else {
-      store.addSchedule({
-        ...data,
-        id: Date.now().toString(),
-        createdBy: user?.id || '',
-        createdAt: new Date().toISOString().split('T')[0],
-      });
-      toast({ title: '일정이 등록되었습니다.' });
+      addMutation.mutate(data);
     }
     setEditingSchedule(undefined);
   };
 
   const handleDelete = (id: string) => {
-    store.deleteSchedule(id);
-    toast({ title: '일정이 삭제되었습니다.', variant: 'destructive' });
+    deleteMutation.mutate(id);
   };
 
   const handleEdit = (schedule: Schedule) => {

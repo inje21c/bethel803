@@ -15,6 +15,7 @@ export interface BibleStudy {
   scripture: string;
   introduction: string;
   questions: string[];
+  published?: boolean;
 }
 
 export interface StudyAnswer {

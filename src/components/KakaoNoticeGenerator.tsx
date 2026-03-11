@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { mockStudies } from '@/lib/store';
 
 interface NoticeFields {
   date: string;
@@ -18,13 +17,12 @@ interface NoticeFields {
 }
 
 export default function KakaoNoticeGenerator() {
-  const latestStudy = mockStudies[0];
   const [fields, setFields] = useState<NoticeFields>({
     date: '',
     time: '20:00',
     location: '',
-    studyTitle: latestStudy?.title ?? '',
-    scripture: latestStudy?.scripture ?? '',
+    studyTitle: '',
+    scripture: '',
     memo: '',
   });
   const [copied, setCopied] = useState(false);
