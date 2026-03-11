@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, Save } from 'lucide-react';
-import { store, mockStudies } from '@/lib/store';
+import { ArrowLeft, CheckCircle2, Save, Lock } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/authContext';
+import { getBibleStudies, getStudyAnswer, saveStudyAnswer, getCurrentLockStatus } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/components/AppLayout';
@@ -11,29 +13,68 @@ import { toast } from 'sonner';
 export default function BibleStudyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const user = store.getUser();
-  const study = mockStudies.find(s => s.id === id);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: studies = [] } = useQuery({
+    queryKey: ['bible_studies'],
+    queryFn: getBibleStudies,
+  });
+
+  const study = studies.find(s => s.id === id);
+
+  const { data: savedAnswer } = useQuery({
+    queryKey: ['study_answer', id, user?.id],
+    queryFn: () => getStudyAnswer(id!, user!.id),
+    enabled: !!id && !!user,
+  });
+
+  const { data: isLocked = false } = useQuery({
+    queryKey: ['lock_status'],
+    queryFn: getCurrentLockStatus,
+  });
+
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
-    if (!study || !user) return;
-    const saved = store.getAnswers(user.id).find(a => a.studyId === study.id);
-    if (saved) {
-      setAnswers(saved.answers);
-      setCompleted(saved.completed);
+    if (savedAnswer) {
+      setAnswers(savedAnswer.answers);
+      setCompleted(savedAnswer.completed);
     }
-  }, [study]);
+  }, [savedAnswer]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => saveStudyAnswer({
+      studyId: id!,
+      userId: user!.id,
+      userName: user!.name,
+      answers,
+      completed: true,
+    }),
+    onSuccess: () => {
+      setCompleted(true);
+      queryClient.invalidateQueries({ queryKey: ['study_answer', id, user?.id] });
+      toast.success('성경공부 답변이 저장되었습니다!');
+    },
+    onError: () => {
+      toast.error('저장에 실패했습니다. 다시 시도해주세요.');
+    },
+  });
 
   if (!study) {
-    return <AppLayout><p>성경공부를 찾을 수 없습니다.</p></AppLayout>;
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-8">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
   }
 
   const handleSave = () => {
     if (!user) return;
-    store.saveAnswer({ studyId: study.id, userId: user.id, userName: user.name, answers, completed: true });
-    setCompleted(true);
-    toast.success('성경공부 답변이 저장되었습니다!');
+    saveMutation.mutate();
   };
 
   return (
@@ -52,7 +93,7 @@ export default function BibleStudyDetail() {
               {completed && <CheckCircle2 className="w-4 h-4 text-success ml-auto" />}
             </div>
             <h1 className="font-display text-xl font-bold mt-2">{study.title}</h1>
-            <p className="text-sm text-primary font-medium mt-1">📖 {study.scripture}</p>
+            <p className="text-sm text-primary font-medium mt-1">{study.scripture}</p>
           </div>
 
           {/* Introduction */}
@@ -61,10 +102,17 @@ export default function BibleStudyDetail() {
             <p className="text-sm text-muted-foreground leading-relaxed">{study.introduction}</p>
           </div>
 
+          {isLocked && (
+            <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm">
+              <Lock className="w-4 h-4 shrink-0" />
+              이번 주 마감이 완료되어 답변을 수정할 수 없습니다.
+            </div>
+          )}
+
           {/* Questions */}
           <div className="space-y-4">
             <h2 className="font-display font-semibold text-sm">토의사항</h2>
-            {study.questions.map((q, i) => (
+            {(study.questions as string[]).map((q, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 8 }}
@@ -81,14 +129,15 @@ export default function BibleStudyDetail() {
                   onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value }))}
                   placeholder="나의 답변을 작성하세요..."
                   className="text-sm min-h-[80px] resize-none"
+                  disabled={isLocked}
                 />
               </motion.div>
             ))}
           </div>
 
-          <Button onClick={handleSave} className="w-full gap-2">
+          <Button onClick={handleSave} className="w-full gap-2" disabled={saveMutation.isPending || isLocked}>
             <Save className="w-4 h-4" />
-            {completed ? '수정 저장' : '저장하기'}
+            {saveMutation.isPending ? '저장 중...' : completed ? '수정 저장' : '저장하기'}
           </Button>
         </div>
       </div>

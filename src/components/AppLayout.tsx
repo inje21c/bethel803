@@ -1,10 +1,13 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { store } from '@/lib/store';
+import { useAuth } from '@/lib/authContext';
 import { Button } from '@/components/ui/button';
+import NotificationCenter from '@/components/NotificationCenter';
+import GlobalSearch from '@/components/GlobalSearch';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const navItems = [
   { path: '/dashboard', label: '대시보드', icon: Home },
@@ -18,17 +21,33 @@ const navItems = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = store.getUser();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const isOnline = useOnlineStatus();
 
-  const handleLogout = () => {
-    store.logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
   return (
     <div className="min-h-screen bg-background">
+      {/* 오프라인 배너 */}
+      <AnimatePresence>
+        {!isOnline && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-destructive text-destructive-foreground text-xs text-center py-1.5 flex items-center justify-center gap-1.5"
+          >
+            <WifiOff className="w-3 h-3" />
+            인터넷 연결이 끊겼습니다. 일부 기능이 제한될 수 있습니다.
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
@@ -62,9 +81,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden sm:inline">
+            <GlobalSearch />
+            <Link
+              to="/profile"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <UserCircle className="w-4 h-4" />
               {user?.name} {user?.role === 'leader' ? '(구역장)' : ''}
-            </span>
+            </Link>
+            <NotificationCenter />
             <Button
               variant="ghost"
               size="icon"
@@ -110,6 +135,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     </Link>
                   );
                 })}
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                    location.pathname === '/profile' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  <UserCircle className="w-4 h-4" />
+                  내 프로필
+                </Link>
               </div>
             </motion.nav>
           )}

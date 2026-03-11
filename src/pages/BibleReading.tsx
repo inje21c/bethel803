@@ -1,19 +1,48 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookMarked, Plus, TrendingUp } from 'lucide-react';
-import { store } from '@/lib/store';
+import { BookMarked, Plus, TrendingUp, Lock } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/authContext';
+import { getBibleReadingLogs, addBibleReadingLog, getCurrentLockStatus } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 
 export default function BibleReading() {
-  const user = store.getUser();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [chapters, setChapters] = useState('');
-  const readings = store.getReadings().filter(r => r.userId === user?.id);
-  const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
   const target = 1189; // 성경 전체 장수
+
+  const { data: readings = [], isLoading } = useQuery({
+    queryKey: ['bible_reading_logs', user?.id],
+    queryFn: () => getBibleReadingLogs(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: isLocked = false } = useQuery({
+    queryKey: ['lock_status'],
+    queryFn: getCurrentLockStatus,
+  });
+
+  const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
   const progress = Math.min((totalChapters / target) * 100, 100);
+
+  const addMutation = useMutation({
+    mutationFn: (num: number) => addBibleReadingLog({
+      userId: user!.id,
+      date: new Date().toISOString().slice(0, 10),
+      chapters: num,
+    }),
+    onSuccess: (_, num) => {
+      queryClient.invalidateQueries({ queryKey: ['bible_reading_logs', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['total_chapters', user?.id] });
+      setChapters('');
+      toast.success(`${num}장이 기록되었습니다!`);
+    },
+    onError: () => toast.error('기록에 실패했습니다.'),
+  });
 
   const handleAdd = () => {
     const num = parseInt(chapters);
@@ -21,24 +50,8 @@ export default function BibleReading() {
       toast.error('읽은 장수를 입력해주세요.');
       return;
     }
-    store.addReading({
-      id: Date.now().toString(),
-      userId: user?.id || '',
-      date: new Date().toISOString().slice(0, 10),
-      chapters: num,
-    });
-    setChapters('');
-    toast.success(`${num}장이 기록되었습니다!`);
-    // Force re-render
-    window.dispatchEvent(new Event('storage'));
+    addMutation.mutate(num);
   };
-
-  // Group by week
-  const weeklyData = readings.reduce((acc, r) => {
-    const week = getWeekKey(r.date);
-    acc[week] = (acc[week] || 0) + r.chapters;
-    return acc;
-  }, {} as Record<string, number>);
 
   return (
     <AppLayout>
@@ -73,20 +86,27 @@ export default function BibleReading() {
         {/* Input */}
         <div className="card-elevated p-4">
           <h2 className="font-display font-semibold text-sm mb-3">이번 주 읽은 장수 입력</h2>
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              value={chapters}
-              onChange={e => setChapters(e.target.value)}
-              placeholder="장수 입력"
-              min="1"
-              className="flex-1"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-            />
-            <Button onClick={handleAdd} className="gap-1">
-              <Plus className="w-4 h-4" /> 기록
-            </Button>
-          </div>
+          {isLocked ? (
+            <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm">
+              <Lock className="w-4 h-4 shrink-0" />
+              이번 주 마감이 완료되어 기록을 추가할 수 없습니다.
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                value={chapters}
+                onChange={e => setChapters(e.target.value)}
+                placeholder="장수 입력"
+                min="1"
+                className="flex-1"
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              />
+              <Button onClick={handleAdd} className="gap-1" disabled={addMutation.isPending}>
+                <Plus className="w-4 h-4" /> {addMutation.isPending ? '기록 중...' : '기록'}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* History */}
@@ -95,11 +115,15 @@ export default function BibleReading() {
             <TrendingUp className="w-4 h-4 text-gold" />
             <h2 className="font-display font-semibold text-sm">읽기 기록</h2>
           </div>
-          {readings.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : readings.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">아직 기록이 없습니다.</p>
           ) : (
             <div className="space-y-2">
-              {[...readings].reverse().map(r => (
+              {[...readings].map(r => (
                 <div key={r.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <span className="text-sm text-muted-foreground">{r.date}</span>
                   <span className="text-sm font-semibold">{r.chapters}장</span>
@@ -111,11 +135,4 @@ export default function BibleReading() {
       </div>
     </AppLayout>
   );
-}
-
-function getWeekKey(dateStr: string) {
-  const d = new Date(dateStr);
-  const start = new Date(d.getFullYear(), 0, 1);
-  const week = Math.ceil(((d.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
-  return `${d.getFullYear()}-W${week}`;
 }

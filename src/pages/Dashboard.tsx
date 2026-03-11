@@ -2,7 +2,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X } from 'lucide-react';
-import { store, mockStudies } from '@/lib/store';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/lib/authContext';
+import { getBibleStudies, getStudyAnswer, getPrayerRequests, getTotalChapters, getSchedules, getTodayDevotional } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -10,16 +12,46 @@ const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } 
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function Dashboard() {
-  const user = store.getUser();
-  const answers = store.getAnswers();
-  const prayers = store.getPrayers();
-  const totalChapters = store.getTotalChapters(user?.id || '');
-  const latestStudy = mockStudies[0];
-  const studyCompleted = answers.some(a => a.studyId === latestStudy.id && a.completed);
+  const { user } = useAuth();
+
+  const { data: studies = [] } = useQuery({
+    queryKey: ['bible_studies'],
+    queryFn: getBibleStudies,
+  });
+
+  const latestStudy = studies[0];
+
+  const { data: latestAnswer } = useQuery({
+    queryKey: ['study_answer', latestStudy?.id, user?.id],
+    queryFn: () => getStudyAnswer(latestStudy!.id, user!.id),
+    enabled: !!latestStudy && !!user,
+  });
+
+  const { data: prayers = [] } = useQuery({
+    queryKey: ['prayer_requests'],
+    queryFn: getPrayerRequests,
+  });
+
+  const { data: totalChapters = 0 } = useQuery({
+    queryKey: ['total_chapters', user?.id],
+    queryFn: () => getTotalChapters(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: getSchedules,
+  });
+
+  const { data: devotional, isLoading: devotionalLoading } = useQuery({
+    queryKey: ['today_devotional'],
+    queryFn: getTodayDevotional,
+    staleTime: 1000 * 60 * 30, // 30분 캐시
+  });
+
+  const studyCompleted = latestAnswer?.completed ?? false;
   const unansweredPrayers = prayers.filter(p => !p.answered);
 
-  // Upcoming schedules (next 2 months)
-  const schedules = store.getSchedules();
   const now = new Date();
   const twoMonthsLater = new Date(now);
   twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
@@ -31,7 +63,6 @@ export default function Dashboard() {
     [schedules]
   );
 
-  // Schedule popup on login
   const [showPopup, setShowPopup] = useState(false);
   useEffect(() => {
     const popupKey = `bethel-popup-${now.toISOString().split('T')[0]}`;
@@ -39,7 +70,7 @@ export default function Dashboard() {
       setShowPopup(true);
       sessionStorage.setItem(popupKey, '1');
     }
-  }, []);
+  }, [upcomingSchedules.length]);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -47,19 +78,31 @@ export default function Dashboard() {
     return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
   };
 
-  const todayQT = useMemo(() => ({
-    title: '오늘의 묵상',
-    verse: '빌립보서 4:6-7',
-    summary: '아무 것도 염려하지 말고 다만 모든 일에 기도와 간구로, 너희 구할 것을 감사함으로 하나님께 아뢰라. 그리하면 모든 지각에 뛰어난 하나님의 평강이 그리스도 예수 안에서 너희 마음과 생각을 지키시리라.',
-    link: 'https://www.duranno.com/qt/',
-  }), []);
+  const todayQT = useMemo(() => {
+    if (devotional) {
+      return {
+        verse: devotional.verse,
+        summary: `${devotional.content}${devotional.applicationQuestion ? `\n\n✦ ${devotional.applicationQuestion}` : ''}`,
+        link: devotional.sourceUrl ?? 'https://sum.su.or.kr:8888/bible/today',
+        isLoaded: true,
+      };
+    }
+    return {
+      verse: '매일 06:00 업데이트',
+      summary: devotionalLoading
+        ? '오늘의 묵상을 불러오는 중...'
+        : '오늘의 묵상이 아직 준비되지 않았습니다.',
+      link: 'https://sum.su.or.kr:8888/bible/today',
+      isLoaded: false,
+    };
+  }, [devotional, devotionalLoading]);
 
   return (
     <AppLayout>
       <div className="space-y-6">
         <div>
           <h1 className="font-display text-2xl font-bold">
-            안녕하세요, {user?.name}님 👋
+            안녕하세요, {user?.name}님
           </h1>
           <p className="text-muted-foreground text-sm mt-1">이번 주도 은혜로운 한 주 보내세요!</p>
         </div>
@@ -112,7 +155,7 @@ export default function Dashboard() {
                 <Sparkles className="w-4 h-4 text-gold" />
                 <span className="text-xs text-muted-foreground">현재 주차</span>
               </div>
-              <p className="text-2xl font-bold">{latestStudy.weekNumber}<span className="text-sm font-normal text-muted-foreground ml-1">주</span></p>
+              <p className="text-2xl font-bold">{latestStudy?.weekNumber ?? '-'}<span className="text-sm font-normal text-muted-foreground ml-1">주</span></p>
             </div>
           </motion.div>
         </motion.div>
@@ -123,33 +166,37 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-gold" />
               <h2 className="font-display font-semibold">{todayQT.title}</h2>
-              <span className="gold-badge ml-auto">{todayQT.verse}</span>
+              <span className="gold-badge ml-auto">{todayQT.verse.slice(0, 20)}</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">{todayQT.summary}</p>
-            <a
-              href={todayQT.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block mt-3 text-xs text-primary font-medium hover:underline"
-            >
-              매일성경 QT 바로가기 →
-            </a>
+            {todayQT.isLoaded && (
+              <a
+                href={todayQT.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 text-xs text-primary font-medium hover:underline"
+              >
+                오늘의 묵상 원문 보기 →
+              </a>
+            )}
           </div>
         </motion.div>
 
         {/* Latest study preview */}
-        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
-          <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-display font-semibold group-hover:text-primary transition-colors">
-                📖 {latestStudy.title}
-              </h2>
-              <span className="text-xs text-muted-foreground">{latestStudy.weekNumber}주차</span>
-            </div>
-            <p className="text-sm text-muted-foreground">{latestStudy.scripture}</p>
-            <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
-          </Link>
-        </motion.div>
+        {latestStudy && (
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
+            <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-display font-semibold group-hover:text-primary transition-colors">
+                  {latestStudy.title}
+                </h2>
+                <span className="text-xs text-muted-foreground">{latestStudy.weekNumber}주차</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{latestStudy.scripture}</p>
+              <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
+            </Link>
+          </motion.div>
+        )}
 
         {/* Upcoming schedules */}
         {upcomingSchedules.length > 0 && (
