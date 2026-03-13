@@ -12,7 +12,17 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
 const BULLETIN_BASE = 'http://bethel.or.kr/wp-content/uploads';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const pdfUrl: string = body.pdf_url || getAutoUrl();
@@ -53,14 +63,14 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ ok: true, id: data.id, title: parsed.title, pdfUrl }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : JSON.stringify(err);
     console.error('parse-bulletin error:', msg);
     return new Response(
       JSON.stringify({ ok: false, error: msg }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

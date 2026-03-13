@@ -9,7 +9,17 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
 const SOURCE_URL = 'https://sum.su.or.kr:8888/bible/today';
 
-Deno.serve(async (_req) => {
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const today = getTodayKST();
 
@@ -39,14 +49,14 @@ Deno.serve(async (_req) => {
 
     return new Response(
       JSON.stringify({ ok: true, date: today, scripture: devotional.verse }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : JSON.stringify(err);
     console.error('fetch-devotional error:', msg);
     return new Response(
       JSON.stringify({ ok: false, error: msg }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
