@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake } from 'lucide-react';
+import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { getBibleStudies, getStudyAnswer, getPrayerRequests, getTotalChapters, getSchedules, getTodayDevotional, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
@@ -299,6 +299,20 @@ export default function Dashboard() {
             </div>
           </motion.div>
         )}
+
+        {/* Manual link */}
+        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.45 }}>
+          <Link to="/manual" className="card-elevated p-4 flex items-center gap-3 group hover:shadow-lg transition-shadow block">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <HelpCircle className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">사용 안내</h3>
+              <p className="text-xs text-muted-foreground">앱 사용법이 궁금하신가요?</p>
+            </div>
+            <span className="text-xs text-primary font-medium">보기 →</span>
+          </Link>
+        </motion.div>
 
         {/* Schedule popup */}
         <AnimatePresence>

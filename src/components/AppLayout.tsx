@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/authContext';
 import { Button } from '@/components/ui/button';
@@ -144,6 +144,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 >
                   <UserCircle className="w-4 h-4" />
                   내 프로필
+                </Link>
+                <Link
+                  to="/manual"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                    location.pathname === '/manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  사용 안내
                 </Link>
               </div>
             </motion.nav>
