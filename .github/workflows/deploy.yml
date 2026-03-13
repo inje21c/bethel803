@@ -17,6 +17,10 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ljozrpecvlqqmwykxjfk.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqb3pycGVjdmxxcW13eWt4amZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNDQwNzMsImV4cCI6MjA4ODYyMDA3M30.k2mlkDavuxRF9ZpdnmTSQr-I8EBHWBGVJPAZQiAUdfo
+          VITE_APP_URL: https://bethel803.web.app
 
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
