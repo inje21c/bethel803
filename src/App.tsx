@@ -21,6 +21,7 @@ const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Profile = lazy(() => import("./pages/Profile"));
+const UserManual = lazy(() => import("./pages/UserManual"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="/bible-reading" element={<ProtectedRoute><BibleReading /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><LeaderRoute><AdminDashboard /></LeaderRoute></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
