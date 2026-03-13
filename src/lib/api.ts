@@ -1,4 +1,43 @@
 import { supabase } from './supabase';
+import { startTrace } from './utils';
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
+const API_TIMEOUT_MS = 10000;
+
+function withApiTimeout<T>(promise: Promise<T>, label: string, ms = API_TIMEOUT_MS): Promise<T> {
+  const trace = startTrace('API', label, { timeoutMs: ms });
+  const watchedPromise = promise
+    .then((result) => {
+      trace.success();
+      return result;
+    })
+    .catch((error) => {
+      trace.error(error);
+      throw error;
+    });
+
+  return withTimeout(
+    watchedPromise,
+    ms,
+    `${label} 요청이 지연되고 있습니다. 잠시 후 다시 시도해주세요.`
+  ).catch((error) => {
+    trace.error(error, { timedOut: true });
+    throw error;
+  });
+}
+
+export function getKSTDateString(date = new Date()): string {
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
 
 // ============================================================
 // 타입 정의
@@ -31,8 +70,26 @@ export interface PrayerRequest {
   content: string;
   response: string;
   answered: boolean;
+  sharedWithLeader: boolean;
+  sharedWithGroup: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PrayerResponse {
+  id: string;
+  prayerRequestId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface PrayerIntercession {
+  id: string;
+  prayerRequestId: string;
+  userId: string;
+  createdAt: string;
 }
 
 export interface BibleReadingLog {
@@ -76,11 +133,14 @@ export interface FullUser {
 // ============================================================
 
 export async function getBibleStudies(): Promise<BibleStudy[]> {
-  const { data, error } = await supabase
-    .from('bible_studies')
-    .select('*')
-    .eq('published', true)
-    .order('study_date', { ascending: false });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_studies')
+      .select('*')
+      .eq('published', true)
+      .order('study_date', { ascending: false }),
+    '성경공부 목록 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -95,10 +155,13 @@ export async function getBibleStudies(): Promise<BibleStudy[]> {
 }
 
 export async function getAllBibleStudies(): Promise<BibleStudy[]> {
-  const { data, error } = await supabase
-    .from('bible_studies')
-    .select('*')
-    .order('study_date', { ascending: false });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_studies')
+      .select('*')
+      .order('study_date', { ascending: false }),
+    '전체 성경공부 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -121,15 +184,18 @@ export async function createBibleStudy(params: {
   questions: string[];
   published: boolean;
 }): Promise<void> {
-  const { error } = await supabase.from('bible_studies').insert({
-    week_number: params.weekNumber,
-    study_date: params.date,
-    title: params.title,
-    scripture: params.scripture,
-    introduction: params.introduction,
-    questions: params.questions,
-    published: params.published,
-  });
+  const { error } = await withApiTimeout(
+    supabase.from('bible_studies').insert({
+      week_number: params.weekNumber,
+      study_date: params.date,
+      title: params.title,
+      scripture: params.scripture,
+      introduction: params.introduction,
+      questions: params.questions,
+      published: params.published,
+    }),
+    '성경공부 등록'
+  );
   if (error) throw error;
 }
 
@@ -143,33 +209,42 @@ export async function updateBibleStudy(params: {
   questions: string[];
   published: boolean;
 }): Promise<void> {
-  const { error } = await supabase
-    .from('bible_studies')
-    .update({
-      week_number: params.weekNumber,
-      study_date: params.date,
-      title: params.title,
-      scripture: params.scripture,
-      introduction: params.introduction,
-      questions: params.questions,
-      published: params.published,
-    })
-    .eq('id', params.id);
+  const { error } = await withApiTimeout(
+    supabase
+      .from('bible_studies')
+      .update({
+        week_number: params.weekNumber,
+        study_date: params.date,
+        title: params.title,
+        scripture: params.scripture,
+        introduction: params.introduction,
+        questions: params.questions,
+        published: params.published,
+      })
+      .eq('id', params.id),
+    '성경공부 수정'
+  );
   if (error) throw error;
 }
 
 export async function deleteBibleStudy(id: string): Promise<void> {
-  const { error } = await supabase.from('bible_studies').delete().eq('id', id);
+  const { error } = await withApiTimeout(
+    supabase.from('bible_studies').delete().eq('id', id),
+    '성경공부 삭제'
+  );
   if (error) throw error;
 }
 
 export async function getStudyAnswer(studyId: string, userId: string): Promise<StudyAnswer | null> {
-  const { data, error } = await supabase
-    .from('study_answers')
-    .select('*')
-    .eq('study_id', studyId)
-    .eq('user_id', userId)
-    .maybeSingle();
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('study_answers')
+      .select('*')
+      .eq('study_id', studyId)
+      .eq('user_id', userId)
+      .maybeSingle(),
+    '성경공부 답안 조회'
+  );
   if (error) throw error;
   if (!data) return null;
   return {
@@ -189,17 +264,20 @@ export async function saveStudyAnswer(params: {
   answers: Record<number, string>;
   completed: boolean;
 }): Promise<void> {
-  const { error } = await supabase
-    .from('study_answers')
-    .upsert(
-      {
-        study_id: params.studyId,
-        user_id: params.userId,
-        answers: params.answers,
-        completed: params.completed,
-      },
-      { onConflict: 'study_id,user_id' }
-    );
+  const { error } = await withApiTimeout(
+    supabase
+      .from('study_answers')
+      .upsert(
+        {
+          study_id: params.studyId,
+          user_id: params.userId,
+          answers: params.answers,
+          completed: params.completed,
+        },
+        { onConflict: 'study_id,user_id' }
+      ),
+    '성경공부 답안 저장'
+  );
   if (error) throw error;
 }
 
@@ -207,45 +285,246 @@ export async function saveStudyAnswer(params: {
 // 기도제목
 // ============================================================
 
-export async function getPrayerRequests(): Promise<PrayerRequest[]> {
-  const { data, error } = await supabase
-    .from('prayer_requests')
-    .select('*, users(name)')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(row => ({
-    id: row.id,
-    userId: row.user_id,
+function mapPrayerRow(row: Record<string, unknown>): PrayerRequest {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
     userName: (row.users as { name: string } | null)?.name ?? '알 수 없음',
-    content: row.content,
-    response: row.response ?? '',
-    answered: row.answered,
-    createdAt: row.created_at.slice(0, 10),
-    updatedAt: row.updated_at.slice(0, 10),
-  }));
+    content: row.content as string,
+    response: (row.response as string) ?? '',
+    answered: row.answered as boolean,
+    sharedWithLeader: (row.shared_with_leader as boolean) ?? false,
+    sharedWithGroup: (row.shared_with_group as boolean) ?? false,
+    createdAt: (row.created_at as string).slice(0, 10),
+    updatedAt: (row.updated_at as string).slice(0, 10),
+  };
+}
+
+export async function getPrayerRequests(): Promise<PrayerRequest[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('*, users(name)')
+      .order('created_at', { ascending: false }),
+    '기도제목 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(mapPrayerRow);
+}
+
+export async function getPrayerRequest(id: string): Promise<PrayerRequest | null> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('*, users(name)')
+      .eq('id', id)
+      .maybeSingle(),
+    '기도제목 상세 조회'
+  );
+  if (error) throw error;
+  if (!data) return null;
+  return mapPrayerRow(data);
 }
 
 export async function savePrayerRequest(params: {
   userId: string;
   content: string;
+  sharedWithLeader?: boolean;
 }): Promise<void> {
-  const { error } = await supabase.from('prayer_requests').insert({
-    user_id: params.userId,
-    content: params.content,
-  });
+  const { error } = await withApiTimeout(
+    supabase.from('prayer_requests').insert({
+      user_id: params.userId,
+      content: params.content,
+      shared_with_leader: params.sharedWithLeader ?? false,
+    }),
+    '기도제목 등록'
+  );
   if (error) throw error;
 }
 
 export async function updatePrayerRequest(params: {
   id: string;
+  content?: string;
   response?: string;
   answered?: boolean;
+  sharedWithLeader?: boolean;
+  sharedWithGroup?: boolean;
 }): Promise<void> {
   const update: Record<string, unknown> = {};
+  if (params.content !== undefined) update.content = params.content;
   if (params.response !== undefined) update.response = params.response;
   if (params.answered !== undefined) update.answered = params.answered;
-  const { error } = await supabase.from('prayer_requests').update(update).eq('id', params.id);
+  if (params.sharedWithLeader !== undefined) update.shared_with_leader = params.sharedWithLeader;
+  if (params.sharedWithGroup !== undefined) update.shared_with_group = params.sharedWithGroup;
+  const { error } = await withApiTimeout(
+    supabase.from('prayer_requests').update(update).eq('id', params.id),
+    '기도제목 수정'
+  );
   if (error) throw error;
+}
+
+export async function deletePrayerRequest(id: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('prayer_requests').delete().eq('id', id),
+    '기도제목 삭제'
+  );
+  if (error) throw error;
+}
+
+export async function getSharedPrayerRequests(): Promise<PrayerRequest[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('*, users(name)')
+      .eq('shared_with_leader', true)
+      .order('created_at', { ascending: false }),
+    '공유된 기도제목 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(mapPrayerRow);
+}
+
+export async function getGroupPrayerRequests(): Promise<PrayerRequest[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('*, users(name)')
+      .eq('shared_with_group', true)
+      .order('created_at', { ascending: false }),
+    '중보기도 목록 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(mapPrayerRow);
+}
+
+export async function getPrayerResponses(prayerRequestId: string): Promise<PrayerResponse[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_responses')
+      .select('*, users(name)')
+      .eq('prayer_request_id', prayerRequestId)
+      .order('created_at', { ascending: true }),
+    '기도 응답 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    prayerRequestId: row.prayer_request_id,
+    userId: row.user_id,
+    userName: (row.users as { name: string } | null)?.name ?? '알 수 없음',
+    content: row.content,
+    createdAt: row.created_at.slice(0, 10),
+  }));
+}
+
+export async function addPrayerResponse(params: {
+  prayerRequestId: string;
+  userId: string;
+  content: string;
+}): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('prayer_responses').insert({
+      prayer_request_id: params.prayerRequestId,
+      user_id: params.userId,
+      content: params.content,
+    }),
+    '기도 응답 추가'
+  );
+  if (error) throw error;
+}
+
+export async function deletePrayerResponse(id: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('prayer_responses').delete().eq('id', id),
+    '기도 응답 삭제'
+  );
+  if (error) throw error;
+}
+
+// ============================================================
+// 중보기도 참여 (함께 기도합니다)
+// ============================================================
+
+/** 함께 기도 토글 — 있으면 DELETE, 없으면 INSERT */
+export async function toggleIntercession(prayerRequestId: string, userId: string): Promise<boolean> {
+  // 기존 참여 여부 확인
+  const { data: existing } = await withApiTimeout(
+    supabase
+      .from('prayer_intercessions')
+      .select('id')
+      .eq('prayer_request_id', prayerRequestId)
+      .eq('user_id', userId)
+      .maybeSingle(),
+    '중보기도 참여 확인'
+  );
+
+  if (existing) {
+    const { error } = await withApiTimeout(
+      supabase.from('prayer_intercessions').delete().eq('id', existing.id),
+      '중보기도 참여 해제'
+    );
+    if (error) throw error;
+    return false; // 해제됨
+  } else {
+    const { error } = await withApiTimeout(
+      supabase.from('prayer_intercessions').insert({
+        prayer_request_id: prayerRequestId,
+        user_id: userId,
+      }),
+      '중보기도 참여 등록'
+    );
+    if (error) throw error;
+    return true; // 참여됨
+  }
+}
+
+/** 내가 체크한 중보기도 목록 (prayer_request_id Set 반환) */
+export async function getMyIntercessions(userId: string): Promise<Set<string>> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_intercessions')
+      .select('prayer_request_id')
+      .eq('user_id', userId),
+    '내 중보기도 참여 조회'
+  );
+  if (error) throw error;
+  return new Set((data ?? []).map(row => row.prayer_request_id as string));
+}
+
+/** 각 기도제목별 참여자 수 */
+export async function getIntercessionCounts(prayerRequestIds: string[]): Promise<Record<string, number>> {
+  if (prayerRequestIds.length === 0) return {};
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_intercessions')
+      .select('prayer_request_id')
+      .in('prayer_request_id', prayerRequestIds),
+    '중보기도 참여자 수 조회'
+  );
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const id = row.prayer_request_id as string;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** 특정 기도제목 참여자 목록 */
+export async function getIntercessionUsers(prayerRequestId: string): Promise<{ userId: string; userName: string }[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('prayer_intercessions')
+      .select('user_id, users(name)')
+      .eq('prayer_request_id', prayerRequestId)
+      .order('created_at', { ascending: true }),
+    '중보기도 참여자 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    userId: row.user_id as string,
+    userName: (row.users as { name: string } | null)?.name ?? '알 수 없음',
+  }));
 }
 
 // ============================================================
@@ -253,11 +532,14 @@ export async function updatePrayerRequest(params: {
 // ============================================================
 
 export async function getBibleReadingLogs(userId: string): Promise<BibleReadingLog[]> {
-  const { data, error } = await supabase
-    .from('bible_reading_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .order('log_date', { ascending: false });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('log_date', { ascending: false }),
+    '성경읽기 기록 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -272,19 +554,49 @@ export async function addBibleReadingLog(params: {
   date: string;
   chapters: number;
 }): Promise<void> {
-  const { error } = await supabase.from('bible_reading_logs').insert({
-    user_id: params.userId,
-    log_date: params.date,
-    chapters: params.chapters,
-  });
+  const { error } = await withTimeout(
+    supabase.from('bible_reading_logs').insert({
+      user_id: params.userId,
+      log_date: params.date,
+      chapters: params.chapters,
+    }),
+    15000,
+    '성경읽기 저장 요청이 15초 내에 완료되지 않았습니다.'
+  );
+  if (error) throw error;
+}
+
+export async function updateBibleReadingLog(params: {
+  id: string;
+  chapters: number;
+}): Promise<void> {
+  const { error } = await withTimeout(
+    supabase.from('bible_reading_logs').update({
+      chapters: params.chapters,
+    }).eq('id', params.id),
+    15000,
+    '성경읽기 수정 요청이 15초 내에 완료되지 않았습니다.'
+  );
+  if (error) throw error;
+}
+
+export async function deleteBibleReadingLog(id: string): Promise<void> {
+  const { error } = await withTimeout(
+    supabase.from('bible_reading_logs').delete().eq('id', id),
+    15000,
+    '성경읽기 삭제 요청이 15초 내에 완료되지 않았습니다.'
+  );
   if (error) throw error;
 }
 
 export async function getTotalChapters(userId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from('bible_reading_logs')
-    .select('chapters')
-    .eq('user_id', userId);
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('chapters')
+      .eq('user_id', userId),
+    '성경읽기 누적 조회'
+  );
   if (error) throw error;
   return (data ?? []).reduce((sum, row) => sum + row.chapters, 0);
 }
@@ -296,9 +608,12 @@ export interface BibleReadingSummary {
 }
 
 export async function getAllBibleReadingSummaries(): Promise<BibleReadingSummary[]> {
-  const { data, error } = await supabase
-    .from('bible_reading_logs')
-    .select('user_id, chapters, users(name)');
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('user_id, chapters, users(name)'),
+    '성경읽기 요약 조회'
+  );
   if (error) throw error;
 
   const map = new Map<string, { name: string; total: number }>();
@@ -324,10 +639,13 @@ export async function getAllBibleReadingSummaries(): Promise<BibleReadingSummary
 // ============================================================
 
 export async function getSchedules(): Promise<Schedule[]> {
-  const { data, error } = await supabase
-    .from('schedules')
-    .select('*')
-    .order('schedule_date', { ascending: true });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('schedules')
+      .select('*')
+      .order('schedule_date', { ascending: true }),
+    '일정 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -353,37 +671,46 @@ export async function addSchedule(params: {
   attendanceCheck: boolean;
   createdBy: string;
 }): Promise<void> {
-  const { error } = await supabase.from('schedules').insert({
-    title: params.title,
-    schedule_date: params.date,
-    schedule_time: params.time || null,
-    location: params.location || null,
-    memo: params.memo || null,
-    attachment: params.attachment || null,
-    attendance_check: params.attendanceCheck,
-    created_by: params.createdBy,
-  });
+  const { error } = await withApiTimeout(
+    supabase.from('schedules').insert({
+      title: params.title,
+      schedule_date: params.date,
+      schedule_time: params.time || null,
+      location: params.location || null,
+      memo: params.memo || null,
+      attachment: params.attachment || null,
+      attendance_check: params.attendanceCheck,
+      created_by: params.createdBy,
+    }),
+    '일정 등록'
+  );
   if (error) throw error;
 }
 
 export async function updateSchedule(schedule: Schedule): Promise<void> {
-  const { error } = await supabase
-    .from('schedules')
-    .update({
-      title: schedule.title,
-      schedule_date: schedule.date,
-      schedule_time: schedule.time || null,
-      location: schedule.location || null,
-      memo: schedule.memo || null,
-      attachment: schedule.attachment || null,
-      attendance_check: schedule.attendanceCheck,
-    })
-    .eq('id', schedule.id);
+  const { error } = await withApiTimeout(
+    supabase
+      .from('schedules')
+      .update({
+        title: schedule.title,
+        schedule_date: schedule.date,
+        schedule_time: schedule.time || null,
+        location: schedule.location || null,
+        memo: schedule.memo || null,
+        attachment: schedule.attachment || null,
+        attendance_check: schedule.attendanceCheck,
+      })
+      .eq('id', schedule.id),
+    '일정 수정'
+  );
   if (error) throw error;
 }
 
 export async function deleteSchedule(id: string): Promise<void> {
-  const { error } = await supabase.from('schedules').delete().eq('id', id);
+  const { error } = await withApiTimeout(
+    supabase.from('schedules').delete().eq('id', id),
+    '일정 삭제'
+  );
   if (error) throw error;
 }
 
@@ -392,10 +719,13 @@ export async function deleteSchedule(id: string): Promise<void> {
 // ============================================================
 
 export async function getAttendances(scheduleId: string): Promise<Attendance[]> {
-  const { data, error } = await supabase
-    .from('attendances')
-    .select('*, users(name)')
-    .eq('schedule_id', scheduleId);
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('attendances')
+      .select('*, users(name)')
+      .eq('schedule_id', scheduleId),
+    '출석 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     scheduleId: row.schedule_id,
@@ -411,16 +741,19 @@ export async function saveAttendance(params: {
   userId: string;
   status: 'attending' | 'absent' | 'pending';
 }): Promise<void> {
-  const { error } = await supabase
-    .from('attendances')
-    .upsert(
-      {
-        schedule_id: params.scheduleId,
-        user_id: params.userId,
-        status: params.status,
-      },
-      { onConflict: 'schedule_id,user_id' }
-    );
+  const { error } = await withApiTimeout(
+    supabase
+      .from('attendances')
+      .upsert(
+        {
+          schedule_id: params.scheduleId,
+          user_id: params.userId,
+          status: params.status,
+        },
+        { onConflict: 'schedule_id,user_id' }
+      ),
+    '출석 저장'
+  );
   if (error) throw error;
 }
 
@@ -429,10 +762,13 @@ export async function saveAttendance(params: {
 // ============================================================
 
 export async function getAllUsers(): Promise<FullUser[]> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, name, role, status, created_at')
-    .order('created_at', { ascending: true });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('users')
+      .select('id, name, role, status, created_at')
+      .order('created_at', { ascending: true }),
+    '구역원 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -444,28 +780,40 @@ export async function getAllUsers(): Promise<FullUser[]> {
 }
 
 export async function approveUser(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .update({ status: 'active' })
-    .eq('id', userId);
+  const { error } = await withApiTimeout(
+    supabase
+      .from('users')
+      .update({ status: 'active' })
+      .eq('id', userId),
+    '구역원 승인'
+  );
   if (error) throw error;
 }
 
 export async function rejectUser(userId: string): Promise<void> {
-  const { error } = await supabase.from('users').delete().eq('id', userId);
+  const { error } = await withApiTimeout(
+    supabase.from('users').delete().eq('id', userId),
+    '구역원 거절'
+  );
   if (error) throw error;
 }
 
 export async function changeUserRole(userId: string, role: 'leader' | 'member'): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .update({ role })
-    .eq('id', userId);
+  const { error } = await withApiTimeout(
+    supabase
+      .from('users')
+      .update({ role })
+      .eq('id', userId),
+    '권한 변경'
+  );
   if (error) throw error;
 }
 
 export async function updateUserName(userId: string, name: string): Promise<void> {
-  const { error } = await supabase.from('users').update({ name }).eq('id', userId);
+  const { error } = await withApiTimeout(
+    supabase.from('users').update({ name }).eq('id', userId),
+    '이름 변경'
+  );
   if (error) throw error;
 }
 
@@ -484,11 +832,14 @@ export interface AccessInfo {
 }
 
 export async function getAccessInfo(): Promise<AccessInfo[]> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, name, last_login_at')
-    .eq('status', 'active')
-    .order('last_login_at', { ascending: false, nullsFirst: false });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('users')
+      .select('id, name, last_login_at')
+      .eq('status', 'active')
+      .order('last_login_at', { ascending: false, nullsFirst: false }),
+    '접속 정보 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -525,20 +876,26 @@ export async function getCurrentLockStatus(): Promise<boolean> {
   monday.setUTCDate(kstNow.getUTCDate() - daysFromMonday);
   const weekStart = monday.toISOString().slice(0, 10);
 
-  const { data } = await supabase
-    .from('weekly_reports')
-    .select('is_locked')
-    .eq('week_start', weekStart)
-    .maybeSingle();
+  const { data } = await withApiTimeout(
+    supabase
+      .from('weekly_reports')
+      .select('is_locked')
+      .eq('week_start', weekStart)
+      .maybeSingle(),
+    '주간 마감 상태 조회'
+  );
 
   return data?.is_locked === true;
 }
 
 export async function getWeeklyReports(): Promise<WeeklyReport[]> {
-  const { data, error } = await supabase
-    .from('weekly_reports')
-    .select('*')
-    .order('week_start', { ascending: false });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('weekly_reports')
+      .select('*')
+      .order('week_start', { ascending: false }),
+    '주간 보고서 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -557,10 +914,13 @@ export async function getWeeklyReports(): Promise<WeeklyReport[]> {
 
 /** 마감 해제 — is_locked를 false로 설정 (구역장 전용) */
 export async function unlockWeeklyReport(weekStart: string): Promise<void> {
-  const { error } = await supabase
-    .from('weekly_reports')
-    .update({ is_locked: false })
-    .eq('week_start', weekStart);
+  const { error } = await withApiTimeout(
+    supabase
+      .from('weekly_reports')
+      .update({ is_locked: false })
+      .eq('week_start', weekStart),
+    '주간 마감 해제'
+  );
   if (error) throw error;
 }
 
@@ -641,14 +1001,16 @@ export interface DailyDevotional {
 /** 오늘(KST) 묵상 조회, 없으면 null */
 export async function getTodayDevotional(): Promise<DailyDevotional | null> {
   const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const today = kst.toISOString().slice(0, 10);
+  const today = getKSTDateString(now);
 
-  const { data, error } = await supabase
-    .from('daily_devotionals')
-    .select('*')
-    .eq('devotional_date', today)
-    .maybeSingle();
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('daily_devotionals')
+      .select('*')
+      .eq('devotional_date', today)
+      .maybeSingle(),
+    '오늘의 묵상 조회'
+  );
 
   if (error) throw error;
   if (!data) return null;
@@ -677,10 +1039,13 @@ export interface AppNotification {
 }
 
 export async function getNotifications(userId: string): Promise<AppNotification[]> {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*, notification_reads(user_id)')
-    .order('created_at', { ascending: false });
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('notifications')
+      .select('*, notification_reads(user_id)')
+      .order('created_at', { ascending: false }),
+    '알림 조회'
+  );
   if (error) throw error;
   return (data ?? []).map(row => ({
     id: row.id,
@@ -695,23 +1060,32 @@ export async function getNotifications(userId: string): Promise<AppNotification[
 }
 
 export async function markNotificationRead(notificationId: string, userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('notification_reads')
-    .upsert({ notification_id: notificationId, user_id: userId });
+  const { error } = await withApiTimeout(
+    supabase
+      .from('notification_reads')
+      .upsert({ notification_id: notificationId, user_id: userId }),
+    '알림 읽음 처리'
+  );
   if (error) throw error;
 }
 
 export async function createNotification(params: { title: string; body: string; createdBy: string }): Promise<void> {
-  const { error } = await supabase.from('notifications').insert({
-    title: params.title,
-    body: params.body,
-    created_by: params.createdBy,
-  });
+  const { error } = await withApiTimeout(
+    supabase.from('notifications').insert({
+      title: params.title,
+      body: params.body,
+      created_by: params.createdBy,
+    }),
+    '알림 생성'
+  );
   if (error) throw error;
 }
 
 export async function deleteNotification(id: string): Promise<void> {
-  const { error } = await supabase.from('notifications').delete().eq('id', id);
+  const { error } = await withApiTimeout(
+    supabase.from('notifications').delete().eq('id', id),
+    '알림 삭제'
+  );
   if (error) throw error;
 }
 
@@ -723,9 +1097,13 @@ export async function deleteNotification(id: string): Promise<void> {
 export async function uploadScheduleAttachment(file: File): Promise<string> {
   const ext = file.name.split('.').pop() ?? 'bin';
   const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-  const { error } = await supabase.storage
-    .from('attachments')
-    .upload(fileName, file, { upsert: false });
+  const { error } = await withApiTimeout(
+    supabase.storage
+      .from('attachments')
+      .upload(fileName, file, { upsert: false }),
+    '첨부파일 업로드',
+    20000
+  );
   if (error) throw error;
   const { data } = supabase.storage.from('attachments').getPublicUrl(fileName);
   return data.publicUrl;
