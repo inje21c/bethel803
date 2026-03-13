@@ -1,26 +1,47 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, CheckCircle2, Circle, Pencil, Lock } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Pencil, Trash2, Lock, Users, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { getPrayerRequests, savePrayerRequest, updatePrayerRequest, getCurrentLockStatus } from '@/lib/api';
+import {
+  getPrayerRequests,
+  savePrayerRequest,
+  updatePrayerRequest,
+  deletePrayerRequest,
+  getGroupPrayerRequests,
+  getCurrentLockStatus,
+  getMyIntercessions,
+  getIntercessionCounts,
+  toggleIntercession,
+} from '@/lib/api';
 import type { PrayerRequest } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 
 export default function PrayerRequests() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [newContent, setNewContent] = useState('');
+  const [sharedWithLeader, setSharedWithLeader] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [responseText, setResponseText] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editSharedWithLeader, setEditSharedWithLeader] = useState(false);
 
   const { data: prayers = [], isLoading } = useQuery({
     queryKey: ['prayer_requests'],
     queryFn: getPrayerRequests,
+  });
+
+  const { data: groupPrayers = [] } = useQuery({
+    queryKey: ['group_prayer_requests'],
+    queryFn: getGroupPrayerRequests,
   });
 
   const { data: isLocked = false } = useQuery({
@@ -28,25 +49,62 @@ export default function PrayerRequests() {
     queryFn: getCurrentLockStatus,
   });
 
+  const groupPrayerIds = groupPrayers.map(p => p.id);
+
+  const { data: myIntercessions = new Set<string>() } = useQuery({
+    queryKey: ['my_intercessions', user?.id],
+    queryFn: () => getMyIntercessions(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: intercessionCounts = {} } = useQuery({
+    queryKey: ['intercession_counts', groupPrayerIds],
+    queryFn: () => getIntercessionCounts(groupPrayerIds),
+    enabled: groupPrayerIds.length > 0,
+  });
+
+  const intercessionMutation = useMutation({
+    mutationFn: (prayerRequestId: string) => toggleIntercession(prayerRequestId, user!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my_intercessions'] });
+      queryClient.invalidateQueries({ queryKey: ['intercession_counts'] });
+    },
+    onError: () => toast.error('요청에 실패했습니다.'),
+  });
+
+  const myPrayers = prayers.filter((p: PrayerRequest) => p.userId === user?.id);
+  // 중보기도 중 본인 것 제외
+  const otherGroupPrayers = groupPrayers.filter((p: PrayerRequest) => p.userId !== user?.id);
+
   const addMutation = useMutation({
-    mutationFn: () => savePrayerRequest({ userId: user!.id, content: newContent.trim() }),
+    mutationFn: () => savePrayerRequest({ userId: user!.id, content: newContent.trim(), sharedWithLeader }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prayer_requests'] });
       setNewContent('');
+      setSharedWithLeader(false);
       toast.success('기도제목이 등록되었습니다.');
     },
     onError: () => toast.error('등록에 실패했습니다.'),
   });
 
-  const responseMutation = useMutation({
-    mutationFn: (id: string) => updatePrayerRequest({ id, response: responseText, answered: true }),
+  const updateMutation = useMutation({
+    mutationFn: (params: { id: string; content: string; sharedWithLeader: boolean }) =>
+      updatePrayerRequest({ id: params.id, content: params.content, sharedWithLeader: params.sharedWithLeader }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prayer_requests'] });
       setEditingId(null);
-      setResponseText('');
-      toast.success('기도 응답이 기록되었습니다!');
+      toast.success('수정되었습니다.');
     },
-    onError: () => toast.error('저장에 실패했습니다.'),
+    onError: () => toast.error('수정에 실패했습니다.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deletePrayerRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prayer_requests'] });
+      toast.success('삭제되었습니다.');
+    },
+    onError: () => toast.error('삭제에 실패했습니다.'),
   });
 
   const handleAdd = () => {
@@ -54,8 +112,121 @@ export default function PrayerRequests() {
     addMutation.mutate();
   };
 
-  const handleResponse = (id: string) => {
-    responseMutation.mutate(id);
+  const startEdit = (prayer: PrayerRequest) => {
+    setEditingId(prayer.id);
+    setEditContent(prayer.content);
+    setEditSharedWithLeader(prayer.sharedWithLeader);
+  };
+
+  const saveEdit = (id: string) => {
+    if (!editContent.trim()) return;
+    updateMutation.mutate({ id, content: editContent.trim(), sharedWithLeader: editSharedWithLeader });
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('정말 삭제하시겠습니까?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const renderPrayerItem = (prayer: PrayerRequest, i: number, isOwn: boolean, isGroupPrayer = false) => {
+    const isJoined = myIntercessions.has(prayer.id);
+    const count = intercessionCounts[prayer.id] ?? 0;
+
+    return (
+      <motion.div
+        key={prayer.id}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: i * 0.03 }}
+        className={`card-elevated p-4 cursor-pointer hover:bg-muted/30 transition-colors ${isGroupPrayer && isJoined ? 'ring-1 ring-primary/30 bg-primary/5' : ''}`}
+        onClick={() => navigate(`/prayer-requests/${prayer.id}`)}
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5">
+            {prayer.answered ? (
+              <CheckCircle2 className="w-5 h-5 text-success" />
+            ) : (
+              <Circle className="w-5 h-5 text-muted-foreground/40" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium">{prayer.userName}</span>
+              <span className="text-xs text-muted-foreground">{prayer.createdAt}</span>
+              {prayer.sharedWithLeader && (
+                <Badge variant="outline" className="text-[10px] py-0 px-1 gap-0.5"><ShieldCheck className="w-2.5 h-2.5" />공유</Badge>
+              )}
+              {prayer.sharedWithGroup && (
+                <Badge variant="outline" className="text-[10px] py-0 px-1 gap-0.5"><Users className="w-2.5 h-2.5" />중보</Badge>
+              )}
+            </div>
+
+            {editingId === prayer.id ? (
+              <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                <Textarea
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                />
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editSharedWithLeader}
+                    onCheckedChange={setEditSharedWithLeader}
+                    id={`edit-share-${prayer.id}`}
+                  />
+                  <label htmlFor={`edit-share-${prayer.id}`} className="text-xs">구역장에게 공유</label>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => saveEdit(prayer.id)} disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? '저장 중...' : '저장'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>취소</Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm">{prayer.content}</p>
+            )}
+
+            {/* 중보기도 참여 버튼 */}
+            {isGroupPrayer && editingId !== prayer.id && (
+              <div className="flex items-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => intercessionMutation.mutate(prayer.id)}
+                  disabled={intercessionMutation.isPending}
+                  className={`flex items-center gap-1 text-xs font-medium transition-colors ${isJoined ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                >
+                  <HeartHandshake className={`w-4 h-4 ${isJoined ? 'fill-primary/20' : ''}`} />
+                  {isJoined ? '함께 기도 중' : '함께 기도합니다'}
+                </button>
+                {count > 0 && (
+                  <span className="text-xs text-muted-foreground">{count}명이 함께 기도 중</span>
+                )}
+              </div>
+            )}
+
+            {/* 본인 항목 수정/삭제 버튼 */}
+            {isOwn && editingId !== prayer.id && (
+              <div className="flex items-center gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => startEdit(prayer)}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" /> 수정
+                </button>
+                <span className="text-muted-foreground/30 mx-1">|</span>
+                <button
+                  onClick={() => handleDelete(prayer.id)}
+                  className="text-xs text-destructive hover:underline flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" /> 삭제
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
   };
 
   return (
@@ -78,9 +249,19 @@ export default function PrayerRequests() {
                 placeholder="새 기도제목을 입력하세요..."
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
               />
-              <Button onClick={handleAdd} size="sm" className="gap-1" disabled={addMutation.isPending}>
-                <Plus className="w-3.5 h-3.5" /> {addMutation.isPending ? '등록 중...' : '등록'}
-              </Button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={sharedWithLeader}
+                    onCheckedChange={setSharedWithLeader}
+                    id="share-with-leader"
+                  />
+                  <label htmlFor="share-with-leader" className="text-xs text-muted-foreground">구역장에게 공유</label>
+                </div>
+                <Button onClick={handleAdd} size="sm" className="gap-1" disabled={addMutation.isPending}>
+                  <Plus className="w-3.5 h-3.5" /> {addMutation.isPending ? '등록 중...' : '등록'}
+                </Button>
+              </div>
             </>
           )}
         </div>
@@ -91,70 +272,26 @@ export default function PrayerRequests() {
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="space-y-3">
-            {prayers.map((prayer: PrayerRequest, i) => (
-              <motion.div
-                key={prayer.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="card-elevated p-4"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {prayer.answered ? (
-                      <CheckCircle2 className="w-5 h-5 text-success" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-muted-foreground/40" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium">{prayer.userName}</span>
-                      <span className="text-xs text-muted-foreground">{prayer.createdAt}</span>
-                    </div>
-                    <p className="text-sm">{prayer.content}</p>
+          <>
+            {/* 내 기도제목 */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">내 기도제목</h2>
+              {myPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, true))}
+              {myPrayers.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">등록된 기도제목이 없습니다.</p>
+              )}
+            </div>
 
-                    {prayer.answered && prayer.response && (
-                      <div className="mt-2 bg-success/10 rounded-md p-2.5">
-                        <p className="text-xs font-medium text-success mb-0.5">응답</p>
-                        <p className="text-xs text-foreground">{prayer.response}</p>
-                      </div>
-                    )}
-
-                    {editingId === prayer.id && (
-                      <div className="mt-2 space-y-2">
-                        <Textarea
-                          value={responseText}
-                          onChange={e => setResponseText(e.target.value)}
-                          placeholder="기도 응답 내용을 작성하세요..."
-                          className="text-sm min-h-[60px]"
-                        />
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleResponse(prayer.id)} disabled={responseMutation.isPending}>
-                            {responseMutation.isPending ? '저장 중...' : '저장'}
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>취소</Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {!prayer.answered && editingId !== prayer.id && (
-                      <button
-                        onClick={() => { setEditingId(prayer.id); setResponseText(prayer.response); }}
-                        className="mt-2 text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        <Pencil className="w-3 h-3" /> 응답 기록
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-            {prayers.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">등록된 기도제목이 없습니다.</p>
+            {/* 중보기도 */}
+            {otherGroupPrayers.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Users className="w-4 h-4" /> 중보기도
+                </h2>
+                {otherGroupPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, false, true))}
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </AppLayout>

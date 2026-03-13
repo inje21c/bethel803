@@ -14,6 +14,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import {
   getPrayerRequests,
+  getSharedPrayerRequests,
+  updatePrayerRequest,
   getSchedules,
   getAllUsers,
   approveUser,
@@ -48,6 +50,7 @@ import { Switch } from '@/components/ui/switch';
 import KakaoNoticeGenerator from '@/components/KakaoNoticeGenerator';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 
@@ -214,38 +217,47 @@ export default function AdminDashboard() {
   const [parsingBulletin, setParsingBulletin] = useState(false);
 
   const { data: prayers = [] } = useQuery({
-    queryKey: ['prayer_requests'],
-    queryFn: getPrayerRequests,
+    queryKey: ['shared_prayer_requests'],
+    queryFn: getSharedPrayerRequests,
+    enabled: activeTab === 'overview' || activeTab === 'prayer',
   });
+
+  const navigate = useNavigate();
 
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules'],
     queryFn: getSchedules,
+    enabled: activeTab === 'overview' || activeTab === 'schedule',
   });
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery({
     queryKey: ['all_users'],
     queryFn: getAllUsers,
+    enabled: activeTab === 'overview' || activeTab === 'members',
   });
 
   const { data: bibleStudies = [], isLoading: studiesLoading } = useQuery({
     queryKey: ['all_bible_studies'],
     queryFn: getAllBibleStudies,
+    enabled: activeTab === 'overview' || activeTab === 'study',
   });
 
   const { data: readingSummaries = [] } = useQuery({
     queryKey: ['all_reading_summaries'],
     queryFn: getAllBibleReadingSummaries,
+    enabled: activeTab === 'overview' || activeTab === 'bible',
   });
 
   const { data: accessInfo = [] } = useQuery({
     queryKey: ['access_info'],
     queryFn: getAccessInfo,
+    enabled: activeTab === 'access',
   });
 
   const { data: weeklyReports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['weekly_reports'],
     queryFn: getWeeklyReports,
+    enabled: activeTab === 'report',
   });
 
   const weeklyCloseMutation = useMutation({
@@ -909,7 +921,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription className="text-xs">전체 기도제목</CardDescription>
+                  <CardDescription className="text-xs">공유된 기도제목</CardDescription>
                   <CardTitle className="text-2xl">{prayers.length}건</CardTitle>
                 </CardHeader>
               </Card>
@@ -929,7 +941,7 @@ export default function AdminDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">기도제목 관리</CardTitle>
+                <CardTitle className="text-lg">공유된 기도제목 관리</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -939,12 +951,17 @@ export default function AdminDashboard() {
                       <TableHead>기도제목</TableHead>
                       <TableHead>등록일</TableHead>
                       <TableHead>상태</TableHead>
+                      <TableHead>중보기도</TableHead>
                       <TableHead className="text-right">관리</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {prayers.map((prayer) => (
-                      <TableRow key={prayer.id}>
+                      <TableRow
+                        key={prayer.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/prayer-requests/${prayer.id}`)}
+                      >
                         <TableCell className="font-medium">{prayer.userName}</TableCell>
                         <TableCell className="max-w-xs truncate">{prayer.content}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{prayer.createdAt}</TableCell>
@@ -955,8 +972,22 @@ export default function AdminDashboard() {
                             <Badge variant="secondary" className="text-xs">기도중</Badge>
                           )}
                         </TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <Switch
+                            checked={prayer.sharedWithGroup}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                await updatePrayerRequest({ id: prayer.id, sharedWithGroup: checked });
+                                queryClient.invalidateQueries({ queryKey: ['shared_prayer_requests'] });
+                                toast.success(checked ? '중보기도로 공유되었습니다.' : '중보기도 공유가 해제되었습니다.');
+                              } catch {
+                                toast.error('변경에 실패했습니다.');
+                              }
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="text-right">
-                          <Button size="icon" variant="ghost" className="h-7 w-7">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); navigate(`/prayer-requests/${prayer.id}`); }}>
                             <Edit className="w-3 h-3" />
                           </Button>
                         </TableCell>

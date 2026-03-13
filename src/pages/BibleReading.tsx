@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookMarked, Plus, TrendingUp, Lock } from 'lucide-react';
+import { Plus, TrendingUp, Lock, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { getBibleReadingLogs, addBibleReadingLog, getCurrentLockStatus } from '@/lib/api';
+import { getBibleReadingLogs, addBibleReadingLog, updateBibleReadingLog, deleteBibleReadingLog, getCurrentLockStatus, getKSTDateString } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/AppLayout';
@@ -13,6 +13,8 @@ export default function BibleReading() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [chapters, setChapters] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editChapters, setEditChapters] = useState('');
   const target = 1189; // 성경 전체 장수
 
   const { data: readings = [], isLoading } = useQuery({
@@ -29,19 +31,51 @@ export default function BibleReading() {
   const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
   const progress = Math.min((totalChapters / target) * 100, 100);
 
+  const invalidateQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['bible_reading_logs', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['total_chapters', user?.id] });
+  };
+
   const addMutation = useMutation({
     mutationFn: (num: number) => addBibleReadingLog({
       userId: user!.id,
-      date: new Date().toISOString().slice(0, 10),
+      date: getKSTDateString(),
       chapters: num,
     }),
     onSuccess: (_, num) => {
-      queryClient.invalidateQueries({ queryKey: ['bible_reading_logs', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['total_chapters', user?.id] });
+      invalidateQueries();
       setChapters('');
       toast.success(`${num}장이 기록되었습니다!`);
     },
-    onError: () => toast.error('기록에 실패했습니다.'),
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : '기록에 실패했습니다.';
+      toast.error(message);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (params: { id: string; chapters: number }) => updateBibleReadingLog(params),
+    onSuccess: () => {
+      invalidateQueries();
+      setEditingId(null);
+      toast.success('수정되었습니다.');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : '수정에 실패했습니다.';
+      toast.error(message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteBibleReadingLog(id),
+    onSuccess: () => {
+      invalidateQueries();
+      toast.success('삭제되었습니다.');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : '삭제에 실패했습니다.';
+      toast.error(message);
+    },
   });
 
   const handleAdd = () => {
@@ -51,6 +85,26 @@ export default function BibleReading() {
       return;
     }
     addMutation.mutate(num);
+  };
+
+  const handleEditStart = (id: string, currentChapters: number) => {
+    setEditingId(id);
+    setEditChapters(String(currentChapters));
+  };
+
+  const handleEditSave = () => {
+    if (!editingId) return;
+    const num = parseInt(editChapters);
+    if (!num || num <= 0) {
+      toast.error('1장 이상 입력해주세요.');
+      return;
+    }
+    updateMutation.mutate({ id: editingId, chapters: num });
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+    deleteMutation.mutate(id);
   };
 
   return (
@@ -126,7 +180,61 @@ export default function BibleReading() {
               {[...readings].map(r => (
                 <div key={r.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <span className="text-sm text-muted-foreground">{r.date}</span>
-                  <span className="text-sm font-semibold">{r.chapters}장</span>
+                  {editingId === r.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        value={editChapters}
+                        onChange={e => setEditChapters(e.target.value)}
+                        min="1"
+                        className="w-20 h-8 text-sm"
+                        onKeyDown={e => e.key === 'Enter' && handleEditSave()}
+                        autoFocus
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-green-600"
+                        onClick={handleEditSave}
+                        disabled={updateMutation.isPending}
+                      >
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => setEditingId(null)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">{r.chapters}장</span>
+                      {!isLocked && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => handleEditStart(r.id, r.chapters)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive"
+                            onClick={() => handleDelete(r.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

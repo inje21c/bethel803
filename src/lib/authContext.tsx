@@ -1,6 +1,32 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from './supabase';
 import { updateLastLogin } from './api';
+import { queryClient } from './queryClient';
+import { debugLog, startTrace } from './utils';
+
+function withAuthTimeout<T>(promise: Promise<T>, message: string, ms = 10000): Promise<T> {
+  const trace = startTrace('Auth', 'request', { timeoutMs: ms });
+  const watchedPromise = promise
+    .then((result) => {
+      trace.success();
+      return result;
+    })
+    .catch((error) => {
+      trace.error(error);
+      throw error;
+    });
+
+  return Promise.race([
+    watchedPromise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        const error = new Error(message);
+        trace.error(error, { timedOut: true });
+        reject(error);
+      }, ms);
+    }),
+  ]);
+}
 
 export interface UserProfile {
   id: string;
@@ -24,13 +50,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, name, role, status')
-    .eq('id', userId)
-    .single();
+  const { data, error } = await withAuthTimeout(
+    supabase
+      .from('users')
+      .select('id, name, role, status')
+      .eq('id', userId)
+      .single(),
+    '사용자 정보를 불러오는 시간이 초과되었습니다.'
+  );
   if (error || !data) return null;
   return data as UserProfile;
+}
+
+async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']): Promise<UserProfile | null> {
+  if (!session?.user) return null;
+  return fetchProfile(session.user.id);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,7 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted.current) setLoading(false);
     }, 5000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const applySession = async (
+      event: string,
+      session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
+    ) => {
+      debugLog('Auth', 'onAuthStateChange', {
+        event,
+        hasSession: Boolean(session),
+        userId: session?.user?.id ?? null,
+      });
+
       if (event === 'SIGNED_OUT' || !session) {
         clearTimeout(fallbackTimer);
         if (mounted.current) {
@@ -57,12 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // 모든 세션 관련 이벤트 처리
       const id = ++requestId.current;
 
       let profile: UserProfile | null = null;
       try {
-        profile = await fetchProfile(session.user.id);
+        profile = await resolveSessionProfile(session);
       } catch {
         // 네트워크 실패 시에도 loading 해제 (fallback timer가 살아있으므로 이중 보호)
       }
@@ -77,7 +119,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN') {
         updateLastLogin(session.user.id);
       }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      await applySession(event, session);
     });
+
+    void (async () => {
+      try {
+        const { data: { session } } = await withAuthTimeout(
+          supabase.auth.getSession(),
+          '초기 세션 확인이 지연되고 있습니다.'
+        );
+        await applySession('INITIAL_SESSION_CHECK', session);
+      } catch {
+        if (mounted.current) setLoading(false);
+      }
+    })();
 
     return () => {
       mounted.current = false;
@@ -87,27 +145,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    // user 상태는 onAuthStateChange SIGNED_IN 이벤트에서 자동 업데이트
+    debugLog('Auth', 'login requested', { email });
+    if (mounted.current) setLoading(true);
+    const { data, error } = await withAuthTimeout(
+      supabase.auth.signInWithPassword({ email, password }),
+      '로그인 요청이 지연되고 있습니다. 다시 시도해주세요.'
+    );
+    if (error) {
+      if (mounted.current) setLoading(false);
+      throw error;
+    }
+
+    const profile = await resolveSessionProfile(data.session);
+    queryClient.clear();
+    if (mounted.current) {
+      setUser(profile);
+      setLoading(false);
+    }
+    if (data.user) {
+      updateLastLogin(data.user.id);
+    }
   }, []);
 
   const logout = useCallback(async () => {
-    // 먼저 로컬 상태 초기화
-    setUser(null);
+    debugLog('Auth', 'logout requested');
+    requestId.current += 1;
+    if (mounted.current) {
+      setLoading(true);
+      setUser(null);
+    }
+    queryClient.clear();
     try {
-      await supabase.auth.signOut();
+      await withAuthTimeout(
+        supabase.auth.signOut(),
+        '로그아웃 요청이 지연되고 있습니다. 다시 시도해주세요.'
+      );
     } catch {
       // signOut 실패해도 로컬 상태는 이미 초기화됨
+    } finally {
+      if (mounted.current) setLoading(false);
     }
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
-    });
+    debugLog('Auth', 'register requested', { email, name });
+    const { data, error } = await withAuthTimeout(
+      supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      }),
+      '회원가입 요청이 지연되고 있습니다. 다시 시도해주세요.'
+    );
     if (error) throw error;
     if (!data.user) throw new Error('회원가입에 실패했습니다.');
     // on_auth_user_created 트리거가 public.users에 자동 insert함
@@ -117,20 +206,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
+    debugLog('Auth', 'resetPassword requested', { email });
     const redirectTo = `${import.meta.env.VITE_APP_URL}/reset-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await withAuthTimeout(
+      supabase.auth.resetPasswordForEmail(email, { redirectTo }),
+      '비밀번호 재설정 메일 요청이 지연되고 있습니다. 다시 시도해주세요.'
+    );
     if (error) throw error;
   }, []);
 
   const updatePassword = useCallback(async (password: string) => {
-    const { error } = await supabase.auth.updateUser({ password });
+    debugLog('Auth', 'updatePassword requested', { length: password.length });
+    const { error } = await withAuthTimeout(
+      supabase.auth.updateUser({ password }),
+      '비밀번호 변경 요청이 지연되고 있습니다. 다시 시도해주세요.'
+    );
     if (error) throw error;
   }, []);
 
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
+    debugLog('Auth', 'refreshProfile requested');
+    const { data: { session } } = await withAuthTimeout(
+      supabase.auth.getSession(),
+      '세션 확인이 지연되고 있습니다. 다시 시도해주세요.'
+    );
     if (!session?.user) return null;
     const profile = await fetchProfile(session.user.id);
+    queryClient.clear();
     if (mounted.current) setUser(profile);
     return profile;
   }, []);

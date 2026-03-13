@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { getBibleStudies, getStudyAnswer, getPrayerRequests, getTotalChapters, getSchedules, getTodayDevotional } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getPrayerRequests, getTotalChapters, getSchedules, getTodayDevotional, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -47,6 +47,35 @@ export default function Dashboard() {
     queryKey: ['today_devotional'],
     queryFn: getTodayDevotional,
     staleTime: 1000 * 60 * 30, // 30분 캐시
+  });
+
+  const { data: groupPrayers = [] } = useQuery({
+    queryKey: ['group_prayer_requests'],
+    queryFn: getGroupPrayerRequests,
+  });
+
+  const otherGroupPrayers = groupPrayers.slice(0, 5);
+  const groupPrayerIds = groupPrayers.map(p => p.id);
+
+  const { data: myIntercessions = new Set<string>() } = useQuery({
+    queryKey: ['my_intercessions', user?.id],
+    queryFn: () => getMyIntercessions(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: intercessionCounts = {} } = useQuery({
+    queryKey: ['intercession_counts', groupPrayerIds],
+    queryFn: () => getIntercessionCounts(groupPrayerIds),
+    enabled: groupPrayerIds.length > 0,
+  });
+
+  const queryClient = useQueryClient();
+  const intercessionMutation = useMutation({
+    mutationFn: (prayerRequestId: string) => toggleIntercession(prayerRequestId, user!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my_intercessions'] });
+      queryClient.invalidateQueries({ queryKey: ['intercession_counts'] });
+    },
   });
 
   const studyCompleted = latestAnswer?.completed ?? false;
@@ -148,17 +177,59 @@ export default function Dashboard() {
             </Link>
           </motion.div>
 
-          {/* Week number */}
+          {/* 함께 기도 (중보기도 참여 수) */}
           <motion.div variants={item}>
-            <div className="stat-card">
+            <Link to="/prayer-requests" className="stat-card block hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-gold" />
-                <span className="text-xs text-muted-foreground">현재 주차</span>
+                <HeartHandshake className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">함께 기도</span>
               </div>
-              <p className="text-2xl font-bold">{latestStudy?.weekNumber ?? '-'}<span className="text-sm font-normal text-muted-foreground ml-1">주</span></p>
-            </div>
+              <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+            </Link>
           </motion.div>
         </motion.div>
+
+        {/* 중보기도 섹션 */}
+        {otherGroupPrayers.length > 0 && (
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.25 }}>
+            <div className="card-elevated p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-semibold flex items-center gap-2">
+                  <HeartHandshake className="w-4 h-4 text-primary" /> 구역식구를 위한 중보기도
+                </h2>
+                <Link to="/prayer-requests" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
+              </div>
+              <div className="space-y-3">
+                {otherGroupPrayers.map(p => {
+                  const isJoined = myIntercessions.has(p.id);
+                  const count = intercessionCounts[p.id] ?? 0;
+                  return (
+                    <div key={p.id} className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${isJoined ? 'bg-primary/5' : 'bg-muted/50'}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-xs font-medium">{p.userName}</span>
+                          <span className="text-xs text-muted-foreground">{p.createdAt}</span>
+                        </div>
+                        <p className="text-sm truncate">{p.content}</p>
+                        {count > 0 && (
+                          <span className="text-xs text-muted-foreground mt-1 block">{count}명이 함께 기도 중</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => intercessionMutation.mutate(p.id)}
+                        disabled={intercessionMutation.isPending}
+                        className={`shrink-0 p-2 rounded-full transition-colors ${isJoined ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                        title={isJoined ? '함께 기도 중' : '함께 기도합니다'}
+                      >
+                        <HeartHandshake className={`w-5 h-5 ${isJoined ? 'fill-primary/20' : ''}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Today's QT */}
         <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
