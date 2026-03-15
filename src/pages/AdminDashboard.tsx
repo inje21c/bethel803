@@ -13,7 +13,6 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import {
-  getPrayerRequests,
   getSharedPrayerRequests,
   updatePrayerRequest,
   getSchedules,
@@ -25,6 +24,7 @@ import {
   createBibleStudy,
   updateBibleStudy,
   deleteBibleStudy,
+  getStudyAnswersForStudy,
   getAllBibleReadingSummaries,
   getAccessInfo,
   getWeeklyReports,
@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -98,7 +99,7 @@ function BibleStudyForm({
   const [scripture, setScripture] = useState(study?.scripture || '');
   const [introduction, setIntroduction] = useState(study?.introduction || '');
   const [questionsText, setQuestionsText] = useState((study?.questions || []).join('\n'));
-  const [published, setPublished] = useState(Boolean(study));
+  const [published, setPublished] = useState(study?.published ?? false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,6 +214,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [editingStudy, setEditingStudy] = useState<BibleStudy | undefined>();
+  const [deletingStudyId, setDeletingStudyId] = useState<string | null>(null);
+  const [viewAnswersStudy, setViewAnswersStudy] = useState<BibleStudy | undefined>();
   const [bulletinUrl, setBulletinUrl] = useState('');
   const [parsingBulletin, setParsingBulletin] = useState(false);
 
@@ -252,6 +255,12 @@ export default function AdminDashboard() {
     queryKey: ['access_info'],
     queryFn: getAccessInfo,
     enabled: activeTab === 'access',
+  });
+
+  const { data: studyAnswers = [], isLoading: answersLoading } = useQuery({
+    queryKey: ['study_answers_for_study', viewAnswersStudy?.id],
+    queryFn: () => getStudyAnswersForStudy(viewAnswersStudy!.id),
+    enabled: !!viewAnswersStudy,
   });
 
   const { data: weeklyReports = [], isLoading: reportsLoading } = useQuery({
@@ -887,6 +896,9 @@ export default function AdminDashboard() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button size="icon" variant="ghost" className="h-7 w-7" title="답변 현황" onClick={() => setViewAnswersStudy(study)}>
+                                <Users className="w-3 h-3" />
+                              </Button>
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEditStudy(study)}>
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -894,7 +906,7 @@ export default function AdminDashboard() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 text-destructive"
-                                onClick={() => deleteStudyMutation.mutate(study.id)}
+                                onClick={() => setDeletingStudyId(study.id)}
                               >
                                 <Trash2 className="w-3 h-3" />
                               </Button>
@@ -1352,6 +1364,69 @@ export default function AdminDashboard() {
             <KakaoNoticeGenerator />
           </TabsContent>
         </Tabs>
+
+        {/* 성경공부 삭제 확인 */}
+        <AlertDialog open={!!deletingStudyId} onOpenChange={(open) => { if (!open) setDeletingStudyId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>성경공부 자료를 삭제할까요?</AlertDialogTitle>
+              <AlertDialogDescription>
+                삭제하면 구역원 답변도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => { if (deletingStudyId) { deleteStudyMutation.mutate(deletingStudyId); setDeletingStudyId(null); } }}
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 구역원 답변 현황 */}
+        <Dialog open={!!viewAnswersStudy} onOpenChange={(open) => { if (!open) setViewAnswersStudy(undefined); }}>
+          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                답변 현황 — {viewAnswersStudy?.weekNumber}주차 {viewAnswersStudy?.title}
+              </DialogTitle>
+            </DialogHeader>
+            {answersLoading ? (
+              <div className="flex justify-center py-6">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : studyAnswers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">아직 제출된 답변이 없습니다.</p>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">완료 {studyAnswers.filter(a => a.completed).length}명 / 전체 {studyAnswers.length}명 제출</p>
+                {studyAnswers.map((answer) => (
+                  <div key={answer.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{answer.userName}</span>
+                      {answer.completed
+                        ? <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">완료</span>
+                        : <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">임시저장</span>
+                      }
+                      <span className="text-xs text-muted-foreground ml-auto">{answer.updatedAt.slice(0, 10)}</span>
+                    </div>
+                    {viewAnswersStudy && (viewAnswersStudy.questions as string[]).map((q, i) => (
+                      <div key={i} className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">{i + 1}. {q}</p>
+                        <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">
+                          {answer.answers[i] || <span className="text-muted-foreground italic">미작성</span>}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

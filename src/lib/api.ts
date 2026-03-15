@@ -281,6 +281,49 @@ export async function saveStudyAnswer(params: {
   if (error) throw error;
 }
 
+export interface StudyAnswerWithUser {
+  id: string;
+  userId: string;
+  userName: string;
+  answers: Record<number, string>;
+  completed: boolean;
+  updatedAt: string;
+}
+
+/** 리더용: 특정 성경공부의 모든 구역원 답변 조회 */
+export async function getStudyAnswersForStudy(studyId: string): Promise<StudyAnswerWithUser[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('study_answers')
+      .select('*, users(name)')
+      .eq('study_id', studyId)
+      .order('updated_at', { ascending: false }),
+    '성경공부 답변 전체 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    userId: row.user_id,
+    userName: (row.users as { name: string } | null)?.name ?? '알 수 없음',
+    answers: row.answers as Record<number, string>,
+    completed: row.completed,
+    updatedAt: row.updated_at,
+  }));
+}
+
+/** 구역원용: 본인의 전체 성경공부 완료 현황 (studyId → completed) */
+export async function getMyStudyCompletions(userId: string): Promise<Record<string, boolean>> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('study_answers')
+      .select('study_id, completed')
+      .eq('user_id', userId),
+    '성경공부 완료 현황 조회'
+  );
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map(row => [row.study_id as string, row.completed as boolean]));
+}
+
 // ============================================================
 // 기도제목
 // ============================================================
