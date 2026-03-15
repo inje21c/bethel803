@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -325,6 +325,7 @@ export default function ScheduleManagement() {
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>{editingSchedule ? '일정 수정' : '새 일정 등록'}</DialogTitle>
+                  <DialogDescription className="sr-only">일정 정보를 입력하거나 수정합니다.</DialogDescription>
                 </DialogHeader>
                 <ScheduleForm schedule={editingSchedule} onSave={handleSave} onClose={() => { setDialogOpen(false); setEditingSchedule(undefined); }} />
               </DialogContent>
