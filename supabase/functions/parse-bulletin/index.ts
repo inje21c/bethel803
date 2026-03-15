@@ -24,6 +24,31 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // 수동 JWT 검증: leader 권한 체크
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ ok: false, error: '인증 실패: 유효하지 않은 토큰입니다.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: profile } = await supabaseAuth
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      if (profile?.role !== 'leader') {
+        return new Response(
+          JSON.stringify({ ok: false, error: '권한 없음: 구역장만 사용할 수 있습니다.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const body = await req.json().catch(() => ({}));
     const pdfUrl: string = body.pdf_url || getAutoUrl();
 

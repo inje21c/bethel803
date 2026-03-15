@@ -42,7 +42,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -778,6 +778,7 @@ export default function AdminDashboard() {
                   <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>{editingStudy ? '성경공부 수정' : '성경공부 등록'}</DialogTitle>
+                      <DialogDescription className="sr-only">성경공부 자료를 등록하거나 수정합니다.</DialogDescription>
                     </DialogHeader>
                     <BibleStudyForm
                       study={editingStudy}
@@ -1393,6 +1394,7 @@ export default function AdminDashboard() {
               <DialogTitle>
                 답변 현황 — {viewAnswersStudy?.weekNumber}주차 {viewAnswersStudy?.title}
               </DialogTitle>
+              <DialogDescription className="sr-only">구역원별 성경공부 답변 현황을 확인합니다.</DialogDescription>
             </DialogHeader>
             {answersLoading ? (
               <div className="flex justify-center py-6">
