@@ -3,16 +3,16 @@ import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { getBibleStudies, getStudyAnswer } from '@/lib/api';
+import { getBibleStudies, getMyStudyCompletions } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 
-function StudyItem({ study, userId }: { study: { id: string; weekNumber: number; date: string; title: string; scripture: string }; userId: string }) {
-  const { data: answer } = useQuery({
-    queryKey: ['study_answer', study.id, userId],
-    queryFn: () => getStudyAnswer(study.id, userId),
-  });
-  const completed = answer?.completed ?? false;
-
+function StudyItem({
+  study,
+  completed,
+}: {
+  study: { id: string; weekNumber: number; date: string; title: string; scripture: string };
+  completed: boolean;
+}) {
   return (
     <Link
       to={`/bible-study/${study.id}`}
@@ -48,6 +48,12 @@ export default function BibleStudyList() {
     queryFn: getBibleStudies,
   });
 
+  const { data: completions = {} } = useQuery({
+    queryKey: ['my_study_completions', user?.id],
+    queryFn: () => getMyStudyCompletions(user!.id),
+    enabled: !!user,
+  });
+
   return (
     <AppLayout>
       <div className="space-y-4">
@@ -67,7 +73,7 @@ export default function BibleStudyList() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <StudyItem study={study} userId={user?.id || ''} />
+                <StudyItem study={study} completed={completions[study.id] ?? false} />
               </motion.div>
             ))}
             {studies.length === 0 && (

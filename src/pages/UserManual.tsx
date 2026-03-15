@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, Settings, ChevronDown, ChevronRight, HelpCircle, UserCircle, Search, Bell, HeartHandshake, Sparkles } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, Settings, ChevronDown, ChevronRight, HelpCircle, UserCircle, Search } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 
 interface Section {
@@ -60,7 +60,7 @@ const sections: Section[] = [
       },
       {
         subtitle: '답변 작성',
-        text: '성경공부 상세 페이지에서 각 질문에 대한 답변을 작성합니다. "저장" 버튼으로 임시 저장, "제출" 버튼으로 최종 제출할 수 있습니다. 제출 후에도 마감 전까지 수정이 가능합니다.',
+        text: '성경공부 상세 페이지에서 각 질문에 대한 답변을 작성합니다. "임시 저장" 버튼으로 작성 중인 내용을 저장하고, "완료로 저장" 버튼으로 최종 완료 처리합니다. 완료 후에도 마감 전까지 "수정 저장"으로 내용을 변경할 수 있습니다.',
       },
       {
         subtitle: '완료 현황',
@@ -166,7 +166,7 @@ const sections: Section[] = [
       },
       {
         subtitle: '성경공부 관리',
-        text: '성경공부를 직접 생성하거나, 주보 PDF에서 자동 파싱하여 생성할 수 있습니다. 생성된 성경공부는 검토 후 발행합니다.',
+        text: '성경공부를 직접 생성하거나, 주보 PDF에서 자동 파싱하여 생성할 수 있습니다. 생성된 성경공부는 검토 후 발행하며, 각 공부 행의 사람 아이콘을 클릭하면 구역원별 답변 현황을 조회할 수 있습니다.',
       },
       {
         subtitle: '주간 보고',

@@ -16,7 +16,7 @@ export default function BibleStudyDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: studies = [] } = useQuery({
+  const { data: studies = [], isLoading: studiesLoading } = useQuery({
     queryKey: ['bible_studies'],
     queryFn: getBibleStudies,
   });
@@ -45,24 +45,25 @@ export default function BibleStudyDetail() {
   }, [savedAnswer]);
 
   const saveMutation = useMutation({
-    mutationFn: () => saveStudyAnswer({
+    mutationFn: (markCompleted: boolean) => saveStudyAnswer({
       studyId: id!,
       userId: user!.id,
       userName: user!.name,
       answers,
-      completed: true,
+      completed: markCompleted,
     }),
-    onSuccess: () => {
-      setCompleted(true);
+    onSuccess: (_, markCompleted) => {
+      if (markCompleted) setCompleted(true);
       queryClient.invalidateQueries({ queryKey: ['study_answer', id, user?.id] });
-      toast.success('성경공부 답변이 저장되었습니다!');
+      queryClient.invalidateQueries({ queryKey: ['my_study_completions', user?.id] });
+      toast.success(markCompleted ? '성경공부를 완료했습니다!' : '임시 저장되었습니다.');
     },
     onError: () => {
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
     },
   });
 
-  if (!study) {
+  if (studiesLoading) {
     return (
       <AppLayout>
         <div className="flex justify-center py-8">
@@ -72,9 +73,22 @@ export default function BibleStudyDetail() {
     );
   }
 
-  const handleSave = () => {
+  if (!study) {
+    return (
+      <AppLayout>
+        <div className="space-y-4 max-w-2xl mx-auto">
+          <button onClick={() => navigate('/bible-study')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4" /> 목록으로
+          </button>
+          <p className="text-sm text-muted-foreground text-center py-8">성경공부를 찾을 수 없습니다.</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const handleSave = (markCompleted: boolean) => {
     if (!user) return;
-    saveMutation.mutate();
+    saveMutation.mutate(markCompleted);
   };
 
   return (
@@ -135,10 +149,23 @@ export default function BibleStudyDetail() {
             ))}
           </div>
 
-          <Button onClick={handleSave} className="w-full gap-2" disabled={saveMutation.isPending || isLocked}>
-            <Save className="w-4 h-4" />
-            {saveMutation.isPending ? '저장 중...' : completed ? '수정 저장' : '저장하기'}
-          </Button>
+          {completed ? (
+            <Button onClick={() => handleSave(true)} className="w-full gap-2" disabled={saveMutation.isPending || isLocked}>
+              <Save className="w-4 h-4" />
+              {saveMutation.isPending ? '저장 중...' : '수정 저장'}
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => handleSave(false)} className="flex-1 gap-2" disabled={saveMutation.isPending || isLocked}>
+                <Save className="w-4 h-4" />
+                임시 저장
+              </Button>
+              <Button onClick={() => handleSave(true)} className="flex-1 gap-2" disabled={saveMutation.isPending || isLocked}>
+                <CheckCircle2 className="w-4 h-4" />
+                {saveMutation.isPending ? '저장 중...' : '완료로 저장'}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>
