@@ -19,7 +19,8 @@ export default function Dashboard() {
     queryFn: getBibleStudies,
   });
 
-  const latestStudy = studies[0];
+  const recentStudies = studies.slice(0, 2);
+  const latestStudy = recentStudies[0];
 
   const { data: latestAnswer } = useQuery({
     queryKey: ['study_answer', latestStudy?.id, user?.id],
@@ -254,18 +255,28 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Latest study preview */}
-        {latestStudy && (
+        {recentStudies.length > 0 && (
           <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
-            <Link to={`/bible-study/${latestStudy.id}`} className="card-elevated p-5 block group">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-display font-semibold group-hover:text-primary transition-colors">
-                  {latestStudy.title}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display font-semibold flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" /> 성경공부
                 </h2>
-                <span className="text-xs text-muted-foreground">{latestStudy.weekNumber}주차</span>
+                <Link to="/bible-study" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
               </div>
-              <p className="text-sm text-muted-foreground">{latestStudy.scripture}</p>
-              <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
-            </Link>
+              {recentStudies.map(s => (
+                <Link key={s.id} to={`/bible-study/${s.id}`} className="card-elevated p-5 block group">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-display font-semibold group-hover:text-primary transition-colors">
+                      {s.title}
+                    </h3>
+                    <span className="text-xs text-muted-foreground">{s.weekNumber}주차</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{s.scripture}</p>
+                  <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
+                </Link>
+              ))}
+            </div>
           </motion.div>
         )}
 

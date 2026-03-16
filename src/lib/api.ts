@@ -138,7 +138,8 @@ export async function getBibleStudies(): Promise<BibleStudy[]> {
       .from('bible_studies')
       .select('*')
       .eq('published', true)
-      .order('study_date', { ascending: false }),
+      .order('study_date', { ascending: false })
+      .order('created_at', { ascending: false }),
     '성경공부 목록 조회'
   );
   if (error) throw error;
@@ -1016,13 +1017,25 @@ export interface ParsedBulletinResult {
 /** 주보 PDF를 파싱하여 bible_studies에 등록 (published=false) */
 export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResult> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (30초)')), 30000)
+    setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (120초)')), 120000)
   );
   const request = supabase.functions.invoke('parse-bulletin', {
     body: pdfUrl ? { pdf_url: pdfUrl } : {},
   });
   const { data, error } = await Promise.race([request, timeout]);
-  if (error) throw error;
+  if (error) {
+    // FunctionsHttpError에서 실제 에러 메시지 추출 시도
+    try {
+      const ctx = (error as any).context;
+      if (ctx) {
+        const body = typeof ctx.json === 'function' ? await ctx.json() : ctx;
+        if (body?.error) throw new Error(body.error);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message !== error.message) throw e;
+    }
+    throw error;
+  }
   if (!data?.ok) throw new Error(data?.error || '파싱 실패');
   return { id: data.id, title: data.title, pdfUrl: data.pdfUrl };
 }
