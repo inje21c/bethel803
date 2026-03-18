@@ -437,7 +437,7 @@ export default function AdminDashboard() {
     setParsingBulletin(true);
     try {
       const result = await parseBulletin(manualUrl || undefined);
-      toast.success(`주보 파싱 완료: "${result.title}" — 검토 후 발행하세요.`);
+      toast.success(`주보 파싱 완료: "${result.title}" (${result.count}개 구역) — 검토 후 발행하세요.`);
       queryClient.invalidateQueries({ queryKey: ['all_bible_studies'] });
       setBulletinUrl('');
     } catch (err) {

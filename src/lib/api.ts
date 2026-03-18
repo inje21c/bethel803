@@ -1104,12 +1104,13 @@ export async function triggerWeeklyClose(weekStart?: string, districtId?: string
 // ============================================================
 
 export interface ParsedBulletinResult {
-  id: string;
+  ids: string[];
+  count: number;
   title: string;
   pdfUrl: string;
 }
 
-/** 주보 PDF를 파싱하여 bible_studies에 등록 (published=false) */
+/** 주보 PDF를 파싱하여 모든 활성 구역의 bible_studies에 등록 (published=false) */
 export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResult> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (120초)')), 120000)
@@ -1132,7 +1133,7 @@ export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResu
     throw error;
   }
   if (!data?.ok) throw new Error(data?.error || '파싱 실패');
-  return { id: data.id, title: data.title, pdfUrl: data.pdfUrl };
+  return { ids: data.ids, count: data.count, title: data.title, pdfUrl: data.pdfUrl };
 }
 
 // ============================================================
