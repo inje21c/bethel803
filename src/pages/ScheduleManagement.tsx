@@ -198,8 +198,9 @@ export default function ScheduleManagement() {
   const { toast } = useToast();
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: getSchedules,
+    queryKey: ['schedules', currentDistrictId],
+    queryFn: () => getSchedules(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const addMutation = useMutation({

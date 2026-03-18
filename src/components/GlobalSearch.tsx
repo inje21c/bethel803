@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, BookOpen, CalendarDays, MessageSquareHeart, BookMarked, Settings, Home } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getBibleStudies, getSchedules, getPrayerRequests } from '@/lib/api';
+import { useDistrict } from '@/lib/districtContext';
 import {
   CommandDialog,
   CommandEmpty,
@@ -27,6 +28,7 @@ export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
 
   // Cmd+K / Ctrl+K 단축키
   useEffect(() => {
@@ -41,21 +43,21 @@ export default function GlobalSearch() {
   }, []);
 
   const { data: studies = [] } = useQuery({
-    queryKey: ['bible_studies'],
-    queryFn: getBibleStudies,
-    enabled: open,
+    queryKey: ['bible_studies', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId),
+    enabled: open && !!currentDistrictId,
   });
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: getSchedules,
-    enabled: open,
+    queryKey: ['schedules', currentDistrictId],
+    queryFn: () => getSchedules(currentDistrictId),
+    enabled: open && !!currentDistrictId,
   });
 
   const { data: prayers = [] } = useQuery({
-    queryKey: ['prayer_requests'],
-    queryFn: getPrayerRequests,
-    enabled: open,
+    queryKey: ['prayer_requests', currentDistrictId],
+    queryFn: () => getPrayerRequests(currentDistrictId),
+    enabled: open && !!currentDistrictId,
   });
 
   const handleSelect = (path: string) => {

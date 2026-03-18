@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Save, Lock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import { getBibleStudies, getStudyAnswer, saveStudyAnswer, getCurrentLockStatus } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,11 +15,13 @@ export default function BibleStudyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
 
   const { data: studies = [], isLoading: studiesLoading } = useQuery({
-    queryKey: ['bible_studies'],
-    queryFn: getBibleStudies,
+    queryKey: ['bible_studies', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const study = studies.find(s => s.id === id);
@@ -30,8 +33,9 @@ export default function BibleStudyDetail() {
   });
 
   const { data: isLocked = false } = useQuery({
-    queryKey: ['lock_status'],
-    queryFn: getCurrentLockStatus,
+    queryKey: ['lock_status', currentDistrictId],
+    queryFn: () => getCurrentLockStatus(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const [answers, setAnswers] = useState<Record<number, string>>({});

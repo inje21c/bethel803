@@ -232,53 +232,53 @@ export default function AdminDashboard() {
   });
 
   const { data: prayers = [] } = useQuery({
-    queryKey: ['shared_prayer_requests'],
-    queryFn: getSharedPrayerRequests,
-    enabled: activeTab === 'overview' || activeTab === 'prayer',
+    queryKey: ['shared_prayer_requests', currentDistrictId],
+    queryFn: () => getSharedPrayerRequests(currentDistrictId),
+    enabled: (activeTab === 'overview' || activeTab === 'prayer') && !!currentDistrictId,
   });
 
   const navigate = useNavigate();
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: getSchedules,
-    enabled: activeTab === 'overview' || activeTab === 'schedule',
+    queryKey: ['schedules', currentDistrictId],
+    queryFn: () => getSchedules(currentDistrictId),
+    enabled: (activeTab === 'overview' || activeTab === 'schedule') && !!currentDistrictId,
   });
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery({
-    queryKey: ['all_users'],
-    queryFn: getAllUsers,
-    enabled: activeTab === 'overview' || activeTab === 'members',
+    queryKey: ['all_users', currentDistrictId],
+    queryFn: () => getAllUsers(currentDistrictId),
+    enabled: (activeTab === 'overview' || activeTab === 'members') && !!currentDistrictId,
   });
 
   const { data: bibleStudies = [], isLoading: studiesLoading } = useQuery({
-    queryKey: ['all_bible_studies'],
-    queryFn: getAllBibleStudies,
-    enabled: activeTab === 'overview' || activeTab === 'study',
+    queryKey: ['all_bible_studies', currentDistrictId],
+    queryFn: () => getAllBibleStudies(currentDistrictId),
+    enabled: (activeTab === 'overview' || activeTab === 'study') && !!currentDistrictId,
   });
 
   const { data: readingSummaries = [] } = useQuery({
-    queryKey: ['all_reading_summaries'],
-    queryFn: getAllBibleReadingSummaries,
-    enabled: activeTab === 'overview' || activeTab === 'bible',
+    queryKey: ['all_reading_summaries', currentDistrictId],
+    queryFn: () => getAllBibleReadingSummaries(currentDistrictId),
+    enabled: (activeTab === 'overview' || activeTab === 'bible') && !!currentDistrictId,
   });
 
   const { data: accessInfo = [] } = useQuery({
-    queryKey: ['access_info'],
-    queryFn: getAccessInfo,
-    enabled: activeTab === 'access',
+    queryKey: ['access_info', currentDistrictId],
+    queryFn: () => getAccessInfo(currentDistrictId),
+    enabled: activeTab === 'access' && !!currentDistrictId,
   });
 
   const { data: studyAnswers = [], isLoading: answersLoading } = useQuery({
-    queryKey: ['study_answers_for_study', viewAnswersStudy?.id],
-    queryFn: () => getStudyAnswersForStudy(viewAnswersStudy!.id),
-    enabled: !!viewAnswersStudy,
+    queryKey: ['study_answers_for_study', viewAnswersStudy?.id, currentDistrictId],
+    queryFn: () => getStudyAnswersForStudy(viewAnswersStudy!.id, currentDistrictId),
+    enabled: !!viewAnswersStudy && !!currentDistrictId,
   });
 
   const { data: weeklyReports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: ['weekly_reports'],
-    queryFn: getWeeklyReports,
-    enabled: activeTab === 'report',
+    queryKey: ['weekly_reports', currentDistrictId],
+    queryFn: () => getWeeklyReports(currentDistrictId),
+    enabled: activeTab === 'report' && !!currentDistrictId,
   });
 
   const weeklyCloseMutation = useMutation({
@@ -298,7 +298,7 @@ export default function AdminDashboard() {
   });
 
   const weeklyUnlockMutation = useMutation({
-    mutationFn: (weekStart: string) => unlockWeeklyReport(weekStart),
+    mutationFn: (weekStart: string) => unlockWeeklyReport(weekStart, currentDistrictId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weekly_reports'] });
       toast.success('마감이 해제되었습니다. 구역원 데이터 입력이 가능합니다.');
@@ -667,7 +667,7 @@ export default function AdminDashboard() {
                           <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              {u.id !== user?.id && u.role !== 'master' && (
+                              {isMaster && u.id !== user?.id && u.role !== 'master' && (
                                 <Button
                                   size="sm"
                                   variant="ghost"

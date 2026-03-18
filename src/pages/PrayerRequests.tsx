@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Plus, CheckCircle2, Circle, Pencil, Trash2, Lock, Users, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import {
   getPrayerRequests,
   savePrayerRequest,
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 
 export default function PrayerRequests() {
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [newContent, setNewContent] = useState('');
@@ -35,18 +37,21 @@ export default function PrayerRequests() {
   const [editSharedWithLeader, setEditSharedWithLeader] = useState(false);
 
   const { data: prayers = [], isLoading } = useQuery({
-    queryKey: ['prayer_requests'],
-    queryFn: getPrayerRequests,
+    queryKey: ['prayer_requests', currentDistrictId],
+    queryFn: () => getPrayerRequests(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const { data: groupPrayers = [] } = useQuery({
-    queryKey: ['group_prayer_requests'],
-    queryFn: getGroupPrayerRequests,
+    queryKey: ['group_prayer_requests', currentDistrictId],
+    queryFn: () => getGroupPrayerRequests(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const { data: isLocked = false } = useQuery({
-    queryKey: ['lock_status'],
-    queryFn: getCurrentLockStatus,
+    queryKey: ['lock_status', currentDistrictId],
+    queryFn: () => getCurrentLockStatus(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const groupPrayerIds = groupPrayers.map(p => p.id);

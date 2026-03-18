@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import { getBibleStudies, getStudyAnswer, getPrayerRequests, getTotalChapters, getSchedules, getTodayDevotional, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,12 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
 
   const { data: studies = [] } = useQuery({
-    queryKey: ['bible_studies'],
-    queryFn: getBibleStudies,
+    queryKey: ['bible_studies', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const recentStudies = studies.slice(0, 2);
@@ -29,8 +32,9 @@ export default function Dashboard() {
   });
 
   const { data: prayers = [] } = useQuery({
-    queryKey: ['prayer_requests'],
-    queryFn: getPrayerRequests,
+    queryKey: ['prayer_requests', currentDistrictId],
+    queryFn: () => getPrayerRequests(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const { data: totalChapters = 0 } = useQuery({
@@ -40,8 +44,9 @@ export default function Dashboard() {
   });
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: getSchedules,
+    queryKey: ['schedules', currentDistrictId],
+    queryFn: () => getSchedules(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const { data: devotional, isLoading: devotionalLoading } = useQuery({
@@ -51,8 +56,9 @@ export default function Dashboard() {
   });
 
   const { data: groupPrayers = [] } = useQuery({
-    queryKey: ['group_prayer_requests'],
-    queryFn: getGroupPrayerRequests,
+    queryKey: ['group_prayer_requests', currentDistrictId],
+    queryFn: () => getGroupPrayerRequests(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const otherGroupPrayers = groupPrayers.slice(0, 5);
@@ -237,7 +243,7 @@ export default function Dashboard() {
           <div className="card-elevated p-5">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-gold" />
-              <h2 className="font-display font-semibold">{todayQT.title}</h2>
+              <h2 className="font-display font-semibold">오늘의 묵상</h2>
               <span className="gold-badge ml-auto">{todayQT.verse.slice(0, 20)}</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">{todayQT.summary}</p>

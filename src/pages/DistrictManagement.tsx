@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Building2, Plus, Edit, Power } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDistricts, createDistrict, updateDistrict, deactivateDistrict } from '@/lib/api';
+import { useDistrict } from '@/lib/districtContext';
 import type { District } from '@/lib/districtContext';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +54,7 @@ function DistrictForm({ district, onSave, onClose }: {
 
 export default function DistrictManagement() {
   const queryClient = useQueryClient();
+  const { refreshDistricts } = useDistrict();
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<District | undefined>();
   const [deactivateTarget, setDeactivateTarget] = useState<District | undefined>();
@@ -66,6 +68,7 @@ export default function DistrictManagement() {
     mutationFn: createDistrict,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] });
+      refreshDistricts();
       toast.success('구역이 생성되었습니다.');
     },
     onError: () => toast.error('구역 생성에 실패했습니다.'),
@@ -76,6 +79,7 @@ export default function DistrictManagement() {
       updateDistrict({ id, ...params }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] });
+      refreshDistricts();
       toast.success('구역이 수정되었습니다.');
     },
     onError: () => toast.error('구역 수정에 실패했습니다.'),
@@ -85,6 +89,7 @@ export default function DistrictManagement() {
     mutationFn: deactivateDistrict,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] });
+      refreshDistricts();
       toast.success('구역이 비활성화되었습니다.');
     },
     onError: () => toast.error('구역 비활성화에 실패했습니다.'),

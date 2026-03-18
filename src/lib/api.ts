@@ -206,12 +206,13 @@ export async function changeUserDistrict(userId: string, districtId: string): Pr
 // 성경공부
 // ============================================================
 
-export async function getBibleStudies(): Promise<BibleStudy[]> {
+export async function getBibleStudies(districtId: string): Promise<BibleStudy[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('bible_studies')
       .select('*')
       .eq('published', true)
+      .eq('district_id', districtId)
       .order('study_date', { ascending: false })
       .order('created_at', { ascending: false }),
     '성경공부 목록 조회'
@@ -229,11 +230,12 @@ export async function getBibleStudies(): Promise<BibleStudy[]> {
   }));
 }
 
-export async function getAllBibleStudies(): Promise<BibleStudy[]> {
+export async function getAllBibleStudies(districtId: string): Promise<BibleStudy[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('bible_studies')
       .select('*')
+      .eq('district_id', districtId)
       .order('study_date', { ascending: false }),
     '전체 성경공부 조회'
   );
@@ -368,12 +370,13 @@ export interface StudyAnswerWithUser {
 }
 
 /** 리더용: 특정 성경공부의 모든 구역원 답변 조회 */
-export async function getStudyAnswersForStudy(studyId: string): Promise<StudyAnswerWithUser[]> {
+export async function getStudyAnswersForStudy(studyId: string, districtId: string): Promise<StudyAnswerWithUser[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('study_answers')
-      .select('*, users(name)')
+      .select('*, users!inner(name, district_id)')
       .eq('study_id', studyId)
+      .eq('users.district_id', districtId)
       .order('updated_at', { ascending: false }),
     '성경공부 답변 전체 조회'
   );
@@ -420,11 +423,12 @@ function mapPrayerRow(row: Record<string, unknown>): PrayerRequest {
   };
 }
 
-export async function getPrayerRequests(): Promise<PrayerRequest[]> {
+export async function getPrayerRequests(districtId: string): Promise<PrayerRequest[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('prayer_requests')
-      .select('*, users(name)')
+      .select('*, users!inner(name, district_id)')
+      .eq('users.district_id', districtId)
       .order('created_at', { ascending: false }),
     '기도제목 조회'
   );
@@ -491,12 +495,13 @@ export async function deletePrayerRequest(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function getSharedPrayerRequests(): Promise<PrayerRequest[]> {
+export async function getSharedPrayerRequests(districtId: string): Promise<PrayerRequest[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('prayer_requests')
-      .select('*, users(name)')
+      .select('*, users!inner(name, district_id)')
       .eq('shared_with_leader', true)
+      .eq('users.district_id', districtId)
       .order('created_at', { ascending: false }),
     '공유된 기도제목 조회'
   );
@@ -504,12 +509,13 @@ export async function getSharedPrayerRequests(): Promise<PrayerRequest[]> {
   return (data ?? []).map(mapPrayerRow);
 }
 
-export async function getGroupPrayerRequests(): Promise<PrayerRequest[]> {
+export async function getGroupPrayerRequests(districtId: string): Promise<PrayerRequest[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('prayer_requests')
-      .select('*, users(name)')
+      .select('*, users!inner(name, district_id)')
       .eq('shared_with_group', true)
+      .eq('users.district_id', districtId)
       .order('created_at', { ascending: false }),
     '중보기도 목록 조회'
   );
@@ -727,11 +733,12 @@ export interface BibleReadingSummary {
   totalChapters: number;
 }
 
-export async function getAllBibleReadingSummaries(): Promise<BibleReadingSummary[]> {
+export async function getAllBibleReadingSummaries(districtId: string): Promise<BibleReadingSummary[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('bible_reading_logs')
-      .select('user_id, chapters, users(name)'),
+      .select('user_id, chapters, users!inner(name, district_id)')
+      .eq('users.district_id', districtId),
     '성경읽기 요약 조회'
   );
   if (error) throw error;
@@ -758,11 +765,12 @@ export async function getAllBibleReadingSummaries(): Promise<BibleReadingSummary
 // 일정
 // ============================================================
 
-export async function getSchedules(): Promise<Schedule[]> {
+export async function getSchedules(districtId: string): Promise<Schedule[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('schedules')
       .select('*')
+      .eq('district_id', districtId)
       .order('schedule_date', { ascending: true }),
     '일정 조회'
   );
@@ -883,11 +891,12 @@ export async function saveAttendance(params: {
 // 사용자 관리 (구역장 전용)
 // ============================================================
 
-export async function getAllUsers(): Promise<FullUser[]> {
+export async function getAllUsers(districtId: string): Promise<FullUser[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('users')
       .select('id, name, role, status, created_at, district_id, districts(name)')
+      .eq('district_id', districtId)
       .order('created_at', { ascending: true }),
     '구역원 조회'
   );
@@ -955,12 +964,13 @@ export interface AccessInfo {
   lastLoginAt: string | null;
 }
 
-export async function getAccessInfo(): Promise<AccessInfo[]> {
+export async function getAccessInfo(districtId: string): Promise<AccessInfo[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('users')
       .select('id, name, last_login_at')
       .eq('status', 'active')
+      .eq('district_id', districtId)
       .order('last_login_at', { ascending: false, nullsFirst: false }),
     '접속 정보 조회'
   );
@@ -991,7 +1001,7 @@ export interface WeeklyReport {
 }
 
 /** 현재 주(KST 기준 월요일 시작)가 마감됐는지 확인 */
-export async function getCurrentLockStatus(): Promise<boolean> {
+export async function getCurrentLockStatus(districtId: string): Promise<boolean> {
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const dayOfWeek = kstNow.getUTCDay();
@@ -1005,6 +1015,7 @@ export async function getCurrentLockStatus(): Promise<boolean> {
       .from('weekly_reports')
       .select('is_locked')
       .eq('week_start', weekStart)
+      .eq('district_id', districtId)
       .maybeSingle(),
     '주간 마감 상태 조회'
   );
@@ -1012,11 +1023,12 @@ export async function getCurrentLockStatus(): Promise<boolean> {
   return data?.is_locked === true;
 }
 
-export async function getWeeklyReports(): Promise<WeeklyReport[]> {
+export async function getWeeklyReports(districtId: string): Promise<WeeklyReport[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('weekly_reports')
       .select('*')
+      .eq('district_id', districtId)
       .order('week_start', { ascending: false }),
     '주간 보고서 조회'
   );
@@ -1037,12 +1049,13 @@ export async function getWeeklyReports(): Promise<WeeklyReport[]> {
 }
 
 /** 마감 해제 — is_locked를 false로 설정 (구역장 전용) */
-export async function unlockWeeklyReport(weekStart: string): Promise<void> {
+export async function unlockWeeklyReport(weekStart: string, districtId: string): Promise<void> {
   const { error } = await withApiTimeout(
     supabase
       .from('weekly_reports')
       .update({ is_locked: false })
-      .eq('week_start', weekStart),
+      .eq('week_start', weekStart)
+      .eq('district_id', districtId),
     '주간 마감 해제'
   );
   if (error) throw error;
@@ -1176,11 +1189,12 @@ export interface AppNotification {
   isRead: boolean;
 }
 
-export async function getNotifications(userId: string): Promise<AppNotification[]> {
+export async function getNotifications(userId: string, districtId: string): Promise<AppNotification[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('notifications')
       .select('*, notification_reads(user_id)')
+      .eq('district_id', districtId)
       .order('created_at', { ascending: false }),
     '알림 조회'
   );
