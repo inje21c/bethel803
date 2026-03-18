@@ -163,7 +163,7 @@ async function uploadPdfToOpenAI(bytes: Uint8Array, filename: string): Promise<s
 }
 
 interface ParsedBulletin {
-  weekNumber: number;
+  weekNumber?: number;
   date: string;
   title: string;
   scripture: string;
@@ -185,7 +185,6 @@ async function parseBulletinWithGPT(fileId: string, pdfUrl: string): Promise<Par
 
 반환 형식:
 {
-  "weekNumber": 11,
   "date": "2026-03-08",
   "title": "성경공부 제목",
   "scripture": "본문 성경 구절 (예: 마태복음 5:1-12)",
@@ -197,7 +196,6 @@ async function parseBulletinWithGPT(fileId: string, pdfUrl: string): Promise<Par
   ]
 }
 
-- weekNumber: 해당 연도의 몇 주차인지 (없으면 날짜로 계산)
 - questions: 성경공부 토론/묵상 질문 목록 (최대 10개)
 - 구역 성경공부 항목이 없으면 설교 내용을 바탕으로 질문 3개를 직접 생성하세요`;
 
@@ -241,9 +239,9 @@ async function parseBulletinWithGPT(fileId: string, pdfUrl: string): Promise<Par
 
   const parsed = JSON.parse(raw) as ParsedBulletin;
 
-  // 날짜/weekNumber 보정
+  // 날짜 보정 후 weekNumber는 항상 날짜 기반 계산 (GPT 응답 무시)
   const finalDate = parsed.date || dateHint;
-  const finalWeekNumber = parsed.weekNumber || getISOWeek(finalDate);
+  const finalWeekNumber = getISOWeek(finalDate);
 
   return {
     weekNumber: finalWeekNumber,
