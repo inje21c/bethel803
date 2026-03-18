@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Bell, Trash2, Plus, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import {
   getNotifications,
   markNotificationRead,
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 
 export default function NotificationCenter() {
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -45,7 +47,7 @@ export default function NotificationCenter() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createNotification({ title: newTitle.trim(), body: newBody.trim(), createdBy: user!.id }),
+    mutationFn: () => createNotification({ title: newTitle.trim(), body: newBody.trim(), createdBy: user!.id, districtId: currentDistrictId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       setNewTitle('');
@@ -93,7 +95,7 @@ export default function NotificationCenter() {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <span className="font-semibold text-sm">알림</span>
-          {user?.role === 'leader' && (
+          {(user?.role === 'leader' || user?.role === 'master') && (
             <Button
               size="sm"
               variant="ghost"
@@ -153,7 +155,7 @@ export default function NotificationCenter() {
                     {format(new Date(n.createdAt), 'MM/dd HH:mm', { locale: ko })}
                   </p>
                 </div>
-                {user?.role === 'leader' && (
+                {(user?.role === 'leader' || user?.role === 'master') && (
                   <Button
                     size="icon"
                     variant="ghost"

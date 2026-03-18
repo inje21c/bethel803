@@ -123,9 +123,75 @@ export interface Attendance {
 export interface FullUser {
   id: string;
   name: string;
-  role: 'leader' | 'member';
+  role: 'master' | 'leader' | 'member';
   status: 'pending' | 'active';
   createdAt: string;
+  districtId: string;
+  districtName: string;
+}
+
+// ============================================================
+// 구역 관리
+// ============================================================
+
+export interface District {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
+export async function getDistricts(): Promise<District[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.from('districts').select('*').order('created_at', { ascending: true }),
+    '구역 목록 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    name: row.name,
+    description: row.description ?? '',
+    isActive: row.is_active,
+  }));
+}
+
+export async function getActiveDistricts(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.from('districts').select('id, name').eq('is_active', true).order('name'),
+    '활성 구역 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({ id: row.id, name: row.name }));
+}
+
+export async function createDistrict(params: { name: string; description: string }): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('districts').insert({
+      name: params.name,
+      description: params.description || null,
+    }),
+    '구역 생성'
+  );
+  if (error) throw error;
+}
+
+export async function updateDistrict(params: { id: string; name: string; description: string }): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('districts').update({
+      name: params.name,
+      description: params.description || null,
+    }).eq('id', params.id),
+    '구역 수정'
+  );
+  if (error) throw error;
+}
+
+export async function deactivateDistrict(id: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('districts').update({ is_active: false }).eq('id', id),
+    '구역 비활성화'
+  );
+  if (error) throw error;
 }
 
 // ============================================================
@@ -184,6 +250,7 @@ export async function createBibleStudy(params: {
   introduction: string;
   questions: string[];
   published: boolean;
+  districtId: string;
 }): Promise<void> {
   const { error } = await withApiTimeout(
     supabase.from('bible_studies').insert({
@@ -194,6 +261,7 @@ export async function createBibleStudy(params: {
       introduction: params.introduction,
       questions: params.questions,
       published: params.published,
+      district_id: params.districtId,
     }),
     '성경공부 등록'
   );
@@ -714,6 +782,7 @@ export async function addSchedule(params: {
   attachment: string;
   attendanceCheck: boolean;
   createdBy: string;
+  districtId: string;
 }): Promise<void> {
   const { error } = await withApiTimeout(
     supabase.from('schedules').insert({
@@ -725,6 +794,7 @@ export async function addSchedule(params: {
       attachment: params.attachment || null,
       attendance_check: params.attendanceCheck,
       created_by: params.createdBy,
+      district_id: params.districtId,
     }),
     '일정 등록'
   );
@@ -809,7 +879,7 @@ export async function getAllUsers(): Promise<FullUser[]> {
   const { data, error } = await withApiTimeout(
     supabase
       .from('users')
-      .select('id, name, role, status, created_at')
+      .select('id, name, role, status, created_at, district_id, districts(name)')
       .order('created_at', { ascending: true }),
     '구역원 조회'
   );
@@ -820,6 +890,8 @@ export async function getAllUsers(): Promise<FullUser[]> {
     role: row.role,
     status: row.status,
     createdAt: row.created_at.slice(0, 10),
+    districtId: row.district_id,
+    districtName: (row.districts as { name: string } | null)?.name ?? '',
   }));
 }
 
@@ -842,7 +914,7 @@ export async function rejectUser(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function changeUserRole(userId: string, role: 'leader' | 'member'): Promise<void> {
+export async function changeUserRole(userId: string, role: 'master' | 'leader' | 'member'): Promise<void> {
   const { error } = await withApiTimeout(
     supabase
       .from('users')
@@ -969,7 +1041,7 @@ export async function unlockWeeklyReport(weekStart: string): Promise<void> {
 }
 
 /** 현재 주 마감 집계 (구역장 전용, DB RPC 호출) */
-export async function triggerWeeklyClose(weekStart?: string): Promise<WeeklyReport> {
+export async function triggerWeeklyClose(weekStart?: string, districtId?: string): Promise<WeeklyReport> {
   let ws = weekStart;
   if (!ws) {
     const now = new Date();
@@ -983,8 +1055,10 @@ export async function triggerWeeklyClose(weekStart?: string): Promise<WeeklyRepo
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('마감 집계 시간이 초과되었습니다 (30초)')), 30000)
   );
+  const rpcParams: Record<string, unknown> = { p_week_start: ws };
+  if (districtId) rpcParams.p_district_id = districtId;
   const { data, error } = await Promise.race([
-    supabase.rpc('compute_weekly_report', { p_week_start: ws }),
+    supabase.rpc('compute_weekly_report', rpcParams),
     timeout,
   ]);
   if (error) throw error;
@@ -1125,12 +1199,13 @@ export async function markNotificationRead(notificationId: string, userId: strin
   if (error) throw error;
 }
 
-export async function createNotification(params: { title: string; body: string; createdBy: string }): Promise<void> {
+export async function createNotification(params: { title: string; body: string; createdBy: string; districtId: string }): Promise<void> {
   const { error } = await withApiTimeout(
     supabase.from('notifications').insert({
       title: params.title,
       body: params.body,
       created_by: params.createdBy,
+      district_id: params.districtId,
     }),
     '알림 생성'
   );

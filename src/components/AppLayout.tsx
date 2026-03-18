@@ -1,12 +1,14 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import { Button } from '@/components/ui/button';
 import NotificationCenter from '@/components/NotificationCenter';
 import GlobalSearch from '@/components/GlobalSearch';
+import DistrictSelector from '@/components/DistrictSelector';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const navItems = [
@@ -16,12 +18,14 @@ const navItems = [
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
   { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
   { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
+  { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isMaster, isLeader } = useAuth();
+  const { currentDistrictName } = useDistrict();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const isOnline = useOnlineStatus();
@@ -55,13 +59,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-display font-bold text-sm">벧</span>
             </div>
-            <span className="font-display font-semibold text-sm hidden sm:inline">킨텍스장성남 구역</span>
+            <span className="font-display font-semibold text-sm hidden sm:inline">{currentDistrictName} 구역</span>
           </Link>
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map(item => {
-              if (item.leaderOnly && user?.role !== 'leader') return null;
+              if (item.masterOnly && !isMaster) return null;
+              if (item.leaderOnly && !isLeader) return null;
               const active = location.pathname.startsWith(item.path);
               return (
                 <Link
@@ -81,13 +86,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <DistrictSelector />
             <GlobalSearch />
             <Link
               to="/profile"
               className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <UserCircle className="w-4 h-4" />
-              {user?.name} {user?.role === 'leader' ? '(구역장)' : ''}
+              {user?.name} {user?.role === 'master' ? '(마스터)' : user?.role === 'leader' ? '(구역장)' : ''}
             </Link>
             <NotificationCenter />
             <Button
@@ -119,7 +125,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             >
               <div className="p-2 space-y-1">
                 {navItems.map(item => {
-                  if (item.leaderOnly && user?.role !== 'leader') return null;
+                  if (item.masterOnly && !isMaster) return null;
+              if (item.leaderOnly && !isLeader) return null;
                   const active = location.pathname.startsWith(item.path);
                   return (
                     <Link

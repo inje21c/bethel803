@@ -85,8 +85,8 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="font-medium">{user?.name}</p>
-                  <Badge variant={user?.role === 'leader' ? 'default' : 'secondary'} className="text-xs mt-0.5">
-                    {user?.role === 'leader' ? '구역장' : '구역원'}
+                  <Badge variant={user?.role !== 'member' ? 'default' : 'secondary'} className="text-xs mt-0.5">
+                    {user?.role === 'master' ? '마스터구역장' : user?.role === 'leader' ? '구역장' : '구역원'}
                   </Badge>
                 </div>
               </div>

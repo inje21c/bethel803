@@ -102,7 +102,7 @@ export default function GlobalSearch() {
                 {item.label}
               </CommandItem>
             ))}
-            {user?.role === 'leader' && (
+            {(user?.role === 'leader' || user?.role === 'master') && (
               <CommandItem value="관리자 대시보드" onSelect={() => handleSelect('/admin')}>
                 <Settings className="w-4 h-4 mr-2 text-muted-foreground" />
                 관리자 대시보드
