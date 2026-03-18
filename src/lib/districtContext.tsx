@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from './authContext';
 import { getDistricts } from './api';
 
@@ -24,12 +24,22 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
   const [districts, setDistricts] = useState<District[]>([]);
   const [currentDistrictId, setCurrentDistrictId] = useState('');
   const [currentDistrictName, setCurrentDistrictName] = useState('');
+  const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      prevUserIdRef.current = null;
+      return;
+    }
 
-    setCurrentDistrictId(user.districtId);
-    setCurrentDistrictName(user.districtName);
+    const userChanged = prevUserIdRef.current !== user.id;
+    prevUserIdRef.current = user.id;
+
+    // 유저가 바뀔 때만 구역 리셋 (토큰 갱신으로 인한 참조 변경 시 선택 유지)
+    if (userChanged) {
+      setCurrentDistrictId(user.districtId);
+      setCurrentDistrictName(user.districtName);
+    }
 
     if (isMaster) {
       getDistricts().then(setDistricts).catch(() => {});

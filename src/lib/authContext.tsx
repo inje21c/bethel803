@@ -102,6 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const requestId = useRef(0);
   const mounted = useRef(true);
+  const userRef = useRef<UserProfile | null>(null);
+
+  // userRef를 항상 최신 user와 동기화
+  useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
     mounted.current = true;
@@ -130,6 +134,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // 토큰 갱신은 프로필 변경과 무관 → 기존 user 유지, 불필요한 fetch 차단
+      if (event === 'TOKEN_REFRESHED' && userRef.current) {
+        clearTimeout(fallbackTimer);
+        setLoading(false);
+        return;
+      }
+
       const id = ++requestId.current;
 
       let profile: UserProfile | null = null;
@@ -143,7 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (id !== requestId.current || !mounted.current) return;
 
       clearTimeout(fallbackTimer);
-      setUser(profile);
+      // fetch 실패(profile=null) 시: SIGNED_IN/INITIAL은 정상(프로필 미존재), 그 외는 기존 user 보호
+      if (profile !== null || event === 'SIGNED_IN' || event === 'INITIAL_SESSION_CHECK') {
+        setUser(profile);
+      }
       setLoading(false);
 
       if (event === 'SIGNED_IN') {
