@@ -17,7 +17,7 @@ const sections: Section[] = [
     icon: Home,
     content: [
       {
-        subtitle: '벧엘교회 킨텍스장성남 구역 앱이란?',
+        subtitle: '벧엘교회 구역 앱이란?',
         text: '구역 모임을 위한 올인원 앱입니다. 성경공부, 기도제목, 성경읽기, 일정관리, 오늘의 묵상 등을 한곳에서 관리할 수 있습니다.',
       },
       {
@@ -227,7 +227,7 @@ export default function UserManual() {
               <HelpCircle className="w-6 h-6 text-primary" /> 사용자 매뉴얼
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              벧엘교회 킨텍스장성남 구역 앱 사용 안내
+              벧엘교회 구역 앱 사용 안내
             </p>
           </div>
           <div className="flex gap-2">

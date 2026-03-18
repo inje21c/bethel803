@@ -31,8 +31,10 @@ function withAuthTimeout<T>(promise: Promise<T>, message: string, ms = 10000): P
 export interface UserProfile {
   id: string;
   name: string;
-  role: 'leader' | 'member';
+  role: 'master' | 'leader' | 'member';
   status: 'pending' | 'active';
+  districtId: string;
+  districtName: string;
 }
 
 interface AuthContextType {
@@ -40,10 +42,11 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, districtId?: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<UserProfile | null>;
+  isMaster: boolean;
   isLeader: boolean;
 }
 
@@ -53,13 +56,20 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const { data, error } = await withAuthTimeout(
     supabase
       .from('users')
-      .select('id, name, role, status')
+      .select('id, name, role, status, district_id, districts(name)')
       .eq('id', userId)
       .single(),
     '사용자 정보를 불러오는 시간이 초과되었습니다.'
   );
   if (error || !data) return null;
-  return data as UserProfile;
+  return {
+    id: data.id,
+    name: data.name,
+    role: data.role as UserProfile['role'],
+    status: data.status as UserProfile['status'],
+    districtId: data.district_id,
+    districtName: (data.districts as { name: string } | null)?.name ?? '',
+  };
 }
 
 async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']): Promise<UserProfile | null> {
@@ -187,13 +197,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const register = useCallback(async (email: string, password: string, name: string) => {
-    debugLog('Auth', 'register requested', { email, name });
+  const register = useCallback(async (email: string, password: string, name: string, districtId?: string) => {
+    debugLog('Auth', 'register requested', { email, name, districtId });
+    const metaData: Record<string, string> = { name };
+    if (districtId) metaData.district_id = districtId;
     const { data, error } = await withAuthTimeout(
       supabase.auth.signUp({
         email,
         password,
-        options: { data: { name } },
+        options: { data: metaData },
       }),
       '회원가입 요청이 지연되고 있습니다. 다시 시도해주세요.'
     );
@@ -247,7 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       updatePassword,
       refreshProfile,
-      isLeader: user?.role === 'leader',
+      isMaster: user?.role === 'master',
+      isLeader: user?.role === 'master' || user?.role === 'leader',
     }}>
       {children}
     </AuthContext.Provider>

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import DistrictPicker from '@/components/DistrictPicker';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ export default function Login() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPassword2, setRegPassword2] = useState('');
+  const [regDistrictId, setRegDistrictId] = useState('');
   const [regLoading, setRegLoading] = useState(false);
   const [regDone, setRegDone] = useState(false);
 
@@ -76,7 +78,7 @@ export default function Login() {
     }
     setRegLoading(true);
     try {
-      await register(regEmail.trim(), regPassword, regName.trim());
+      await register(regEmail.trim(), regPassword, regName.trim(), regDistrictId || undefined);
       if (mounted.current) setRegDone(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '회원가입에 실패했습니다.';
@@ -131,7 +133,7 @@ export default function Login() {
             <BookOpen className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground">벧엘교회</h1>
-          <p className="text-muted-foreground text-sm mt-1">킨텍스장성남 구역</p>
+          <p className="text-muted-foreground text-sm mt-1">구역 관리</p>
         </div>
 
         <Tabs defaultValue="login" className="card-elevated p-6">
@@ -248,6 +250,7 @@ export default function Login() {
                     autoComplete="new-password"
                   />
                 </div>
+                <DistrictPicker value={regDistrictId} onChange={setRegDistrictId} />
                 <Button type="submit" className="w-full" disabled={regLoading}>
                   {regLoading ? '처리 중...' : '회원가입 요청'}
                 </Button>

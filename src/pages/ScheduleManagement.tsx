@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, Paperclip, CheckCircle2, XCircle, HelpCircle, Upload } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance, uploadScheduleAttachment } from '@/lib/api';
 import type { Schedule, Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
@@ -174,7 +175,7 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
         </div>
       )}
       {/* Show all responses for leader */}
-      {user?.role === 'leader' && attendances.length > 0 && (
+      {isLeader && attendances.length > 0 && (
         <div className="mt-2 space-y-1">
           {attendances.map((a: Attendance) => (
             <div key={a.userId} className="flex items-center gap-2 text-xs">
@@ -189,8 +190,8 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
 }
 
 export default function ScheduleManagement() {
-  const { user } = useAuth();
-  const isLeader = user?.role === 'leader';
+  const { user, isLeader } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | undefined>();
@@ -205,6 +206,7 @@ export default function ScheduleManagement() {
     mutationFn: (data: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) => addSchedule({
       ...data,
       createdBy: user!.id,
+      districtId: currentDistrictId,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });

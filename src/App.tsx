@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/authContext";
+import { DistrictProvider } from "./lib/districtContext";
 import { queryClient } from "./lib/queryClient";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -22,6 +23,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Profile = lazy(() => import("./pages/Profile"));
 const UserManual = lazy(() => import("./pages/UserManual"));
+const DistrictManagement = lazy(() => import("./pages/DistrictManagement"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -40,6 +42,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function LeaderRoute({ children }: { children: React.ReactNode }) {
   const { isLeader } = useAuth();
   if (!isLeader) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+function MasterRoute({ children }: { children: React.ReactNode }) {
+  const { isMaster } = useAuth();
+  if (!isMaster) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -68,6 +76,7 @@ function AppRoutes() {
         <Route path="/schedule" element={<ProtectedRoute><ScheduleManagement /></ProtectedRoute>} />
         <Route path="/bible-reading" element={<ProtectedRoute><BibleReading /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><LeaderRoute><AdminDashboard /></LeaderRoute></ProtectedRoute>} />
+        <Route path="/districts" element={<ProtectedRoute><MasterRoute><DistrictManagement /></MasterRoute></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
@@ -84,7 +93,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <DistrictProvider>
+              <AppRoutes />
+            </DistrictProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

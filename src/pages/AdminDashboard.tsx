@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import {
   getSharedPrayerRequests,
   updatePrayerRequest,
@@ -209,7 +210,8 @@ function BibleStudyForm({
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isMaster } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('overview');
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
@@ -270,7 +272,7 @@ export default function AdminDashboard() {
   });
 
   const weeklyCloseMutation = useMutation({
-    mutationFn: (weekStart?: string) => triggerWeeklyClose(weekStart),
+    mutationFn: (weekStart?: string) => triggerWeeklyClose(weekStart, currentDistrictId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weekly_reports'] });
       toast.success('이번 주 마감이 완료되었습니다.');
@@ -320,7 +322,7 @@ export default function AdminDashboard() {
   });
 
   const changeRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: 'leader' | 'member' }) =>
+    mutationFn: ({ userId, role }: { userId: string; role: 'master' | 'leader' | 'member' }) =>
       changeUserRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all_users'] });
@@ -359,8 +361,8 @@ export default function AdminDashboard() {
     onError: () => toast.error('성경공부 자료 삭제에 실패했습니다.'),
   });
 
-  // Redirect if not leader
-  if (user?.role !== 'leader') {
+  // Redirect if not leader/master
+  if (user?.role !== 'leader' && user?.role !== 'master') {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
@@ -387,7 +389,7 @@ export default function AdminDashboard() {
     if (editingStudy) {
       updateStudyMutation.mutate({ id: editingStudy.id, ...payload });
     } else {
-      createStudyMutation.mutate(payload);
+      createStudyMutation.mutate({ ...payload, districtId: currentDistrictId });
     }
     setEditingStudy(undefined);
   };
@@ -630,7 +632,9 @@ export default function AdminDashboard() {
                         <TableRow key={u.id}>
                           <TableCell className="font-medium">{u.name}</TableCell>
                           <TableCell>
-                            {u.role === 'leader' ? (
+                            {u.role === 'master' ? (
+                              <Badge variant="default" className="text-xs">마스터</Badge>
+                            ) : u.role === 'leader' ? (
                               <Badge variant="default" className="text-xs">구역장</Badge>
                             ) : (
                               <Badge variant="secondary" className="text-xs">구역원</Badge>
@@ -641,7 +645,7 @@ export default function AdminDashboard() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
                           <TableCell className="text-right">
-                            {u.id !== user?.id && (
+                            {u.id !== user?.id && u.role !== 'master' && (
                               <Button
                                 size="sm"
                                 variant="ghost"
