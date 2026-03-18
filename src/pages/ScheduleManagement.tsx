@@ -119,7 +119,7 @@ function ScheduleForm({ schedule, onSave, onClose }: { schedule?: Schedule; onSa
 }
 
 function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
-  const { user } = useAuth();
+  const { user, isLeader } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: attendances = [] } = useQuery({
