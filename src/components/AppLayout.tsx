@@ -54,16 +54,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-display font-bold text-sm">벧</span>
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-6 h-14 md:h-16">
+          <Link to="/dashboard" className="flex items-center gap-2 md:gap-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-display font-bold text-sm md:text-base">벧</span>
             </div>
-            <span className="font-display font-semibold text-sm hidden sm:inline">{currentDistrictName} 구역</span>
+            <span className="font-display font-semibold text-sm md:text-base hidden sm:inline">{currentDistrictName} 구역</span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1 lg:gap-1.5">
             {navItems.map(item => {
               if (item.masterOnly && !isMaster) return null;
               if (item.leaderOnly && !isLeader) return null;
@@ -72,27 +72,27 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-2 rounded-lg text-sm lg:text-[15px] font-medium transition-colors ${
                     active
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  <item.icon className="w-4 h-4" />
+                  <item.icon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                   {item.label}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-3">
             <DistrictSelector />
             <GlobalSearch />
             <Link
               to="/profile"
-              className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <UserCircle className="w-4 h-4" />
+              <UserCircle className="w-4 h-4 md:w-5 md:h-5" />
               {user?.name} {user?.role === 'master' ? '(마스터)' : user?.role === 'leader' ? '(구역장)' : ''}
             </Link>
             <NotificationCenter />
@@ -100,13 +100,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="text-muted-foreground"
+              className="text-muted-foreground md:w-10 md:h-10"
               aria-label="다크 모드 토글"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 md:w-5 md:h-5" /> : <Moon className="w-4 h-4 md:w-5 md:h-5" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground">
-              <LogOut className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground md:w-10 md:h-10">
+              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </Button>
             <button className="md:hidden text-muted-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -126,7 +126,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <div className="p-2 space-y-1">
                 {navItems.map(item => {
                   if (item.masterOnly && !isMaster) return null;
-              if (item.leaderOnly && !isLeader) return null;
+                  if (item.leaderOnly && !isLeader) return null;
                   const active = location.pathname.startsWith(item.path);
                   return (
                     <Link
@@ -169,7 +169,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Content */}
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}

@@ -4,7 +4,7 @@ import {
   BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked,
   CalendarDays, CheckCircle2, Clock, TrendingUp,
   RefreshCw, Edit, Trash2, MessageCircle, Lock, LockOpen,
-  UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield
+  UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -33,6 +33,8 @@ import {
   unlockWeeklyReport,
   getISOWeekNumber,
   parseBulletin,
+  changeUserDistrict,
+  getDistricts,
 } from '@/lib/api';
 import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport } from '@/lib/api';
 import type { BibleStudy } from '@/lib/api';
@@ -49,6 +51,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import KakaoNoticeGenerator from '@/components/KakaoNoticeGenerator';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -220,6 +223,13 @@ export default function AdminDashboard() {
   const [viewAnswersStudy, setViewAnswersStudy] = useState<BibleStudy | undefined>();
   const [bulletinUrl, setBulletinUrl] = useState('');
   const [parsingBulletin, setParsingBulletin] = useState(false);
+  const [districtChangeTarget, setDistrictChangeTarget] = useState<FullUser | null>(null);
+
+  const { data: allDistricts = [] } = useQuery({
+    queryKey: ['districts'],
+    queryFn: getDistricts,
+    enabled: isMaster,
+  });
 
   const { data: prayers = [] } = useQuery({
     queryKey: ['shared_prayer_requests'],
@@ -329,6 +339,17 @@ export default function AdminDashboard() {
       toast.success('역할이 변경되었습니다.');
     },
     onError: () => toast.error('역할 변경에 실패했습니다.'),
+  });
+
+  const changeDistrictMutation = useMutation({
+    mutationFn: ({ userId, districtId }: { userId: string; districtId: string }) =>
+      changeUserDistrict(userId, districtId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all_users'] });
+      setDistrictChangeTarget(null);
+      toast.success('소속 구역이 변경되었습니다.');
+    },
+    onError: () => toast.error('소속 구역 변경에 실패했습니다.'),
   });
 
   const createStudyMutation = useMutation({
@@ -622,9 +643,9 @@ export default function AdminDashboard() {
                       <TableRow>
                         <TableHead>이름</TableHead>
                         <TableHead>역할</TableHead>
-                        <TableHead>상태</TableHead>
+                        <TableHead>소속 구역</TableHead>
                         <TableHead>가입일</TableHead>
-                        <TableHead className="text-right">역할변경</TableHead>
+                        <TableHead className="text-right">관리</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -641,33 +662,45 @@ export default function AdminDashboard() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge className="bg-green-500/10 text-green-600 text-xs">활성</Badge>
+                            <span className="text-sm">{u.districtName}</span>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
                           <TableCell className="text-right">
-                            {u.id !== user?.id && u.role !== 'master' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs gap-1"
-                                disabled={changeRoleMutation.isPending}
-                                onClick={() => changeRoleMutation.mutate({
-                                  userId: u.id,
-                                  role: u.role === 'leader' ? 'member' : 'leader',
-                                })}
-                              >
-                                {u.role === 'leader'
-                                  ? <><Shield className="w-3 h-3" /> 구역원으로</>
-                                  : <><ShieldCheck className="w-3 h-3" /> 구역장으로</>
-                                }
-                              </Button>
-                            )}
+                            <div className="flex justify-end gap-1">
+                              {u.id !== user?.id && u.role !== 'master' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs gap-1"
+                                  disabled={changeRoleMutation.isPending}
+                                  onClick={() => changeRoleMutation.mutate({
+                                    userId: u.id,
+                                    role: u.role === 'leader' ? 'member' : 'leader',
+                                  })}
+                                >
+                                  {u.role === 'leader'
+                                    ? <><Shield className="w-3 h-3" /> 구역원으로</>
+                                    : <><ShieldCheck className="w-3 h-3" /> 구역장으로</>
+                                  }
+                                </Button>
+                              )}
+                              {isMaster && u.id !== user?.id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs gap-1"
+                                  onClick={() => setDistrictChangeTarget(u)}
+                                >
+                                  <ArrowRightLeft className="w-3 h-3" /> 구역이동
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                       {activeUsers.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
                             활성 구역원이 없습니다.
                           </TableCell>
                         </TableRow>
@@ -677,6 +710,41 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* District Change Dialog */}
+            <Dialog open={!!districtChangeTarget} onOpenChange={() => setDistrictChangeTarget(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>소속 구역 변경</DialogTitle>
+                  <DialogDescription>
+                    <span className="font-semibold">{districtChangeTarget?.name}</span>님의 소속 구역을 변경합니다.
+                    <br />현재 소속: <span className="font-semibold">{districtChangeTarget?.districtName}</span>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 pt-2">
+                  <Label>변경할 구역</Label>
+                  <Select
+                    onValueChange={(districtId) => {
+                      if (districtChangeTarget) {
+                        changeDistrictMutation.mutate({ userId: districtChangeTarget.id, districtId });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="구역을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allDistricts
+                        .filter(d => d.isActive && d.id !== districtChangeTarget?.districtId)
+                        .map(d => (
+                          <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Access Logs Tab */}
