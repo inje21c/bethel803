@@ -14,6 +14,7 @@ interface DistrictContextType {
   currentDistrictName: string;
   districts: District[];
   switchDistrict: (id: string) => void;
+  refreshDistricts: () => Promise<void>;
 }
 
 const DistrictContext = createContext<DistrictContextType | null>(null);
@@ -44,6 +45,14 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
     }
   }, [isMaster, districts]);
 
+  const refreshDistricts = useCallback(async () => {
+    if (!isMaster) return;
+    try {
+      const updated = await getDistricts();
+      setDistricts(updated);
+    } catch { /* ignore */ }
+  }, [isMaster]);
+
   if (!user) return <>{children}</>;
 
   return (
@@ -52,6 +61,7 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
       currentDistrictName: currentDistrictName || user.districtName,
       districts,
       switchDistrict,
+      refreshDistricts,
     }}>
       {children}
     </DistrictContext.Provider>

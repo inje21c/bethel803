@@ -33,9 +33,9 @@ export default function NotificationCenter() {
   const [newBody, setNewBody] = useState('');
 
   const { data: notifications = [] } = useQuery({
-    queryKey: ['notifications', user?.id],
-    queryFn: () => getNotifications(user!.id),
-    enabled: !!user,
+    queryKey: ['notifications', user?.id, currentDistrictId],
+    queryFn: () => getNotifications(user!.id, currentDistrictId),
+    enabled: !!user && !!currentDistrictId,
     refetchInterval: 60_000,
   });
 

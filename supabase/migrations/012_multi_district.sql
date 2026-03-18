@@ -77,8 +77,15 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'cmhyun@gmail.com');
 -- 5. weekly_reports UNIQUE 제약 변경: week_start → (week_start, district_id)
 -- ============================================================
 ALTER TABLE public.weekly_reports DROP CONSTRAINT IF EXISTS weekly_reports_week_start_key;
-ALTER TABLE public.weekly_reports ADD CONSTRAINT weekly_reports_week_district_key
-  UNIQUE (week_start, district_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'weekly_reports_week_district_key'
+  ) THEN
+    ALTER TABLE public.weekly_reports ADD CONSTRAINT weekly_reports_week_district_key
+      UNIQUE (week_start, district_id);
+  END IF;
+END $$;
 
 -- ============================================================
 -- 6. RLS 헬퍼 함수 업데이트
@@ -112,14 +119,17 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 ALTER TABLE public.districts ENABLE ROW LEVEL SECURITY;
 
 -- 활성 사용자: active 구역 SELECT (회원가입 시 구역 선택용)
+DROP POLICY IF EXISTS "districts_select_active" ON public.districts;
 CREATE POLICY "districts_select_active" ON public.districts
   FOR SELECT USING (is_active = true);
 
 -- 마스터: 전체 CRUD
+DROP POLICY IF EXISTS "districts_all_master" ON public.districts;
 CREATE POLICY "districts_all_master" ON public.districts
   FOR ALL USING (public.is_master());
 
 -- anon: active 구역 SELECT (회원가입 폼용)
+DROP POLICY IF EXISTS "districts_select_anon" ON public.districts;
 CREATE POLICY "districts_select_anon" ON public.districts
   FOR SELECT TO anon USING (is_active = true);
 
@@ -313,6 +323,7 @@ CREATE POLICY "weekly_reports_crud_leader" ON public.weekly_reports
 
 -- === notifications ===
 DROP POLICY IF EXISTS "active users can read notifications" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_select_active" ON public.notifications;
 CREATE POLICY "notifications_select_active" ON public.notifications
   FOR SELECT USING (
     public.is_active()
@@ -320,12 +331,14 @@ CREATE POLICY "notifications_select_active" ON public.notifications
   );
 
 DROP POLICY IF EXISTS "leader can insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_insert_leader" ON public.notifications;
 CREATE POLICY "notifications_insert_leader" ON public.notifications
   FOR INSERT WITH CHECK (
     (public.is_master() OR public.is_leader()) AND public.is_active()
   );
 
 DROP POLICY IF EXISTS "leader can delete notifications" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_delete_leader" ON public.notifications;
 CREATE POLICY "notifications_delete_leader" ON public.notifications
   FOR DELETE USING (
     public.is_master() OR (
@@ -374,6 +387,27 @@ CREATE POLICY "prayer_intercessions_group" ON public.prayer_intercessions
         AND u.district_id = public.get_my_district_id()
     )
   );
+
+-- ============================================================
+-- 8-1. role 변경은 master만 가능 (트리거)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.enforce_role_change_master_only()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- role 값이 변경된 경우에만 체크
+  IF OLD.role IS DISTINCT FROM NEW.role THEN
+    IF NOT public.is_master() THEN
+      RAISE EXCEPTION 'Only master can change user roles';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS enforce_role_change ON public.users;
+CREATE TRIGGER enforce_role_change
+  BEFORE UPDATE ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_role_change_master_only();
 
 -- ============================================================
 -- 9. handle_new_user() 트리거 업데이트

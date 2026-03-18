@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import { getBibleStudies, getMyStudyCompletions } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 
@@ -43,9 +44,11 @@ function StudyItem({
 
 export default function BibleStudyList() {
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const { data: studies = [], isLoading } = useQuery({
-    queryKey: ['bible_studies'],
-    queryFn: getBibleStudies,
+    queryKey: ['bible_studies', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const { data: completions = {} } = useQuery({
