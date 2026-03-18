@@ -53,6 +53,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
+  // districts 테이블 JOIN 시도, 실패 시 기본값으로 폴백
   const { data, error } = await withAuthTimeout(
     supabase
       .from('users')
@@ -61,14 +62,33 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
       .single(),
     '사용자 정보를 불러오는 시간이 초과되었습니다.'
   );
-  if (error || !data) return null;
+  if (!error && data) {
+    return {
+      id: data.id,
+      name: data.name,
+      role: data.role as UserProfile['role'],
+      status: data.status as UserProfile['status'],
+      districtId: data.district_id ?? '',
+      districtName: (data.districts as { name: string } | null)?.name ?? '',
+    };
+  }
+  // districts 미존재 등 JOIN 실패 시 기본 컬럼만으로 조회
+  const { data: fallback, error: fallbackError } = await withAuthTimeout(
+    supabase
+      .from('users')
+      .select('id, name, role, status')
+      .eq('id', userId)
+      .single(),
+    '사용자 정보를 불러오는 시간이 초과되었습니다.'
+  );
+  if (fallbackError || !fallback) return null;
   return {
-    id: data.id,
-    name: data.name,
-    role: data.role as UserProfile['role'],
-    status: data.status as UserProfile['status'],
-    districtId: data.district_id,
-    districtName: (data.districts as { name: string } | null)?.name ?? '',
+    id: fallback.id,
+    name: fallback.name,
+    role: fallback.role as UserProfile['role'],
+    status: fallback.status as UserProfile['status'],
+    districtId: '',
+    districtName: '',
   };
 }
 
