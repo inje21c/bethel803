@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
             .select('role')
             .eq('id', user.id)
             .single();
-          if (profile?.role !== 'leader') {
+          if (profile?.role !== 'leader' && profile?.role !== 'master') {
             return new Response(
               JSON.stringify({ ok: false, error: '권한 없음: 구역장만 사용할 수 있습니다.' }),
               { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -67,27 +67,40 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
     }).catch(() => {}); // 실패해도 무시
 
-    // 3. bible_studies 등록 (published=false)
+    // 3. 모든 활성 구역에 bible_studies 등록 (published=false)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: districts, error: distErr } = await supabase
+      .from('districts')
+      .select('id')
+      .eq('is_active', true);
+
+    if (distErr) throw distErr;
+    if (!districts || districts.length === 0) throw new Error('활성 구역이 없습니다.');
+
+    const rows = districts.map((d: { id: string }) => ({
+      week_number: parsed.weekNumber,
+      study_date: parsed.date,
+      title: parsed.title,
+      scripture: parsed.scripture,
+      introduction: parsed.introduction,
+      questions: parsed.questions,
+      published: false,
+      source_pdf_url: pdfUrl,
+      district_id: d.id,
+    }));
+
     const { data, error } = await supabase
       .from('bible_studies')
-      .insert({
-        week_number: parsed.weekNumber,
-        study_date: parsed.date,
-        title: parsed.title,
-        scripture: parsed.scripture,
-        introduction: parsed.introduction,
-        questions: parsed.questions,
-        published: false,
-        source_pdf_url: pdfUrl,
-      })
-      .select('id')
-      .single();
+      .insert(rows)
+      .select('id');
 
     if (error) throw error;
 
+    const ids = (data ?? []).map((r: { id: string }) => r.id);
+
     return new Response(
-      JSON.stringify({ ok: true, id: data.id, title: parsed.title, pdfUrl }),
+      JSON.stringify({ ok: true, ids, count: ids.length, title: parsed.title, pdfUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
