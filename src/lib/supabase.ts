@@ -212,7 +212,7 @@ export interface Database {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    lock: 'no-op',
+    lock: (_name: string, _acquireTimeout: number, fn: () => Promise<unknown>) => fn(),
     persistSession: true,
     detectSessionInUrl: true,
   },
