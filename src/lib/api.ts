@@ -194,6 +194,14 @@ export async function deactivateDistrict(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function changeUserDistrict(userId: string, districtId: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('users').update({ district_id: districtId }).eq('id', userId),
+    '소속 구역 변경'
+  );
+  if (error) throw error;
+}
+
 // ============================================================
 // 성경공부
 // ============================================================
