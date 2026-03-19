@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, TrendingUp, Lock, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import { getBibleReadingLogs, addBibleReadingLog, updateBibleReadingLog, deleteBibleReadingLog, getCurrentLockStatus, getKSTDateString } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 
 export default function BibleReading() {
   const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
   const [chapters, setChapters] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -24,8 +26,9 @@ export default function BibleReading() {
   });
 
   const { data: isLocked = false } = useQuery({
-    queryKey: ['lock_status'],
-    queryFn: getCurrentLockStatus,
+    queryKey: ['lock_status', currentDistrictId],
+    queryFn: () => getCurrentLockStatus(currentDistrictId),
+    enabled: !!currentDistrictId,
   });
 
   const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
