@@ -761,6 +761,40 @@ export async function getAllBibleReadingSummaries(districtId: string): Promise<B
   })).sort((a, b) => b.totalChapters - a.totalChapters);
 }
 
+export async function getBibleReadingSummariesByRange(
+  districtId: string,
+  from: string,
+  to: string
+): Promise<BibleReadingSummary[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('user_id, chapters, log_date, users!inner(name, district_id)')
+      .eq('users.district_id', districtId)
+      .gte('log_date', from)
+      .lte('log_date', to),
+    '성경읽기 기간별 조회'
+  );
+  if (error) throw error;
+
+  const map = new Map<string, { name: string; total: number }>();
+  for (const row of data ?? []) {
+    const uid = row.user_id as string;
+    const name = (row.users as { name: string } | null)?.name ?? '알 수 없음';
+    const existing = map.get(uid);
+    if (existing) {
+      existing.total += row.chapters as number;
+    } else {
+      map.set(uid, { name, total: row.chapters as number });
+    }
+  }
+  return Array.from(map.entries()).map(([userId, { name, total }]) => ({
+    userId,
+    userName: name,
+    totalChapters: total,
+  })).sort((a, b) => b.totalChapters - a.totalChapters);
+}
+
 // ============================================================
 // 일정
 // ============================================================
