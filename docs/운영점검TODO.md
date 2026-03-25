@@ -42,8 +42,10 @@
 
 ## 5. 자동화 스케줄
 
-- [ ] 묵상 수집 스케줄 등록 확인
-- [ ] 주간 마감 스케줄 등록 확인
+- [ ] `fetch-devotional-daily` 실패 cron 제거
+- [ ] 묵상 수집 외부 실행 경로 유지 확인
+- [ ] `weekly-close-all-districts` 등록 확인
+- [ ] `weekly-close-all-districts` 스케줄이 `0 6 * * 0`인지 확인
 - [ ] 주보 PDF 파싱 스케줄 등록 확인
 - [ ] 스케줄 시간대가 KST 기준 의도와 맞는지 확인
 - [ ] 실패 시 재실행 방법 정리

@@ -124,13 +124,30 @@ Supabase Functions 환경에는 다음 값이 필요하다.
 
 - Edge Function: `fetch-devotional`
 - 저장 테이블: `daily_devotionals`
+- 현재 운영 경로: 외부 실행 경로 유지
 
 확인 항목:
 
 - 함수 배포됨
 - OpenAI API key 설정됨
 - 외부 사이트 접근 가능
-- 스케줄 등록됨
+- 실제 운영 경로에서 정상 실행됨
+
+현재 확인된 사항:
+
+- `fetch-devotional` 함수는 실제 실행 및 텔레그램 알림 정상 수신 기록이 있다.
+- 반면 Supabase DB cron `fetch-devotional-daily`는 `schema "net" does not exist`로 실패 중인 것이 확인되었다.
+
+운영 방침:
+
+- 묵상 수집은 현재 정상 동작 중인 외부 실행 경로를 유지한다.
+- 실패 중인 Supabase DB cron `fetch-devotional-daily`는 혼선을 막기 위해 제거한다.
+
+제거 SQL:
+
+```sql
+select cron.unschedule('fetch-devotional-daily');
+```
 
 ## 5.2 주간 마감
 
@@ -138,12 +155,25 @@ Supabase Functions 환경에는 다음 값이 필요하다.
 
 - DB 함수: `compute_weekly_report()`
 - 결과 테이블: `weekly_reports`
+- 운영 cron: `weekly-close-all-districts`
 
 확인 항목:
 
 - 함수 생성됨
 - 권한/RLS가 맞는가
-- `pg_cron` 또는 동등한 스케줄이 등록됐는가
+- `weekly-close-all-districts`가 등록됐는가
+- 스케줄이 `매주 일요일 15:00 KST` 기준과 일치하는가
+
+현재 확인된 사항:
+
+- 기존 단일 구역 cron `weekly-close`는 제거했다.
+- 멀티 구역 cron `weekly-close-all-districts`로 전환했다.
+- 수동 실행으로 활성 구역 전체 `weekly_reports` 생성이 정상 확인되었다.
+
+현재 운영 스케줄:
+
+- `weekly-close-all-districts`
+- `0 6 * * 0` (매주 일요일 06:00 UTC = 15:00 KST)
 
 ## 5.3 주보 PDF 파싱
 
@@ -226,6 +256,11 @@ Supabase Functions 환경에는 다음 값이 필요하다.
 - 함수 환경 변수 설정 여부
 - cron 등록 여부
 - 함수 로그 에러
+
+메모:
+
+- `fetch-devotional`은 현재 외부 실행 경로를 기준으로 운영한다.
+- Supabase DB cron 실패 기록은 실제 성공 실행과 혼선을 만들 수 있으므로 제거 상태를 유지한다.
 
 ## 9. 관련 문서
 
