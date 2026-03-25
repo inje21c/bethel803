@@ -1,73 +1,108 @@
-# Welcome to your Lovable project
+# bethel803
 
-## Project info
+벧엘교회 킨텍스장성남 구역 관리 시스템.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+현재 저장소 기준으로 이 프로젝트는 React SPA 프론트엔드와 Supabase 백엔드를 사용하는 운영형 구조다. 주요 기능은 성경공부, 기도제목, 성경읽기, 일정/출석, 관리자 운영, 주간 보고, 알림, 자동화 기능이다.
 
-## How can I edit this code?
+## 기술 스택
 
-There are several ways of editing your application.
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn-ui
+- TanStack Query
+- Supabase Auth / PostgreSQL / Storage / Edge Functions
+- Firebase Hosting
 
-**Use Lovable**
+## 주요 기능
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- 이메일/비밀번호 로그인, 회원가입, 승인 대기, 비밀번호 재설정
+- 구역 단위 성경공부 조회 및 답변 저장
+- 기도제목 등록, 응답, 중보기도 공유/참여
+- 성경읽기 기록 및 관리자 통계
+- 일정 관리, 출석 응답, 첨부 업로드
+- 관리자 대시보드, 주간 보고, CSV 내보내기
+- 앱 내 알림, 전역 검색
+- 오늘의 묵상 수집, 주보 PDF 파싱, 주간 마감 자동화 코드
 
-Changes made via Lovable will be committed automatically to this repo.
+## 시작하기
 
-**Use your preferred IDE**
+### 1. 의존성 설치
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+npm install
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 2. 환경 변수 설정
 
-Follow these steps:
+`.env.example`를 참고해 `.env.local`을 만든다.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+필수 프론트 환경 변수:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_APP_URL=http://localhost:8080
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+주의:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+- `service_role` 키는 프론트 `.env`에 넣지 않는다.
+- `OPENAI_API_KEY`는 Supabase Edge Function 환경 변수로만 설정한다.
+
+### 3. 개발 서버 실행
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+기본 주소:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `http://localhost:8080`
 
-**Use GitHub Codespaces**
+## 검증 명령
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+npm test
+npm run build
+```
 
-## What technologies are used for this project?
+## 배포
 
-This project is built with:
+프론트는 현재 `firebase.json` 기준 정적 배포 구성을 포함한다.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+배포 전 확인:
 
-## How can I deploy this project?
+1. `npm run build`
+2. `dist/` 생성 확인
+3. 운영 URL에 맞춰 `VITE_APP_URL`과 Supabase Auth Redirect URL 정렬
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Supabase 운영 메모
 
-## Can I connect a custom domain to my Lovable project?
+프론트 외에 아래 운영 항목이 필요하다.
 
-Yes, you can!
+- 마이그레이션 적용
+- `attachments` Storage 버킷 생성
+- Edge Function 배포
+- Edge Function 환경 변수 설정
+- `pg_cron` 등록 확인
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+자동화 관련 함수:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `fetch-devotional`
+- `parse-bulletin`
+- `compute_weekly_report()`
+
+## 문서
+
+- 서비스 개요: [01_서비스개요_현재구현.md](/home/ubuntu/bethel803/docs/기능설계/01_서비스개요_현재구현.md)
+- 핵심 기능: [02_핵심업무기능.md](/home/ubuntu/bethel803/docs/기능설계/02_핵심업무기능.md)
+- 데이터/아키텍처: [04_데이터_아키텍처.md](/home/ubuntu/bethel803/docs/기능설계/04_데이터_아키텍처.md)
+- 개발 로드맵: [05_개발로드맵.md](/home/ubuntu/bethel803/docs/기능설계/05_개발로드맵.md)
+- 운영 체크리스트: [운영준비체크리스트.md](/home/ubuntu/bethel803/docs/운영준비체크리스트.md)
+- 운영 가이드: [OPERATIONS.md](/home/ubuntu/bethel803/docs/OPERATIONS.md)
+
+## 현재 상태
+
+현재 코드 기준으로 핵심 기능은 대부분 구현되어 있다. 남은 핵심 작업은 신규 기능 개발보다 운영 환경 활성화, 역할별 실사용 검증, 성능 정리, PWA 적용 여부 결정이다.
