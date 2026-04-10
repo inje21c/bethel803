@@ -102,6 +102,9 @@ npm run build
 - 개발 로드맵: [05_개발로드맵.md](/home/ubuntu/bethel803/docs/기능설계/05_개발로드맵.md)
 - 운영 체크리스트: [운영준비체크리스트.md](/home/ubuntu/bethel803/docs/운영준비체크리스트.md)
 - 운영 가이드: [OPERATIONS.md](/home/ubuntu/bethel803/docs/OPERATIONS.md)
+- Codex 운영 도입안: [Codex_gstack_도입안.md](/home/ubuntu/bethel803/docs/Codex_gstack_도입안.md)
+- Codex workflow 인덱스: [README.md](/home/ubuntu/bethel803/docs/codex-workflows/README.md)
+- 최신 Codex 점검 보고서: [Codex_프로젝트점검보고서_2026-04-10.md](/home/ubuntu/bethel803/docs/Codex_프로젝트점검보고서_2026-04-10.md)
 
 ## 현재 상태
 
