@@ -56,6 +56,25 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function waitForSessionUser(userId: string, timeoutMs = 4000): Promise<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] | null> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id === userId) {
+        return session;
+      }
+    } catch {
+      // 다음 폴링에서 다시 확인
+    }
+
+    await sleep(200);
+  }
+
+  return null;
+}
+
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   // districts 테이블 JOIN 시도, 실패 시 기본값으로 폴백
   const { data, error } = await withAuthTimeout(
@@ -238,7 +257,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    const profile = await resolveSessionProfile(data.session);
+    const stableSession =
+      (data.session?.user?.id
+        ? await waitForSessionUser(data.session.user.id)
+        : null) ?? data.session;
+
+    const profile = await resolveSessionProfile(stableSession);
     if (!profile) {
       if (mounted.current) setLoading(false);
       throw new Error('로그인은 되었지만 사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
