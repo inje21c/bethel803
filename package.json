@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "staging:env-check": "bash scripts/staging_env_audit.sh",
+    "staging:preflight": "bash scripts/staging_preflight.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },

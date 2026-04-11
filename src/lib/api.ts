@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, type Database } from './supabase';
 import { startTrace } from './utils';
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -52,6 +52,23 @@ export interface BibleStudy {
   introduction: string;
   questions: string[];
   published: boolean;
+  sourceId?: string | null;
+  sourcePdfUrl?: string | null;
+  sourceSnapshot?: Record<string, unknown>;
+}
+
+export interface StudySource {
+  id: string;
+  weekNumber: number;
+  date: string;
+  title: string;
+  scripture: string;
+  introduction: string;
+  questions: string[];
+  sourcePdfUrl: string | null;
+  parseMode: 'auto' | 'manual';
+  parsedBy: string | null;
+  createdAt: string;
 }
 
 export interface StudyAnswer {
@@ -227,6 +244,9 @@ export async function getBibleStudies(districtId: string): Promise<BibleStudy[]>
     introduction: row.introduction,
     questions: row.questions as string[],
     published: row.published,
+    sourceId: row.source_id ?? null,
+    sourcePdfUrl: row.source_pdf_url ?? null,
+    sourceSnapshot: (row.source_snapshot as Record<string, unknown> | null | undefined) ?? {},
   }));
 }
 
@@ -249,7 +269,49 @@ export async function getAllBibleStudies(districtId: string): Promise<BibleStudy
     introduction: row.introduction,
     questions: row.questions as string[],
     published: row.published,
+    sourceId: row.source_id ?? null,
+    sourcePdfUrl: row.source_pdf_url ?? null,
+    sourceSnapshot: (row.source_snapshot as Record<string, unknown> | null | undefined) ?? {},
   }));
+}
+
+export async function getStudySources(): Promise<StudySource[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('study_sources')
+      .select('*')
+      .order('study_date', { ascending: false })
+      .order('created_at', { ascending: false }),
+    '성경공부 원본 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    weekNumber: row.week_number,
+    date: row.study_date,
+    title: row.title,
+    scripture: row.scripture ?? '',
+    introduction: row.introduction ?? '',
+    questions: Array.isArray(row.questions) ? (row.questions as string[]) : [],
+    sourcePdfUrl: row.source_pdf_url ?? null,
+    parseMode: row.parse_mode,
+    parsedBy: row.parsed_by ?? null,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function createDistrictStudyFromSource(sourceId: string, districtId?: string): Promise<string> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('create_bible_study_from_source', {
+      p_source_id: sourceId,
+      p_district_id: districtId ?? null,
+    }),
+    '원본 기반 수정본 생성',
+    30000
+  );
+  if (error) throw error;
+  if (!data) throw new Error('수정본 생성 결과를 받지 못했습니다.');
+  return data as string;
 }
 
 export async function createBibleStudy(params: {
@@ -1138,13 +1200,14 @@ export async function triggerWeeklyClose(weekStart?: string, districtId?: string
 // ============================================================
 
 export interface ParsedBulletinResult {
-  ids: string[];
-  count: number;
+  sourceId: string;
+  studyDate: string;
   title: string;
   pdfUrl: string;
+  created: boolean;
 }
 
-/** 주보 PDF를 파싱하여 모든 활성 구역의 bible_studies에 등록 (published=false) */
+/** 주보 PDF를 파싱하여 원본 1건을 study_sources에 등록한다 */
 export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResult> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (120초)')), 120000)
@@ -1164,10 +1227,19 @@ export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResu
     } catch (e) {
       if (e instanceof Error && e.message !== error.message) throw e;
     }
+    if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      throw new Error('로그인 세션이 유효하지 않습니다. 현재 preview에서 다시 로그인한 뒤 시도해주세요.');
+    }
     throw error;
   }
   if (!data?.ok) throw new Error(data?.error || '파싱 실패');
-  return { ids: data.ids, count: data.count, title: data.title, pdfUrl: data.pdfUrl };
+  return {
+    sourceId: data.sourceId,
+    studyDate: data.studyDate,
+    title: data.title,
+    pdfUrl: data.pdfUrl,
+    created: data.created ?? true,
+  };
 }
 
 // ============================================================
@@ -1182,14 +1254,32 @@ export interface DailyDevotional {
   summary: string;
   applicationQuestion: string | null;
   sourceUrl: string | null;
+  isFallback: boolean;
 }
 
-/** 오늘(KST) 묵상 조회, 없으면 null */
-export async function getTodayDevotional(): Promise<DailyDevotional | null> {
-  const now = new Date();
-  const today = getKSTDateString(now);
+type DailyDevotionalRow = Database['public']['Tables']['daily_devotionals']['Row'];
 
-  const { data, error } = await withApiTimeout(
+export function mapDailyDevotional(
+  row: DailyDevotionalRow,
+  requestedDate = row.devotional_date
+): DailyDevotional {
+  return {
+    id: row.id,
+    date: row.devotional_date,
+    verse: row.scripture ?? '',
+    content: row.content ?? '',
+    summary: row.summary ?? '',
+    applicationQuestion: row.application_question ?? null,
+    sourceUrl: row.source_url ?? null,
+    isFallback: row.devotional_date !== requestedDate,
+  };
+}
+
+/** 오늘(KST) 묵상 조회, 없으면 최근 묵상으로 fallback */
+export async function getTodayDevotional(): Promise<DailyDevotional | null> {
+  const today = getKSTDateString(new Date());
+
+  const todayResult = await withApiTimeout(
     supabase
       .from('daily_devotionals')
       .select('*')
@@ -1198,17 +1288,23 @@ export async function getTodayDevotional(): Promise<DailyDevotional | null> {
     '오늘의 묵상 조회'
   );
 
-  if (error) throw error;
-  if (!data) return null;
-  return {
-    id: data.id,
-    date: data.devotional_date,
-    verse: data.scripture ?? '',
-    content: data.content ?? '',
-    summary: data.summary ?? '',
-    applicationQuestion: data.application_question ?? null,
-    sourceUrl: data.source_url ?? null,
-  };
+  if (todayResult.error) throw todayResult.error;
+  if (todayResult.data) return mapDailyDevotional(todayResult.data, today);
+
+  const fallbackResult = await withApiTimeout(
+    supabase
+      .from('daily_devotionals')
+      .select('*')
+      .lte('devotional_date', today)
+      .order('devotional_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    '최근 묵상 조회'
+  );
+
+  if (fallbackResult.error) throw fallbackResult.error;
+  if (!fallbackResult.data) return null;
+  return mapDailyDevotional(fallbackResult.data, today);
 }
 
 // ============================================================
@@ -1222,6 +1318,10 @@ export interface AppNotification {
   createdBy: string;
   createdAt: string;
   isRead: boolean;
+  districtId?: string | null;
+  scopeType?: 'district' | 'service';
+  notificationType?: string;
+  payload?: Record<string, unknown>;
 }
 
 export async function getNotifications(userId: string, districtId: string): Promise<AppNotification[]> {
@@ -1229,21 +1329,30 @@ export async function getNotifications(userId: string, districtId: string): Prom
     supabase
       .from('notifications')
       .select('*, notification_reads(user_id)')
-      .eq('district_id', districtId)
       .order('created_at', { ascending: false }),
     '알림 조회'
   );
   if (error) throw error;
-  return (data ?? []).map(row => ({
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-    isRead: Array.isArray(row.notification_reads)
-      ? row.notification_reads.some((r: { user_id: string }) => r.user_id === userId)
-      : false,
-  }));
+  return (data ?? [])
+    .filter((row) => {
+      const scopeType = (row.scope_type as 'district' | 'service' | undefined) ?? 'district';
+      if (scopeType === 'service') return true;
+      return (row.district_id as string | null | undefined) === districtId;
+    })
+    .map(row => ({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      isRead: Array.isArray(row.notification_reads)
+        ? row.notification_reads.some((r: { user_id: string }) => r.user_id === userId)
+        : false,
+      districtId: (row.district_id as string | null | undefined) ?? null,
+      scopeType: ((row.scope_type as 'district' | 'service' | undefined) ?? 'district'),
+      notificationType: (row.notification_type as string | undefined) ?? 'general',
+      payload: (row.payload as Record<string, unknown> | undefined) ?? {},
+    }));
 }
 
 export async function markNotificationRead(notificationId: string, userId: string): Promise<void> {
@@ -1256,14 +1365,34 @@ export async function markNotificationRead(notificationId: string, userId: strin
   if (error) throw error;
 }
 
-export async function createNotification(params: { title: string; body: string; createdBy: string; districtId: string }): Promise<void> {
+export async function createNotification(params: {
+  title: string;
+  body: string;
+  createdBy: string;
+  districtId?: string | null;
+  scopeType?: 'district' | 'service';
+  notificationType?: string;
+  payload?: Record<string, unknown>;
+}): Promise<void> {
+  const scopeType = params.scopeType ?? 'district';
+  const insertRow: Record<string, unknown> = {
+    title: params.title,
+    body: params.body,
+    created_by: params.createdBy,
+    district_id: params.districtId ?? null,
+  };
+
+  // 013 마이그레이션 적용 전에는 기존 컬럼만 사용하도록 두고,
+  // 서비스 공지/타입형 알림을 사용할 때만 확장 컬럼을 추가한다.
+  if (params.scopeType !== undefined || params.notificationType !== undefined || params.payload !== undefined) {
+    insertRow.scope_type = scopeType;
+    insertRow.notification_type = params.notificationType ?? 'general';
+    insertRow.payload = params.payload ?? {};
+    insertRow.district_id = scopeType === 'service' ? null : (params.districtId ?? null);
+  }
+
   const { error } = await withApiTimeout(
-    supabase.from('notifications').insert({
-      title: params.title,
-      body: params.body,
-      created_by: params.createdBy,
-      district_id: params.districtId,
-    }),
+    supabase.from('notifications').insert(insertRow),
     '알림 생성'
   );
   if (error) throw error;
