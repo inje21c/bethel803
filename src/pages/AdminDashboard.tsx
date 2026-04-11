@@ -483,6 +483,9 @@ export default function AdminDashboard() {
     setParsingBulletin(true);
     try {
       const result = await parseBulletin(manualUrl || undefined);
+      await queryClient.invalidateQueries({ queryKey: ['study_sources'] });
+      await queryClient.invalidateQueries({ queryKey: ['all_bible_studies'] });
+      await queryClient.invalidateQueries({ queryKey: ['bible_studies'] });
       toast.success(`주보 원본 등록 완료: "${result.title}" (${result.studyDate})`);
       setBulletinUrl('');
     } catch (err) {
