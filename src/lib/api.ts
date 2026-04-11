@@ -1147,22 +1147,10 @@ export interface ParsedBulletinResult {
 
 /** 주보 PDF를 파싱하여 원본 1건을 study_sources에 등록한다 */
 export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResult> {
-  const { data: { session } } = await withApiTimeout(
-    supabase.auth.getSession(),
-    '주보 파싱 전 세션 확인'
-  );
-
-  if (!session?.access_token) {
-    throw new Error('로그인 세션이 없습니다. 현재 preview URL에서 다시 로그인한 뒤 시도해주세요.');
-  }
-
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (120초)')), 120000)
   );
   const request = supabase.functions.invoke('parse-bulletin', {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
     body: pdfUrl ? { pdf_url: pdfUrl } : {},
   });
   const { data, error } = await Promise.race([request, timeout]);
@@ -1176,6 +1164,9 @@ export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResu
       }
     } catch (e) {
       if (e instanceof Error && e.message !== error.message) throw e;
+    }
+    if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      throw new Error('로그인 세션이 유효하지 않습니다. 현재 preview에서 다시 로그인한 뒤 시도해주세요.');
     }
     throw error;
   }
