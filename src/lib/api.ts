@@ -306,7 +306,8 @@ export async function createDistrictStudyFromSource(sourceId: string, districtId
       p_source_id: sourceId,
       p_district_id: districtId ?? null,
     }),
-    '원본 기반 수정본 생성'
+    '원본 기반 수정본 생성',
+    30000
   );
   if (error) throw error;
   if (!data) throw new Error('수정본 생성 결과를 받지 못했습니다.');

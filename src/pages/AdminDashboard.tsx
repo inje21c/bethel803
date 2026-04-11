@@ -404,11 +404,15 @@ export default function AdminDashboard() {
 
   const createFromSourceMutation = useMutation({
     mutationFn: (sourceId: string) => createDistrictStudyFromSource(sourceId, currentDistrictId),
-    onSuccess: (studyId: string) => {
-      queryClient.invalidateQueries({ queryKey: ['all_bible_studies'] });
-      queryClient.invalidateQueries({ queryKey: ['bible_studies'] });
+    onSuccess: async (studyId: string) => {
+      await queryClient.invalidateQueries({ queryKey: ['all_bible_studies'] });
+      await queryClient.invalidateQueries({ queryKey: ['bible_studies'] });
+      const refreshed = await queryClient.fetchQuery({
+        queryKey: ['all_bible_studies', currentDistrictId],
+        queryFn: () => getAllBibleStudies(currentDistrictId),
+      });
       toast.success('내 구역 수정본을 만들었습니다. 이제 내용을 검토하고 발행할 수 있습니다.');
-      const createdStudy = bibleStudies.find((study) => study.id === studyId);
+      const createdStudy = refreshed.find((study) => study.id === studyId);
       if (createdStudy) {
         handleEditStudy(createdStudy);
       }
