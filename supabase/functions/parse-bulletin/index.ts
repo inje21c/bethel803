@@ -1,6 +1,6 @@
 // Supabase Edge Function: parse-bulletin
 // 매주 일요일 20:00 KST (11:00 UTC) 실행
-// 벧엘교회 주보 PDF → gpt-4o 파싱 → bible_studies 등록 (published=false)
+// 벧엘교회 주보 PDF → gpt-4o 파싱 → study_sources 원본 1건 등록
 //
 // 요청 형식: POST { pdf_url?: string }
 // pdf_url 없으면 이번 주 일요일 날짜로 자동 생성
@@ -24,33 +24,58 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 수동 JWT 검증: leader 권한 체크
+    // 수동 JWT 검증: gateway JWT 검증을 끄고 이 함수 내부에서 권한을 확인한다.
     const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-        if (!authError && user) {
-          const { data: profile } = await supabaseAuth
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          if (profile?.role !== 'leader' && profile?.role !== 'master') {
-            return new Response(
-              JSON.stringify({ ok: false, error: '권한 없음: 구역장만 사용할 수 있습니다.' }),
-              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-      } catch (e) {
-        console.warn('Auth check skipped:', e);
-      }
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ ok: false, error: '인증 토큰이 필요합니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ ok: false, error: '유효한 로그인 세션이 아닙니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabaseAuth
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return new Response(
+        JSON.stringify({ ok: false, error: '사용자 권한 정보를 찾을 수 없습니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (profile.role !== 'leader' && profile.role !== 'master') {
+      return new Response(
+        JSON.stringify({ ok: false, error: '권한 없음: 구역장만 사용할 수 있습니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const body = await req.json().catch(() => ({}));
     const pdfUrl: string = body.pdf_url || getAutoUrl();
+    const parseMode = body.pdf_url ? 'manual' : 'auto';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const hintedDate = getDateHintFromPdfUrl(pdfUrl);
+    if (hintedDate) {
+      const existing = await findStudySourceByDate(supabase, hintedDate);
+      if (existing) {
+        return duplicateSourceResponse(existing);
+      }
+    }
 
     // 1. PDF 다운로드
     const pdfBytes = await fetchPdfBytes(pdfUrl);
@@ -67,40 +92,48 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
     }).catch(() => {}); // 실패해도 무시
 
-    // 3. 모든 활성 구역에 bible_studies 등록 (published=false)
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const existing = await findStudySourceByDate(supabase, parsed.date);
+    if (existing) {
+      return duplicateSourceResponse(existing);
+    }
 
-    const { data: districts, error: distErr } = await supabase
-      .from('districts')
-      .select('id')
-      .eq('is_active', true);
-
-    if (distErr) throw distErr;
-    if (!districts || districts.length === 0) throw new Error('활성 구역이 없습니다.');
-
-    const rows = districts.map((d: { id: string }) => ({
+    const sourceRow = {
       week_number: parsed.weekNumber,
       study_date: parsed.date,
       title: parsed.title,
       scripture: parsed.scripture,
       introduction: parsed.introduction,
       questions: parsed.questions,
-      published: false,
       source_pdf_url: pdfUrl,
-      district_id: d.id,
-    }));
+      parse_mode: parseMode,
+      parsed_by: user.id,
+    };
 
     const { data, error } = await supabase
-      .from('bible_studies')
-      .insert(rows)
-      .select('id');
+      .from('study_sources')
+      .insert(sourceRow)
+      .select('id, study_date, title')
+      .single();
 
-    if (error) throw error;
-
-    const ids = (data ?? []).map((r: { id: string }) => r.id);
+    if (error) {
+      if (error.code === '23505') {
+        const duplicate = await findStudySourceByDate(supabase, parsed.date);
+        if (duplicate) {
+          return duplicateSourceResponse(duplicate);
+        }
+      }
+      throw error;
+    }
 
     return new Response(
-      JSON.stringify({ ok: true, ids, count: ids.length, title: parsed.title, pdfUrl }),
+      JSON.stringify({
+        ok: true,
+        sourceId: data.id,
+        studyDate: data.study_date,
+        title: data.title,
+        pdfUrl,
+        created: true,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
@@ -260,4 +293,41 @@ function getISOWeek(dateStr: string): number {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function getDateHintFromPdfUrl(pdfUrl: string): string | null {
+  const match = pdfUrl.match(/weekly(\d{2})(\d{2})(\d{2})\.pdf/);
+  if (!match) return null;
+  return `20${match[1]}-${match[2]}-${match[3]}`;
+}
+
+async function findStudySourceByDate(
+  supabase: ReturnType<typeof createClient>,
+  studyDate: string
+): Promise<{ id: string; study_date: string; title: string } | null> {
+  const { data, error } = await supabase
+    .from('study_sources')
+    .select('id, study_date, title')
+    .eq('study_date', studyDate)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+function duplicateSourceResponse(source: { id: string; study_date: string; title: string }): Response {
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      code: 'SOURCE_ALREADY_EXISTS',
+      sourceId: source.id,
+      studyDate: source.study_date,
+      title: source.title,
+      error: `이미 ${source.study_date} 원본이 등록되어 있습니다. 새 파싱은 수행하지 않았습니다.`,
+    }),
+    {
+      status: 409,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    }
+  );
 }
