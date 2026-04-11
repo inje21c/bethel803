@@ -144,9 +144,7 @@ BEGIN
     v_source.title,
     v_source.scripture,
     v_source.introduction,
-    ARRAY(
-      SELECT jsonb_array_elements_text(v_source.questions)
-    ),
+    v_source.questions,
     false,
     v_district_id,
     v_source.source_pdf_url,
