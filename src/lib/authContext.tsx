@@ -52,6 +52,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   // districts 테이블 JOIN 시도, 실패 시 기본값으로 폴백
   const { data, error } = await withAuthTimeout(
@@ -94,7 +98,22 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
 
 async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']): Promise<UserProfile | null> {
   if (!session?.user) return null;
-  return fetchProfile(session.user.id);
+  const retryDelays = [0, 300, 1000];
+
+  for (const delayMs of retryDelays) {
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+
+    try {
+      const profile = await fetchProfile(session.user.id);
+      if (profile) return profile;
+    } catch {
+      // 다음 재시도에서 다시 확인
+    }
+  }
+
+  return null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -110,10 +129,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mounted.current = true;
 
-    // 5초 안에 세션 확인 안 되면 강제 해제 (SW 교착 방어)
+    // 세션 복구가 너무 늦을 때는 "세션이 아예 없는 경우"에만 loading을 해제한다.
+    // 세션이 존재하는데 profile 조회만 늦는 상황에서 /login으로 튕기는 현상을 막는다.
     const fallbackTimer = setTimeout(() => {
-      if (mounted.current) setLoading(false);
-    }, 5000);
+      void (async () => {
+        if (!mounted.current) return;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session && mounted.current) {
+            setUser(null);
+            setLoading(false);
+          }
+        } catch {
+          if (mounted.current) setLoading(false);
+        }
+      })();
+    }, 8000);
 
     const applySession = async (
       event: string,
@@ -154,9 +185,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (id !== requestId.current || !mounted.current) return;
 
       clearTimeout(fallbackTimer);
-      // fetch 실패(profile=null) 시: SIGNED_IN/INITIAL은 정상(프로필 미존재), 그 외는 기존 user 보호
-      if (profile !== null || event === 'SIGNED_IN' || event === 'INITIAL_SESSION_CHECK') {
+      // 프로필 조회가 잠시 실패해도, 동일 사용자의 기존 상태가 있으면 유지한다.
+      if (profile !== null) {
         setUser(profile);
+      } else if (userRef.current?.id === session.user.id) {
+        debugLog('Auth', 'profile unavailable, keeping existing user state', {
+          event,
+          userId: session.user.id,
+        });
+      } else if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION_CHECK') {
+        setUser(null);
       }
       setLoading(false);
 
@@ -201,6 +239,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const profile = await resolveSessionProfile(data.session);
+    if (!profile) {
+      if (mounted.current) setLoading(false);
+      throw new Error('로그인은 되었지만 사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    }
     queryClient.clear();
     if (mounted.current) {
       setUser(profile);
@@ -221,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
     try {
       await withAuthTimeout(
-        supabase.auth.signOut(),
+        supabase.auth.signOut({ scope: 'local' }),
         '로그아웃 요청이 지연되고 있습니다. 다시 시도해주세요.'
       );
     } catch {
@@ -248,7 +290,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // on_auth_user_created 트리거가 public.users에 자동 insert함
 
     // 가입 후 로그아웃 (승인 대기 안내를 위해)
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
+    requestId.current += 1;
+    if (mounted.current) {
+      setUser(null);
+      setLoading(false);
+    }
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
