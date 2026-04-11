@@ -24,29 +24,44 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 수동 JWT 검증: leader 권한 체크
+    // 수동 JWT 검증: gateway JWT 검증을 끄고 이 함수 내부에서 권한을 확인한다.
     const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-        if (!authError && user) {
-          const { data: profile } = await supabaseAuth
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          if (profile?.role !== 'leader' && profile?.role !== 'master') {
-            return new Response(
-              JSON.stringify({ ok: false, error: '권한 없음: 구역장만 사용할 수 있습니다.' }),
-              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-      } catch (e) {
-        console.warn('Auth check skipped:', e);
-      }
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ ok: false, error: '인증 토큰이 필요합니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ ok: false, error: '유효한 로그인 세션이 아닙니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabaseAuth
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return new Response(
+        JSON.stringify({ ok: false, error: '사용자 권한 정보를 찾을 수 없습니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (profile.role !== 'leader' && profile.role !== 'master') {
+      return new Response(
+        JSON.stringify({ ok: false, error: '권한 없음: 구역장만 사용할 수 있습니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const body = await req.json().catch(() => ({}));
