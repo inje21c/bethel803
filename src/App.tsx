@@ -11,6 +11,17 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import FirebaseLanding from "./pages/FirebaseLanding";
 
 const FIREBASE_LANDING_HOSTS = new Set(['bethel803.web.app', 'bethel803.firebaseapp.com']);
+const LANDING_PREVIEW_PATH = '/firebase-landing-preview';
+
+function shouldRenderFirebaseLanding() {
+  const { hostname, pathname, search } = window.location;
+  const params = new URLSearchParams(search);
+  return (
+    FIREBASE_LANDING_HOSTS.has(hostname) ||
+    pathname === LANDING_PREVIEW_PATH ||
+    params.get('landingPreview') === '1'
+  );
+}
 
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -90,7 +101,7 @@ function AppRoutes() {
 
 const App = () => (
   <ErrorBoundary>
-    {FIREBASE_LANDING_HOSTS.has(window.location.hostname) ? (
+    {shouldRenderFirebaseLanding() ? (
       <TooltipProvider>
         <Toaster />
         <Sonner />
