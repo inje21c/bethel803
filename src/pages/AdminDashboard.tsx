@@ -217,7 +217,12 @@ function BibleStudyForm({
 
 export default function AdminDashboard() {
   const { user, isMaster } = useAuth();
-  const { currentDistrictId } = useDistrict();
+  const {
+    currentDistrictId,
+    currentDistrictName,
+    homeDistrictName,
+    isViewingOtherDistrict,
+  } = useDistrict();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('overview');
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
@@ -234,12 +239,15 @@ export default function AdminDashboard() {
     queryKey: ['districts'],
     queryFn: getDistricts,
     enabled: isMaster,
+    staleTime: 60_000,
+    placeholderData: (previous) => previous,
   });
 
   const { data: prayers = [] } = useQuery({
     queryKey: ['shared_prayer_requests', currentDistrictId],
     queryFn: () => getSharedPrayerRequests(currentDistrictId),
     enabled: (activeTab === 'overview' || activeTab === 'prayer') && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const navigate = useNavigate();
@@ -248,30 +256,36 @@ export default function AdminDashboard() {
     queryKey: ['schedules', currentDistrictId],
     queryFn: () => getSchedules(currentDistrictId),
     enabled: (activeTab === 'overview' || activeTab === 'schedule') && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery({
     queryKey: ['all_users', currentDistrictId],
     queryFn: () => getAllUsers(currentDistrictId),
     enabled: (activeTab === 'overview' || activeTab === 'members') && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const { data: bibleStudies = [], isLoading: studiesLoading } = useQuery({
     queryKey: ['all_bible_studies', currentDistrictId],
     queryFn: () => getAllBibleStudies(currentDistrictId),
     enabled: (activeTab === 'overview' || activeTab === 'study') && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const { data: studySources = [], isLoading: sourcesLoading } = useQuery({
     queryKey: ['study_sources'],
     queryFn: getStudySources,
     enabled: activeTab === 'study',
+    staleTime: 60_000,
+    placeholderData: (previous) => previous,
   });
 
   const { data: readingSummaries = [] } = useQuery({
     queryKey: ['all_reading_summaries', currentDistrictId],
     queryFn: () => getAllBibleReadingSummaries(currentDistrictId),
     enabled: (activeTab === 'overview' || activeTab === 'bible') && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const hasReadingRange = readingFrom !== '' && readingTo !== '';
@@ -287,6 +301,7 @@ export default function AdminDashboard() {
     queryKey: ['access_info', currentDistrictId],
     queryFn: () => getAccessInfo(currentDistrictId),
     enabled: activeTab === 'access' && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const { data: studyAnswers = [], isLoading: answersLoading } = useQuery({
@@ -299,6 +314,7 @@ export default function AdminDashboard() {
     queryKey: ['weekly_reports', currentDistrictId],
     queryFn: () => getWeeklyReports(currentDistrictId),
     enabled: activeTab === 'report' && !!currentDistrictId,
+    placeholderData: (previous) => previous,
   });
 
   const weeklyCloseMutation = useMutation({
@@ -509,6 +525,19 @@ export default function AdminDashboard() {
             {format(new Date(), 'yyyy.MM.dd HH:mm', { locale: ko })}
           </Badge>
         </div>
+
+        {isViewingOtherDistrict && (
+          <Card className="border-amber-200 bg-amber-50/70">
+            <CardContent className="py-4 flex flex-col gap-1 text-sm">
+              <p className="font-medium text-amber-900">
+                현재 작업 구역: {currentDistrictName}
+              </p>
+              <p className="text-amber-800">
+                마스터 권한으로 다른 구역을 보고 있습니다. 내 기본 구역은 {homeDistrictName}입니다.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex flex-wrap gap-1 h-auto">
@@ -981,6 +1010,9 @@ export default function AdminDashboard() {
                 <CardDescription>원본은 전체 공유되고, 각 구역은 원본을 바탕으로 자기 구역 수정본을 만듭니다.</CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  원본 목록은 전역 데이터입니다. 현재 작업 구역을 바꿔도 원본 자체는 동일하고, `내 구역 상태`만 현재 작업 구역 기준으로 달라집니다.
+                </div>
                 {sourcesLoading ? (
                   <div className="flex justify-center py-4">
                     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
