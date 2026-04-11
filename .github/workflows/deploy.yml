@@ -1,8 +1,7 @@
-name: Deploy to Firebase Hosting
+name: Deploy to Firebase Hosting (manual)
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
