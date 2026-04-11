@@ -25,7 +25,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isMaster, isLeader } = useAuth();
-  const { currentDistrictName } = useDistrict();
+  const {
+    currentDistrictName,
+    homeDistrictName,
+    isViewingOtherDistrict,
+    resetDistrict,
+  } = useDistrict();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const isOnline = useOnlineStatus();
@@ -59,7 +64,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-display font-bold text-sm md:text-base">벧</span>
             </div>
-            <span className="font-display font-semibold text-sm md:text-base hidden sm:inline">{currentDistrictName} 구역</span>
+            <div className="hidden sm:flex flex-col">
+              <span className="font-display font-semibold text-sm md:text-base">{currentDistrictName} 구역</span>
+              {isViewingOtherDistrict && (
+                <span className="text-[11px] text-muted-foreground">
+                  내 기본 구역: {homeDistrictName}
+                </span>
+              )}
+            </div>
           </Link>
 
           {/* Desktop nav */}
@@ -87,6 +99,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2 md:gap-3">
             <DistrictSelector />
+            {isViewingOtherDistrict && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:inline-flex text-xs"
+                onClick={resetDistrict}
+              >
+                내 구역으로
+              </Button>
+            )}
             <GlobalSearch />
             <Link
               to="/profile"
