@@ -22,7 +22,9 @@ import {
   rejectUser,
   changeUserRole,
   getAllBibleStudies,
+  getStudySources,
   createBibleStudy,
+  createDistrictStudyFromSource,
   updateBibleStudy,
   deleteBibleStudy,
   getStudyAnswersForStudy,
@@ -37,7 +39,7 @@ import {
   changeUserDistrict,
   getDistricts,
 } from '@/lib/api';
-import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport } from '@/lib/api';
+import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport, StudySource } from '@/lib/api';
 import type { BibleStudy } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -260,6 +262,12 @@ export default function AdminDashboard() {
     enabled: (activeTab === 'overview' || activeTab === 'study') && !!currentDistrictId,
   });
 
+  const { data: studySources = [], isLoading: sourcesLoading } = useQuery({
+    queryKey: ['study_sources'],
+    queryFn: getStudySources,
+    enabled: activeTab === 'study',
+  });
+
   const { data: readingSummaries = [] } = useQuery({
     queryKey: ['all_reading_summaries', currentDistrictId],
     queryFn: () => getAllBibleReadingSummaries(currentDistrictId),
@@ -394,6 +402,23 @@ export default function AdminDashboard() {
     onError: () => toast.error('성경공부 자료 삭제에 실패했습니다.'),
   });
 
+  const createFromSourceMutation = useMutation({
+    mutationFn: (sourceId: string) => createDistrictStudyFromSource(sourceId, currentDistrictId),
+    onSuccess: (studyId: string) => {
+      queryClient.invalidateQueries({ queryKey: ['all_bible_studies'] });
+      queryClient.invalidateQueries({ queryKey: ['bible_studies'] });
+      toast.success('내 구역 수정본을 만들었습니다. 이제 내용을 검토하고 발행할 수 있습니다.');
+      const createdStudy = bibleStudies.find((study) => study.id === studyId);
+      if (createdStudy) {
+        handleEditStudy(createdStudy);
+      }
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : '수정본 생성에 실패했습니다.';
+      toast.error(msg);
+    },
+  });
+
   // Redirect if not leader/master
   if (user?.role !== 'leader' && user?.role !== 'master') {
     return (
@@ -409,6 +434,11 @@ export default function AdminDashboard() {
   const pendingUsers = allUsers.filter((u: FullUser) => u.status === 'pending');
   const activeUsers = allUsers.filter((u: FullUser) => u.status === 'active');
   const publishedStudies = bibleStudies.filter((study) => study.published);
+  const studyBySourceId = new Map(
+    bibleStudies
+      .filter((study) => Boolean(study.sourceId))
+      .map((study) => [study.sourceId as string, study])
+  );
 
   const handleSaveStudy = (payload: {
     weekNumber: number;
@@ -937,6 +967,98 @@ export default function AdminDashboard() {
                 </CardHeader>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">주보 파싱 원본</CardTitle>
+                <CardDescription>원본은 전체 공유되고, 각 구역은 원본을 바탕으로 자기 구역 수정본을 만듭니다.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {sourcesLoading ? (
+                  <div className="flex justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>주차</TableHead>
+                        <TableHead>제목</TableHead>
+                        <TableHead>날짜</TableHead>
+                        <TableHead>파싱</TableHead>
+                        <TableHead>내 구역 상태</TableHead>
+                        <TableHead className="text-right">관리</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {studySources.map((source: StudySource) => {
+                        const districtStudy = studyBySourceId.get(source.id);
+                        return (
+                          <TableRow key={source.id}>
+                            <TableCell className="font-medium">{source.weekNumber}주차</TableCell>
+                            <TableCell>
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{source.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">{source.scripture}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{source.date}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">
+                                {source.parseMode === 'manual' ? '수동' : '자동'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {districtStudy ? (
+                                <Badge variant={districtStudy.published ? 'default' : 'secondary'} className="text-xs">
+                                  {districtStudy.published ? '발행됨' : '수정본 있음'}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs">없음</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {source.sourcePdfUrl && (
+                                  <Button size="sm" variant="ghost" asChild>
+                                    <a href={source.sourcePdfUrl} target="_blank" rel="noreferrer">
+                                      <Link className="w-3 h-3 mr-1" />
+                                      원본 PDF
+                                    </a>
+                                  </Button>
+                                )}
+                                {districtStudy ? (
+                                  <Button size="sm" variant="outline" onClick={() => handleEditStudy(districtStudy)}>
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    수정하기
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => createFromSourceMutation.mutate(source.id)}
+                                    disabled={createFromSourceMutation.isPending}
+                                  >
+                                    <Copy className="w-3 h-3 mr-1" />
+                                    내 구역 수정본 만들기
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {studySources.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                            아직 등록된 원본이 없습니다. 자동 파싱 또는 수동 파싱으로 첫 원본을 가져오세요.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>

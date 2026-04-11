@@ -52,6 +52,23 @@ export interface BibleStudy {
   introduction: string;
   questions: string[];
   published: boolean;
+  sourceId?: string | null;
+  sourcePdfUrl?: string | null;
+  sourceSnapshot?: Record<string, unknown>;
+}
+
+export interface StudySource {
+  id: string;
+  weekNumber: number;
+  date: string;
+  title: string;
+  scripture: string;
+  introduction: string;
+  questions: string[];
+  sourcePdfUrl: string | null;
+  parseMode: 'auto' | 'manual';
+  parsedBy: string | null;
+  createdAt: string;
 }
 
 export interface StudyAnswer {
@@ -227,6 +244,9 @@ export async function getBibleStudies(districtId: string): Promise<BibleStudy[]>
     introduction: row.introduction,
     questions: row.questions as string[],
     published: row.published,
+    sourceId: row.source_id ?? null,
+    sourcePdfUrl: row.source_pdf_url ?? null,
+    sourceSnapshot: (row.source_snapshot as Record<string, unknown> | null | undefined) ?? {},
   }));
 }
 
@@ -249,7 +269,48 @@ export async function getAllBibleStudies(districtId: string): Promise<BibleStudy
     introduction: row.introduction,
     questions: row.questions as string[],
     published: row.published,
+    sourceId: row.source_id ?? null,
+    sourcePdfUrl: row.source_pdf_url ?? null,
+    sourceSnapshot: (row.source_snapshot as Record<string, unknown> | null | undefined) ?? {},
   }));
+}
+
+export async function getStudySources(): Promise<StudySource[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('study_sources')
+      .select('*')
+      .order('study_date', { ascending: false })
+      .order('created_at', { ascending: false }),
+    '성경공부 원본 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    weekNumber: row.week_number,
+    date: row.study_date,
+    title: row.title,
+    scripture: row.scripture ?? '',
+    introduction: row.introduction ?? '',
+    questions: Array.isArray(row.questions) ? (row.questions as string[]) : [],
+    sourcePdfUrl: row.source_pdf_url ?? null,
+    parseMode: row.parse_mode,
+    parsedBy: row.parsed_by ?? null,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function createDistrictStudyFromSource(sourceId: string, districtId?: string): Promise<string> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('create_bible_study_from_source', {
+      p_source_id: sourceId,
+      p_district_id: districtId ?? null,
+    }),
+    '원본 기반 수정본 생성'
+  );
+  if (error) throw error;
+  if (!data) throw new Error('수정본 생성 결과를 받지 못했습니다.');
+  return data as string;
 }
 
 export async function createBibleStudy(params: {
