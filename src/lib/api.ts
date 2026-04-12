@@ -1324,6 +1324,29 @@ export interface AppNotification {
   payload?: Record<string, unknown>;
 }
 
+export interface PushSubscriptionDevice {
+  id: string;
+  endpoint: string;
+  platform: string;
+  userAgent: string | null;
+  appVersion: string | null;
+  isActive: boolean;
+  lastSeenAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPreferences {
+  scheduleEnabled: boolean;
+  studyEnabled: boolean;
+  devotionalEnabled: boolean;
+  prayerEnabled: boolean;
+  readingWeeklyEnabled: boolean;
+  serviceNoticeEnabled: boolean;
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+  digestMode: 'instant' | 'daily' | 'weekly';
+}
+
 export async function getNotifications(userId: string, districtId: string): Promise<AppNotification[]> {
   const { data, error } = await withApiTimeout(
     supabase
@@ -1402,6 +1425,134 @@ export async function deleteNotification(id: string): Promise<void> {
   const { error } = await withApiTimeout(
     supabase.from('notifications').delete().eq('id', id),
     '알림 삭제'
+  );
+  if (error) throw error;
+}
+
+const defaultNotificationPreferences: NotificationPreferences = {
+  scheduleEnabled: true,
+  studyEnabled: true,
+  devotionalEnabled: true,
+  prayerEnabled: true,
+  readingWeeklyEnabled: true,
+  serviceNoticeEnabled: true,
+  quietHoursStart: null,
+  quietHoursEnd: null,
+  digestMode: 'instant',
+};
+
+export async function getPushSubscriptions(userId: string): Promise<PushSubscriptionDevice[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('push_subscriptions')
+      .select('id, endpoint, platform, user_agent, app_version, is_active, last_seen_at, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    '푸시 구독 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    endpoint: row.endpoint,
+    platform: row.platform,
+    userAgent: row.user_agent,
+    appVersion: row.app_version,
+    isActive: row.is_active,
+    lastSeenAt: row.last_seen_at,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function savePushSubscription(params: {
+  userId: string;
+  districtId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  platform: string;
+  userAgent?: string | null;
+  appVersion?: string | null;
+}): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase
+      .from('push_subscriptions')
+      .upsert({
+        user_id: params.userId,
+        district_id: params.districtId,
+        endpoint: params.endpoint,
+        p256dh: params.p256dh,
+        auth: params.auth,
+        platform: params.platform,
+        user_agent: params.userAgent ?? null,
+        app_version: params.appVersion ?? null,
+        is_active: true,
+        last_seen_at: new Date().toISOString(),
+      }, { onConflict: 'endpoint' }),
+    '푸시 구독 저장'
+  );
+  if (error) throw error;
+}
+
+export async function deactivatePushSubscription(userId: string, endpoint: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase
+      .from('push_subscriptions')
+      .update({
+        is_active: false,
+        last_seen_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint),
+    '푸시 구독 해지'
+  );
+  if (error) throw error;
+}
+
+export async function getNotificationPreferences(userId: string): Promise<NotificationPreferences> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    '알림 설정 조회'
+  );
+  if (error) throw error;
+  if (!data) return defaultNotificationPreferences;
+
+  return {
+    scheduleEnabled: data.schedule_enabled,
+    studyEnabled: data.study_enabled,
+    devotionalEnabled: data.devotional_enabled,
+    prayerEnabled: data.prayer_enabled,
+    readingWeeklyEnabled: data.reading_weekly_enabled,
+    serviceNoticeEnabled: data.service_notice_enabled,
+    quietHoursStart: data.quiet_hours_start,
+    quietHoursEnd: data.quiet_hours_end,
+    digestMode: data.digest_mode,
+  };
+}
+
+export async function saveNotificationPreferences(
+  userId: string,
+  patch: Partial<NotificationPreferences>,
+): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase
+      .from('notification_preferences')
+      .upsert({
+        user_id: userId,
+        schedule_enabled: patch.scheduleEnabled,
+        study_enabled: patch.studyEnabled,
+        devotional_enabled: patch.devotionalEnabled,
+        prayer_enabled: patch.prayerEnabled,
+        reading_weekly_enabled: patch.readingWeeklyEnabled,
+        service_notice_enabled: patch.serviceNoticeEnabled,
+        quiet_hours_start: patch.quietHoursStart,
+        quiet_hours_end: patch.quietHoursEnd,
+        digest_mode: patch.digestMode,
+      }, { onConflict: 'user_id' }),
+    '알림 설정 저장'
   );
   if (error) throw error;
 }
