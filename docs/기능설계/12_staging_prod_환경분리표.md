@@ -239,7 +239,7 @@ staging에서 반드시 확인할 것:
 
 현재 Phase 8에서 아래는 staging이 반드시 필요하다.
 
-- `013` migration
+- `015` migration
 - `push_subscriptions`
 - `notification_preferences`
 - `push_deliveries`
@@ -330,7 +330,7 @@ staging에서 반드시 확인할 것:
 
 1. Vercel env 표를 실제 값 입력 자리까지 채우기
 2. Supabase staging 확보
-3. `013` migration을 staging에 적용
+3. `015` migration을 staging에 적용
 4. push 함수 staging 배포
 5. dry-run 검증
 6. 그 다음 prod 반영

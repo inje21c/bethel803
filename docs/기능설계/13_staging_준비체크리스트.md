@@ -25,7 +25,7 @@
 - staging용 Vercel 연결이 정리됨
 - staging용 GitHub Actions secret이 준비됨
 - Auth redirect / Storage / Edge Function / dry-run 검증이 가능함
-- `013` 이후 작업을 staging에서 안전하게 시험할 수 있음
+- `015` 이후 작업을 staging에서 안전하게 시험할 수 있음
 
 ## 3. 준비 원칙
 
@@ -71,7 +71,7 @@
 
 Phase 8 준비 항목:
 
-- [ ] [013_phase8_push_notifications.sql](/home/ubuntu/bethel803/supabase/migrations/013_phase8_push_notifications.sql) 적용
+- [ ] [015_phase8_push_subscriptions.sql](/home/ubuntu/bethel803/supabase/migrations/015_phase8_push_subscriptions.sql) 적용
 - [ ] `push_subscriptions` 테이블 확인
 - [ ] `notification_preferences` 테이블 확인
 - [ ] `push_deliveries` 테이블 확인
@@ -200,7 +200,7 @@ Phase 8 준비 항목:
 
 ## 4.10 Phase 8 검증
 
-`013` 이후 기준:
+`015` 이후 기준:
 
 - [ ] 앱 내 알림 조회가 기존처럼 동작
 - [ ] 서비스 공지 조회 정책 확인
@@ -235,7 +235,7 @@ staging 준비가 끝나면 아래를 남긴다.
 
 1. staging Supabase 준비 완료
 2. Preview -> staging 연결 완료
-3. `013` 적용 완료
+3. `015` 적용 완료
 4. push 함수 배포 완료
 5. dry-run 검증 완료
 

@@ -60,7 +60,7 @@
 ### 3.5 DB 초기화
 
 - 기존 마이그레이션 적용
-- [013_phase8_push_notifications.sql](/home/ubuntu/bethel803/supabase/migrations/013_phase8_push_notifications.sql) 적용
+- [015_phase8_push_subscriptions.sql](/home/ubuntu/bethel803/supabase/migrations/015_phase8_push_subscriptions.sql) 적용
 - `push_subscriptions`
 - `notification_preferences`
 - `push_deliveries`
@@ -151,7 +151,7 @@ staging secrets:
 2. EC2 `.env.local`이 staging으로 전환 완료
 3. Vercel Preview env 입력 완료
 4. GitHub `staging` environment 입력 완료
-5. `013` 적용 완료
+5. `015` 적용 완료
 
 이 시점이 첫 번째 실제 검증 컷오프다.
 

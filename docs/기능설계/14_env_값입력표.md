@@ -49,6 +49,8 @@
 | `VITE_SUPABASE_URL` | staging Supabase URL | [ ] | |
 | `VITE_SUPABASE_ANON_KEY` | staging anon key | [ ] | |
 | `VITE_APP_URL` | preview URL 정책값 | [ ] | 브랜치 preview 기준 |
+| `VITE_VAPID_PUBLIC_KEY` | staging 공개 VAPID 키 | [ ] | 웹푸시 구독용 |
+| `VITE_APP_VERSION` | `staging-preview` 등 | [ ] | 선택 |
 
 권장 메모:
 
@@ -66,6 +68,8 @@
 | `VITE_SUPABASE_URL` | prod Supabase URL | [ ] | |
 | `VITE_SUPABASE_ANON_KEY` | prod anon key | [ ] | |
 | `VITE_APP_URL` | 운영 앱 URL | [ ] | Auth redirect와 일치해야 함 |
+| `VITE_VAPID_PUBLIC_KEY` | prod 공개 VAPID 키 | [ ] | 웹푸시 구독용 |
+| `VITE_APP_VERSION` | `prod-2026-04` 등 | [ ] | 선택 |
 
 ## 5. EC2 dev `.env.local` 입력표
 
@@ -82,6 +86,8 @@
 | `VITE_SUPABASE_URL` | staging Supabase URL | [ ] | |
 | `VITE_SUPABASE_ANON_KEY` | staging anon key | [ ] | |
 | `VITE_APP_URL` | `http://localhost:8080` 또는 dev URL | [ ] | |
+| `VITE_VAPID_PUBLIC_KEY` | staging 공개 VAPID 키 | [ ] | |
+| `VITE_APP_VERSION` | `local-dev` 등 | [ ] | 선택 |
 
 ## 6. Supabase Edge Function env 입력표
 
@@ -97,6 +103,8 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | staging service role key | [ ] | |
 | `OPENAI_API_KEY` | staging용 또는 공용 OpenAI key | [ ] | |
 | `PUSH_DISPATCH_SECRET` | staging 내부 호출 secret | [ ] | |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | staging 비공개 VAPID 키 | [ ] | push 발송용 |
+| `WEB_PUSH_VAPID_SUBJECT` | `mailto:` 또는 운영 메일 | [ ] | push 발송용 |
 
 대상 함수:
 
@@ -113,6 +121,8 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | prod service role key | [ ] | |
 | `OPENAI_API_KEY` | prod OpenAI key | [ ] | |
 | `PUSH_DISPATCH_SECRET` | prod 내부 호출 secret | [ ] | |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | prod 비공개 VAPID 키 | [ ] | push 발송용 |
+| `WEB_PUSH_VAPID_SUBJECT` | `mailto:` 또는 운영 메일 | [ ] | push 발송용 |
 
 주의:
 
@@ -134,6 +144,8 @@
 | `OPENAI_API_KEY` | staging OpenAI key | [ ] | |
 | `APP_URL` | staging 앱 URL | [ ] | |
 | `PUSH_DISPATCH_SECRET` | staging dispatch secret | [ ] | |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | staging 비공개 VAPID 키 | [ ] | |
+| `WEB_PUSH_VAPID_SUBJECT` | 운영 메일 또는 관리자 메일 | [ ] | |
 | `VERCEL_TOKEN` | 필요 시 | [ ] | 선택 |
 | `VERCEL_PROJECT_ID` | 필요 시 | [ ] | 선택 |
 
@@ -146,6 +158,8 @@
 | `OPENAI_API_KEY` | prod OpenAI key | [ ] | |
 | `APP_URL` | 운영 앱 URL | [ ] | |
 | `PUSH_DISPATCH_SECRET` | prod dispatch secret | [ ] | |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | prod 비공개 VAPID 키 | [ ] | |
+| `WEB_PUSH_VAPID_SUBJECT` | 운영 메일 또는 관리자 메일 | [ ] | |
 | `VERCEL_TOKEN` | 필요 시 | [ ] | 선택 |
 | `VERCEL_PROJECT_ID` | 필요 시 | [ ] | 선택 |
 
@@ -177,7 +191,7 @@
 
 | 항목 | staging | prod | 상태 | 메모 |
 |------|------|------|------|------|
-| `013` migration 적용 | [입력] | [입력] | [ ] | |
+| `015` migration 적용 | [입력] | [입력] | [ ] | |
 | `push_subscriptions` 확인 | [입력] | [입력] | [ ] | |
 | `notification_preferences` 확인 | [입력] | [입력] | [ ] | |
 | `push_deliveries` 확인 | [입력] | [입력] | [ ] | |
