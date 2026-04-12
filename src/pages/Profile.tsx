@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Save } from 'lucide-react';
+import { BellRing, Lock, Save, Smartphone, User } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { updateUserName } from '@/lib/api';
+import {
+  deactivatePushSubscription,
+  getNotificationPreferences,
+  getPushSubscriptions,
+  saveNotificationPreferences,
+  savePushSubscription,
+  updateUserName,
+} from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,10 +18,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import {
+  getCurrentBrowserSubscription,
+  getPushPermissionState,
+  getPushSetupMessage,
+  hasPushSetupReady,
+  isPushSupported,
+  subscribeBrowserPush,
+  unsubscribeBrowserPush,
+} from '@/lib/push';
 import { toast } from 'sonner';
 
 export default function Profile() {
   const { user, updatePassword, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState(user?.name ?? '');
   const [nameLoading, setNameLoading] = useState(false);
@@ -22,6 +41,74 @@ export default function Profile() {
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
+  const [permissionState, setPermissionState] = useState<NotificationPermission | 'unsupported'>(getPushPermissionState());
+  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
+  const pushSupported = isPushSupported();
+  const pushSetupMessage = getPushSetupMessage();
+  const isStandalone =
+    typeof window !== 'undefined'
+    && (
+      window.matchMedia('(display-mode: standalone)').matches
+      || ((navigator as Navigator & { standalone?: boolean }).standalone === true)
+    );
+
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ['push_subscriptions', user?.id],
+    queryFn: () => getPushSubscriptions(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: preferences = {
+    scheduleEnabled: true,
+    studyEnabled: true,
+    devotionalEnabled: true,
+    prayerEnabled: true,
+    readingWeeklyEnabled: true,
+    serviceNoticeEnabled: true,
+    quietHoursStart: null,
+    quietHoursEnd: null,
+    digestMode: 'instant' as const,
+  } } = useQuery({
+    queryKey: ['notification_preferences', user?.id],
+    queryFn: () => getNotificationPreferences(user!.id),
+    enabled: !!user,
+  });
+
+  const activeSubscriptions = useMemo(
+    () => subscriptions.filter((item) => item.isActive),
+    [subscriptions],
+  );
+
+  const currentDeviceSubscription = useMemo(
+    () => activeSubscriptions.find((item) => item.endpoint === currentEndpoint) ?? null,
+    [activeSubscriptions, currentEndpoint],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncBrowserSubscription = async () => {
+      setPermissionState(getPushPermissionState());
+      if (!pushSupported) {
+        setCurrentEndpoint(null);
+        return;
+      }
+
+      try {
+        const subscription = await getCurrentBrowserSubscription();
+        if (!cancelled) {
+          setCurrentEndpoint(subscription?.endpoint ?? null);
+        }
+      } catch {
+        if (!cancelled) setCurrentEndpoint(null);
+      }
+    };
+
+    void syncBrowserSubscription();
+    return () => {
+      cancelled = true;
+    };
+  }, [pushSupported]);
 
   const handleNameSave = async () => {
     if (!name.trim() || name.trim() === user?.name) return;
@@ -59,6 +146,63 @@ export default function Profile() {
     } finally {
       setPwLoading(false);
     }
+  };
+
+  const subscribeMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.districtId) throw new Error('소속 구역 정보가 없어 구독을 진행할 수 없습니다.');
+      const subscription = await subscribeBrowserPush();
+      await savePushSubscription({
+        userId: user.id,
+        districtId: user.districtId,
+        ...subscription,
+      });
+      return subscription.endpoint;
+    },
+    onSuccess: (endpoint) => {
+      setPermissionState(getPushPermissionState());
+      setCurrentEndpoint(endpoint);
+      queryClient.invalidateQueries({ queryKey: ['push_subscriptions'] });
+      toast.success('이 기기에서 알림 구독이 활성화되었습니다.');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : '구독 설정에 실패했습니다.';
+      toast.error(message);
+    },
+  });
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: async () => {
+      const endpoint = await unsubscribeBrowserPush();
+      if (endpoint && user) {
+        await deactivatePushSubscription(user.id, endpoint);
+      }
+      return endpoint;
+    },
+    onSuccess: (endpoint) => {
+      setPermissionState(getPushPermissionState());
+      setCurrentEndpoint(null);
+      queryClient.invalidateQueries({ queryKey: ['push_subscriptions'] });
+      toast.success(endpoint ? '현재 기기의 알림 구독을 해지했습니다.' : '이 기기에는 활성 구독이 없습니다.');
+    },
+    onError: () => {
+      toast.error('구독 해지에 실패했습니다.');
+    },
+  });
+
+  const preferenceMutation = useMutation({
+    mutationFn: (patch: Partial<typeof preferences>) => saveNotificationPreferences(user!.id, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification_preferences'] });
+    },
+    onError: () => toast.error('알림 설정 저장에 실패했습니다.'),
+  });
+
+  const handlePreferenceToggle = (
+    key: keyof typeof preferences,
+    value: boolean,
+  ) => {
+    preferenceMutation.mutate({ [key]: value });
   };
 
   return (
@@ -115,6 +259,121 @@ export default function Profile() {
                     }
                     저장
                   </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BellRing className="w-4 h-4" />
+                알림 설정
+              </CardTitle>
+              <CardDescription>
+                설치 후 구독하기를 켜면 새 일정, 성경공부, 기도제목 같은 알림을 이 기기에서 받을 수 있습니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">현재 기기 상태</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {currentDeviceSubscription ? '구독됨' : '미구독'}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">브라우저 권한</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {permissionState === 'granted'
+                      ? '허용됨'
+                      : permissionState === 'denied'
+                        ? '차단됨'
+                        : permissionState === 'default'
+                          ? '아직 미선택'
+                          : '미지원'}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">활성 기기 수</p>
+                  <p className="mt-1 text-sm font-medium">{activeSubscriptions.length}대</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-card p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">이 기기에서 알림 받기</p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {pushSetupMessage
+                        ? pushSetupMessage
+                        : permissionState === 'denied'
+                          ? '브라우저 설정에서 알림 차단을 해제한 뒤 다시 시도해 주세요.'
+                          : !isStandalone
+                            ? '홈 화면에 추가한 뒤 구독하면 더 설치형 앱처럼 안정적으로 사용할 수 있습니다.'
+                            : '현재 기기에서 바로 알림을 받을 수 있습니다.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={() => subscribeMutation.mutate()}
+                    disabled={
+                      subscribeMutation.isPending
+                      || !pushSupported
+                      || !hasPushSetupReady()
+                      || permissionState === 'denied'
+                      || !!currentDeviceSubscription
+                    }
+                  >
+                    {subscribeMutation.isPending ? '구독 설정 중...' : currentDeviceSubscription ? '현재 기기 구독됨' : '구독하기'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => unsubscribeMutation.mutate()}
+                    disabled={unsubscribeMutation.isPending || !currentDeviceSubscription}
+                  >
+                    {unsubscribeMutation.isPending ? '해지 중...' : '현재 기기 구독 해지'}
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium">받고 싶은 알림</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    구독을 켠 뒤에는 아래 항목별로 수신 범위를 조절할 수 있습니다.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    ['scheduleEnabled', '일정 알림'],
+                    ['studyEnabled', '성경공부 알림'],
+                    ['devotionalEnabled', '오늘의 묵상'],
+                    ['prayerEnabled', '기도제목 알림'],
+                    ['readingWeeklyEnabled', '주간 성경읽기'],
+                    ['serviceNoticeEnabled', '서비스 공지'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                      </div>
+                      <Switch
+                        checked={preferences[key as keyof typeof preferences] as boolean}
+                        onCheckedChange={(checked) => handlePreferenceToggle(key as keyof typeof preferences, checked)}
+                        disabled={preferenceMutation.isPending}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
