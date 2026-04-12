@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2 } from 'lucide-react';
@@ -21,6 +21,23 @@ const navItems = [
   { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
 
+const mobileTabItems = [
+  { path: '/dashboard', label: '홈', icon: Home },
+  { path: '/bible-study', label: '공부', icon: BookOpen },
+  { path: '/schedule', label: '일정', icon: CalendarDays },
+  { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
+];
+
+function isItemVisible(
+  item: { leaderOnly?: boolean; masterOnly?: boolean },
+  isLeader: boolean,
+  isMaster: boolean,
+) {
+  if (item.masterOnly && !isMaster) return false;
+  if (item.leaderOnly && !isLeader) return false;
+  return true;
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -32,13 +49,30 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     resetDistrict,
   } = useDistrict();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const isOnline = useOnlineStatus();
+  const activeTheme = resolvedTheme ?? theme ?? 'light';
+  const canResetDistrict = isViewingOtherDistrict && isMaster;
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
+
+  const toggleTheme = () => {
+    setTheme(activeTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const isMoreActive =
+    location.pathname === '/profile' ||
+    location.pathname === '/manual' ||
+    location.pathname === '/bible-reading' ||
+    location.pathname === '/admin' ||
+    location.pathname === '/districts';
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,16 +155,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="text-muted-foreground md:w-10 md:h-10"
+              onClick={toggleTheme}
+              className="hidden md:inline-flex text-muted-foreground md:w-10 md:h-10"
               aria-label="다크 모드 토글"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 md:w-5 md:h-5" /> : <Moon className="w-4 h-4 md:w-5 md:h-5" />}
+              {activeTheme === 'dark' ? <Sun className="w-4 h-4 md:w-5 md:h-5" /> : <Moon className="w-4 h-4 md:w-5 md:h-5" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground md:w-10 md:h-10">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:inline-flex text-muted-foreground md:w-10 md:h-10">
               <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </Button>
-            <button className="md:hidden text-muted-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
+            <button className="md:hidden text-muted-foreground" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}>
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
@@ -145,45 +179,86 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               exit={{ height: 0, opacity: 0 }}
               className="md:hidden border-t overflow-hidden"
             >
-              <div className="p-2 space-y-1">
-                {navItems.map(item => {
-                  if (item.masterOnly && !isMaster) return null;
-                  if (item.leaderOnly && !isLeader) return null;
-                  const active = location.pathname.startsWith(item.path);
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                        active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                      }`}
+              <div className="p-3 space-y-3">
+                <div className="rounded-xl border bg-muted/40 px-3 py-2">
+                  <p className="font-medium text-sm">{currentDistrictName} 구역</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.name} {user?.role === 'master' ? '마스터' : user?.role === 'leader' ? '구역장' : '구역원'}
+                  </p>
+                  {canResetDistrict && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 h-8 text-xs"
+                      onClick={resetDistrict}
                     >
-                      <item.icon className="w-4 h-4" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                <Link
-                  to="/profile"
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                    location.pathname === '/profile' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  <UserCircle className="w-4 h-4" />
-                  내 프로필
-                </Link>
-                <Link
-                  to="/manual"
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                    location.pathname === '/manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  사용 안내
-                </Link>
+                      내 구역으로 돌아가기
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="px-2 text-[11px] font-medium tracking-wide text-muted-foreground">메뉴</p>
+                  {navItems.map(item => {
+                    if (!isItemVisible(item, isLeader, isMaster)) return null;
+                    const active = location.pathname.startsWith(item.path);
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                          active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="px-2 text-[11px] font-medium tracking-wide text-muted-foreground">도움 및 설정</p>
+                  <Link
+                    to="/profile"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                      location.pathname === '/profile' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    내 프로필
+                  </Link>
+                  <Link
+                    to="/manual"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                      location.pathname === '/manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    사용 안내
+                  </Link>
+                  <button
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground"
+                    onClick={toggleTheme}
+                  >
+                    {activeTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                    {activeTheme === 'dark' ? '라이트 모드' : '야간 모드'}
+                  </button>
+                </div>
+
+                <div className="border-t pt-3">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    로그아웃
+                  </Button>
+                </div>
               </div>
             </motion.nav>
           )}
@@ -191,7 +266,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 pb-24 pt-6 md:px-6 md:py-6">
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}
@@ -201,6 +276,35 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {children}
         </motion.div>
       </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden">
+        <div className="grid grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1">
+          {mobileTabItems.map(item => {
+            const active = location.pathname.startsWith(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium ${
+                  active ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <item.icon className={`h-5 w-5 ${active ? 'text-primary' : ''}`} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          <button
+            className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium ${
+              mobileOpen ? 'text-primary' : isMoreActive ? 'text-primary' : 'text-muted-foreground'
+            }`}
+            onClick={() => setMobileOpen((prev) => !prev)}
+          >
+            <Menu className="h-5 w-5" />
+            <span>더보기</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
