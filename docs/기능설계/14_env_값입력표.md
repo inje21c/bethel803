@@ -103,6 +103,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | staging service role key | [ ] | |
 | `OPENAI_API_KEY` | staging용 또는 공용 OpenAI key | [ ] | |
 | `PUSH_DISPATCH_SECRET` | staging 내부 호출 secret | [ ] | |
+| `WEB_PUSH_VAPID_PUBLIC_KEY` | staging 공개 VAPID 키 | [ ] | push 발송용 |
 | `WEB_PUSH_VAPID_PRIVATE_KEY` | staging 비공개 VAPID 키 | [ ] | push 발송용 |
 | `WEB_PUSH_VAPID_SUBJECT` | `mailto:` 또는 운영 메일 | [ ] | push 발송용 |
 
@@ -110,7 +111,6 @@
 
 - `fetch-devotional`
 - `parse-bulletin`
-- `push-subscriptions`
 - `push-dispatch`
 
 ## 6.2 prod
@@ -121,6 +121,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | prod service role key | [ ] | |
 | `OPENAI_API_KEY` | prod OpenAI key | [ ] | |
 | `PUSH_DISPATCH_SECRET` | prod 내부 호출 secret | [ ] | |
+| `WEB_PUSH_VAPID_PUBLIC_KEY` | prod 공개 VAPID 키 | [ ] | push 발송용 |
 | `WEB_PUSH_VAPID_PRIVATE_KEY` | prod 비공개 VAPID 키 | [ ] | push 발송용 |
 | `WEB_PUSH_VAPID_SUBJECT` | `mailto:` 또는 운영 메일 | [ ] | push 발송용 |
 

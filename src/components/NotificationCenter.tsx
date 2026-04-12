@@ -8,6 +8,7 @@ import {
   markNotificationRead,
   createNotification,
   deleteNotification,
+  dispatchNotificationPush,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,13 +48,32 @@ export default function NotificationCenter() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createNotification({ title: newTitle.trim(), body: newBody.trim(), createdBy: user!.id, districtId: currentDistrictId }),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const notification = await createNotification({
+        title: newTitle.trim(),
+        body: newBody.trim(),
+        createdBy: user!.id,
+        districtId: currentDistrictId,
+      });
+
+      try {
+        const dispatch = await dispatchNotificationPush(notification.id);
+        return { pushSent: dispatch.sentCount ?? dispatch.targetCount ?? 0 };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '푸시 발송에 실패했습니다.';
+        return { pushSent: 0, pushError: message };
+      }
+    },
+    onSuccess: ({ pushSent, pushError }) => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       setNewTitle('');
       setNewBody('');
       setShowForm(false);
-      toast.success('알림을 발행했습니다.');
+      if (pushError) {
+        toast.warning(`알림은 저장됐지만 푸시 발송은 실패했습니다. ${pushError}`);
+        return;
+      }
+      toast.success(pushSent > 0 ? `알림을 발행하고 ${pushSent}건 푸시를 보냈습니다.` : '알림을 발행했습니다.');
     },
     onError: () => toast.error('알림 발행에 실패했습니다.'),
   });

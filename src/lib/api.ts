@@ -1396,7 +1396,7 @@ export async function createNotification(params: {
   scopeType?: 'district' | 'service';
   notificationType?: string;
   payload?: Record<string, unknown>;
-}): Promise<void> {
+}): Promise<{ id: string }> {
   const scopeType = params.scopeType ?? 'district';
   const insertRow: Record<string, unknown> = {
     title: params.title,
@@ -1414,11 +1414,12 @@ export async function createNotification(params: {
     insertRow.district_id = scopeType === 'service' ? null : (params.districtId ?? null);
   }
 
-  const { error } = await withApiTimeout(
-    supabase.from('notifications').insert(insertRow),
+  const { data, error } = await withApiTimeout(
+    supabase.from('notifications').insert(insertRow).select('id').single(),
     '알림 생성'
   );
   if (error) throw error;
+  return { id: data.id };
 }
 
 export async function deleteNotification(id: string): Promise<void> {
@@ -1427,6 +1428,36 @@ export async function deleteNotification(id: string): Promise<void> {
     '알림 삭제'
   );
   if (error) throw error;
+}
+
+export interface PushDispatchResult {
+  ok: boolean;
+  dryRun: boolean;
+  notificationId: string | null;
+  targetCount: number;
+  sentCount?: number;
+  failedCount?: number;
+  expiredCount?: number;
+  error?: string;
+}
+
+export async function dispatchNotificationPush(notificationId: string): Promise<PushDispatchResult> {
+  const { data, error } = await withApiTimeout(
+    supabase.functions.invoke('push-dispatch', {
+      body: {
+        notificationId,
+        dryRun: false,
+      },
+    }),
+    '푸시 발송'
+  );
+
+  if (error) throw error;
+  if (!data?.ok) {
+    throw new Error(typeof data?.error === 'string' ? data.error : '푸시 발송에 실패했습니다.');
+  }
+
+  return data as PushDispatchResult;
 }
 
 const defaultNotificationPreferences: NotificationPreferences = {
