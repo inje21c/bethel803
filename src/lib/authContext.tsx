@@ -56,6 +56,26 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+class InvalidSessionError extends Error {
+  constructor() {
+    super('Invalid or expired auth session');
+    this.name = 'InvalidSessionError';
+  }
+}
+
+function isUnauthorizedAuthError(error: unknown) {
+  if (!error) return false;
+  const message = JSON.stringify(error).toLowerCase();
+  return (
+    message.includes('401')
+    || message.includes('jwt')
+    || message.includes('unauthorized')
+    || message.includes('invalid token')
+    || message.includes('auth session missing')
+    || message.includes('not authenticated')
+  );
+}
+
 async function waitForSessionUser(userId: string, timeoutMs = 4000): Promise<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] | null> {
   const startedAt = Date.now();
 
@@ -95,6 +115,9 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
       districtName: (data.districts as { name: string } | null)?.name ?? '',
     };
   }
+  if (error && isUnauthorizedAuthError(error)) {
+    throw new InvalidSessionError();
+  }
   // districts 미존재 등 JOIN 실패 시 기본 컬럼만으로 조회
   const { data: fallback, error: fallbackError } = await withAuthTimeout(
     supabase
@@ -104,6 +127,9 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
       .single(),
     '사용자 정보를 불러오는 시간이 초과되었습니다.'
   );
+  if (fallbackError && isUnauthorizedAuthError(fallbackError)) {
+    throw new InvalidSessionError();
+  }
   if (fallbackError || !fallback) return null;
   return {
     id: fallback.id,
@@ -127,7 +153,10 @@ async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase
     try {
       const profile = await fetchProfile(session.user.id);
       if (profile) return profile;
-    } catch {
+    } catch (error) {
+      if (error instanceof InvalidSessionError) {
+        throw error;
+      }
       // 다음 재시도에서 다시 확인
     }
   }
@@ -194,14 +223,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const id = ++requestId.current;
 
       let profile: UserProfile | null = null;
+      let invalidSession = false;
       try {
         profile = await resolveSessionProfile(session);
-      } catch {
+      } catch (error) {
+        invalidSession = error instanceof InvalidSessionError;
         // 네트워크 실패 시에도 loading 해제 (fallback timer가 살아있으므로 이중 보호)
       }
 
       // stale response 방지: 이 요청 이후 새 이벤트가 발화됐으면 무시
       if (id !== requestId.current || !mounted.current) return;
+
+      if (invalidSession && event !== 'SIGNED_IN') {
+        clearTimeout(fallbackTimer);
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        if (mounted.current) {
+          setUser(null);
+          setLoading(false);
+        }
+        return;
+      }
 
       clearTimeout(fallbackTimer);
       // 프로필 조회가 잠시 실패해도, 동일 사용자의 기존 상태가 있으면 유지한다.
