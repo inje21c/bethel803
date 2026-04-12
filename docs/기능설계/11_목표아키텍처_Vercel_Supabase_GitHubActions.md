@@ -371,7 +371,7 @@ GitHub Actions cron
 1. `staging / prod` 환경 분리 표 작성
 2. Vercel env 분리 규칙 정리
 3. Supabase staging 확보
-4. `013` 이후 작업을 staging 기준으로 검증
+4. `015` 이후 작업을 staging 기준으로 검증
 5. 웹푸시 실발송은 그 다음 단계에서 연결
 
 ## 13. 최종 판단

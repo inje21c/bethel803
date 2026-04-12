@@ -117,7 +117,7 @@
 아래가 완료되기 전까지는 Firebase 운영 경로를 유지하는 것이 안전하다.
 
 - staging Supabase 준비 완료
-- `013` 이후 스키마 검증 완료
+- `015` 이후 스키마 검증 완료
 - push 관련 함수 dry-run 검증 완료
 - Preview -> staging 연결 안정화
 - Vercel manual deploy 성공
