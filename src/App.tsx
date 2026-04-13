@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from "./lib/authContext";
 import { DistrictProvider } from "./lib/districtContext";
 import { queryClient } from "./lib/queryClient";
 import ErrorBoundary from "./components/ErrorBoundary";
-import FirebaseLanding from "./pages/FirebaseLanding";
 
 const FIREBASE_LANDING_HOSTS = new Set(['bethel803.web.app', 'bethel803.firebaseapp.com']);
 const LANDING_PREVIEW_PATH = '/firebase-landing-preview';
@@ -38,6 +37,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Profile = lazy(() => import("./pages/Profile"));
 const UserManual = lazy(() => import("./pages/UserManual"));
 const DistrictManagement = lazy(() => import("./pages/DistrictManagement"));
+const FirebaseLanding = lazy(() => import("./pages/FirebaseLanding"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -105,7 +105,9 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <FirebaseLanding />
+        <Suspense fallback={<Spinner />}>
+          <FirebaseLanding />
+        </Suspense>
       </TooltipProvider>
     ) : (
       <QueryClientProvider client={queryClient}>

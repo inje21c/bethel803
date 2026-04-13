@@ -56,6 +56,8 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const profileRequestCache = new Map<string, Promise<UserProfile | null>>();
+
 class InvalidSessionError extends Error {
   constructor() {
     super('Invalid or expired auth session');
@@ -74,25 +76,6 @@ function isUnauthorizedAuthError(error: unknown) {
     || message.includes('auth session missing')
     || message.includes('not authenticated')
   );
-}
-
-async function waitForSessionUser(userId: string, timeoutMs = 4000): Promise<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] | null> {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id === userId) {
-        return session;
-      }
-    } catch {
-      // 다음 폴링에서 다시 확인
-    }
-
-    await sleep(200);
-  }
-
-  return null;
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
@@ -164,6 +147,23 @@ async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase
   return null;
 }
 
+function resolveSessionProfileCached(
+  session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
+): Promise<UserProfile | null> {
+  const userId = session?.user?.id;
+  if (!userId) return Promise.resolve(null);
+
+  const cached = profileRequestCache.get(userId);
+  if (cached) return cached;
+
+  const request = resolveSessionProfile(session).finally(() => {
+    profileRequestCache.delete(userId);
+  });
+
+  profileRequestCache.set(userId, request);
+  return request;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -225,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let profile: UserProfile | null = null;
       let invalidSession = false;
       try {
-        profile = await resolveSessionProfile(session);
+        profile = await resolveSessionProfileCached(session);
       } catch (error) {
         invalidSession = error instanceof InvalidSessionError;
         // 네트워크 실패 시에도 loading 해제 (fallback timer가 살아있으므로 이중 보호)
@@ -298,12 +298,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    const stableSession =
-      (data.session?.user?.id
-        ? await waitForSessionUser(data.session.user.id)
-        : null) ?? data.session;
-
-    const profile = await resolveSessionProfile(stableSession);
+    const stableSession = data.session ?? (await supabase.auth.getSession()).data.session;
+    const profile = await resolveSessionProfileCached(stableSession);
     if (!profile) {
       if (mounted.current) setLoading(false);
       throw new Error('로그인은 되었지만 사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
@@ -312,9 +308,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (mounted.current) {
       setUser(profile);
       setLoading(false);
-    }
-    if (data.user) {
-      updateLastLogin(data.user.id);
     }
   }, []);
 

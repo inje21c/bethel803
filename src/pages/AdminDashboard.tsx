@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked,
@@ -6,10 +6,6 @@ import {
   RefreshCw, Edit, Trash2, MessageCircle, Lock, LockOpen,
   UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft
 } from 'lucide-react';
-import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
@@ -55,12 +51,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import KakaoNoticeGenerator from '@/components/KakaoNoticeGenerator';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const AdminBibleReadingTab = lazy(() => import('@/components/admin/AdminBibleReadingTab'));
+const AdminWeeklyReportTab = lazy(() => import('@/components/admin/AdminWeeklyReportTab'));
+const KakaoNoticeGenerator = lazy(() => import('@/components/KakaoNoticeGenerator'));
 
 function exportCSV(rows: (string | number)[][], filename: string) {
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -81,6 +79,14 @@ function getThisWeekStart(): string {
   const monday = new Date(kstNow);
   monday.setUTCDate(kstNow.getUTCDate() - daysFromMonday);
   return monday.toISOString().slice(0, 10);
+}
+
+function TabFallback() {
+  return (
+    <div className="flex justify-center py-8">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 }
 
 function BibleStudyForm({
@@ -1258,147 +1264,17 @@ export default function AdminDashboard() {
 
           {/* Bible Reading Tab */}
           <TabsContent value="bible" className="space-y-4">
-            {/* 기간 선택 */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">조회 기간</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Input
-                    type="date"
-                    value={readingFrom}
-                    onChange={e => setReadingFrom(e.target.value)}
-                    className="w-auto"
-                  />
-                  <span className="text-muted-foreground">~</span>
-                  <Input
-                    type="date"
-                    value={readingTo}
-                    onChange={e => setReadingTo(e.target.value)}
-                    className="w-auto"
-                  />
-                  {hasReadingRange && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => { setReadingFrom(''); setReadingTo(''); }}
-                    >
-                      초기화
-                    </Button>
-                  )}
-                  {readingRangeFetching && (
-                    <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  {hasReadingRange ? `${readingFrom} ~ ${readingTo} 기간 합산` : '전체 누적 (기간 미선택)'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription className="text-xs">기록한 구역원</CardDescription>
-                  <CardTitle className="text-2xl">{displayedReadingSummaries.length}명</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription className="text-xs">{hasReadingRange ? '기간 합계' : '구역 총 누적'}</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {displayedReadingSummaries.reduce((sum: number, r: BibleReadingSummary) => sum + r.totalChapters, 0)}장
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* 성경읽기 BarChart */}
-            {displayedReadingSummaries.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">구역원별 읽기 현황 차트</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={displayedReadingSummaries.map(r => ({ name: r.userName, 장수: r.totalChapters }))}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Bar dataKey="장수" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">구역원별 성경읽기 현황</CardTitle>
-                  <CardDescription>
-                    {hasReadingRange ? `${readingFrom} ~ ${readingTo}` : '2026년 누적 기준 (전체 1189장)'}
-                  </CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 shrink-0"
-                  onClick={() => exportCSV(
-                    hasReadingRange
-                      ? [
-                          ['이름', '장수'],
-                          ...displayedReadingSummaries.map(r => [r.userName, r.totalChapters]),
-                        ]
-                      : [
-                          ['이름', '누적 장수', '진행률(%)'],
-                          ...displayedReadingSummaries.map(r => [r.userName, r.totalChapters, Math.round((r.totalChapters / 1189) * 100)]),
-                        ],
-                    `성경읽기_${hasReadingRange ? `${readingFrom}_${readingTo}` : new Date().toISOString().slice(0, 10)}.csv`
-                  )}
-                >
-                  <Download className="w-3.5 h-3.5" /> CSV
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>이름</TableHead>
-                      <TableHead className="text-right">{hasReadingRange ? '장수' : '누적 장수'}</TableHead>
-                      {!hasReadingRange && <TableHead>진행률</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedReadingSummaries.map((r: BibleReadingSummary) => (
-                      <TableRow key={r.userId}>
-                        <TableCell className="font-medium">{r.userName}</TableCell>
-                        <TableCell className="text-right font-semibold">{r.totalChapters}장</TableCell>
-                        {!hasReadingRange && (
-                          <TableCell className="w-32">
-                            <div className="flex items-center gap-2">
-                              <Progress value={Math.min((r.totalChapters / 1189) * 100, 100)} className="flex-1 h-1.5" />
-                              <span className="text-xs text-muted-foreground w-8">
-                                {Math.round((r.totalChapters / 1189) * 100)}%
-                              </span>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                    {displayedReadingSummaries.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={hasReadingRange ? 2 : 3} className="text-center text-muted-foreground py-4">
-                          {hasReadingRange ? '선택한 기간에 성경읽기 기록이 없습니다.' : '아직 성경읽기 기록이 없습니다.'}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <Suspense fallback={<TabFallback />}>
+              <AdminBibleReadingTab
+                readingFrom={readingFrom}
+                readingTo={readingTo}
+                setReadingFrom={setReadingFrom}
+                setReadingTo={setReadingTo}
+                hasReadingRange={hasReadingRange}
+                readingRangeFetching={readingRangeFetching}
+                displayedReadingSummaries={displayedReadingSummaries}
+              />
+            </Suspense>
           </TabsContent>
 
           {/* Schedule Management Tab */}
@@ -1478,183 +1354,23 @@ export default function AdminDashboard() {
 
           {/* Weekly Report Tab */}
           <TabsContent value="report" className="space-y-4">
-            {/* 이번 주 마감 상태 */}
-            {(() => {
-              const thisWeekStart = getThisWeekStart();
-              const thisWeekReport = weeklyReports.find(r => r.weekStart === thisWeekStart);
-              const isThisWeekLocked = thisWeekReport?.isLocked === true;
-              return (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      이번 주 마감 상태
-                    </CardTitle>
-                    <CardDescription>
-                      매주 일요일 11:20 KST 자동 마감 · 수동으로도 즉시 실행 가능
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {thisWeekStart} ~ {thisWeekStart.slice(0, 8)}{String(Number(thisWeekStart.slice(8)) + 6).padStart(2, '0')}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {isThisWeekLocked ? '마감 완료 — 데이터 입력이 잠겼습니다.' : '진행 중 — 구역원 데이터 입력 가능'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isThisWeekLocked ? (
-                          <Badge className="bg-red-500/10 text-red-600">마감됨</Badge>
-                        ) : (
-                          <Badge className="bg-green-500/10 text-green-600">진행중</Badge>
-                        )}
-                        {isThisWeekLocked && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => weeklyUnlockMutation.mutate(thisWeekStart)}
-                            disabled={weeklyUnlockMutation.isPending}
-                          >
-                            <LockOpen className={`w-3 h-3 mr-1 ${weeklyUnlockMutation.isPending ? 'animate-spin' : ''}`} />
-                            마감 해제
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant={isThisWeekLocked ? 'outline' : 'default'}
-                          onClick={() => weeklyCloseMutation.mutate(undefined)}
-                          disabled={weeklyCloseMutation.isPending}
-                        >
-                          <RefreshCw className={`w-3 h-3 mr-1 ${weeklyCloseMutation.isPending ? 'animate-spin' : ''}`} />
-                          {isThisWeekLocked ? '재집계' : '즉시 마감'}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {/* 출석 트렌드 차트 */}
-            {weeklyReports.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">주간 출석 / 성경읽기 트렌드</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart
-                      data={[...weeklyReports].reverse().slice(-8).map(r => ({
-                        week: `${r.weekNumber}주`,
-                        출석: r.attendanceCount,
-                        성경읽기: r.bibleChaptersTotal,
-                      }))}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="출석" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="성경읽기" stroke="#22c55e" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* 보고서 목록 */}
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">주간 보고서 목록</CardTitle>
-                  <CardDescription>마감 완료된 주차별 집계 결과</CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 shrink-0"
-                  onClick={() => exportCSV(
-                    [
-                      ['주차', '시작일', '종료일', '출석인원', '성경읽기(장)', '공부완료', '출석자'],
-                      ...weeklyReports.map(r => [r.weekNumber, r.weekStart, r.weekEnd, r.attendanceCount, r.bibleChaptersTotal, r.studyCompletionCount, r.attendanceNames.join('/')]),
-                    ],
-                    `주간보고_${new Date().toISOString().slice(0, 10)}.csv`
-                  )}
-                >
-                  <Download className="w-3.5 h-3.5" /> CSV
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {reportsLoading ? (
-                  <div className="flex justify-center py-4">
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : weeklyReports.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-6 text-sm">
-                    아직 마감된 주가 없습니다. '즉시 마감' 버튼으로 테스트해 보세요.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {weeklyReports.map((report: WeeklyReport) => (
-                      <div key={report.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-semibold">{report.weekNumber}주차</p>
-                            <p className="text-xs text-muted-foreground">{report.weekStart} ~ {report.weekEnd}</p>
-                          </div>
-                          <Badge variant={report.isLocked ? 'destructive' : 'secondary'} className="text-xs">
-                            {report.isLocked ? '마감' : '진행중'}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 text-center">
-                          <div className="bg-muted rounded-md p-2">
-                            <p className="text-xs text-muted-foreground">출석</p>
-                            <p className="font-bold text-lg">{report.attendanceCount}명</p>
-                          </div>
-                          <div className="bg-muted rounded-md p-2">
-                            <p className="text-xs text-muted-foreground">성경읽기</p>
-                            <p className="font-bold text-lg">{report.bibleChaptersTotal}장</p>
-                          </div>
-                          <div className="bg-muted rounded-md p-2">
-                            <p className="text-xs text-muted-foreground">공부 완료</p>
-                            <p className="font-bold text-lg">{report.studyCompletionCount}명</p>
-                          </div>
-                        </div>
-                        {report.attendanceNames.length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            출석: {report.attendanceNames.join(', ')}
-                          </p>
-                        )}
-                        {report.reportText && (
-                          <div className="bg-muted/50 rounded-md p-3 relative">
-                            <pre className="text-xs whitespace-pre-wrap font-sans">{report.reportText}</pre>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="absolute top-2 right-2 h-6 w-6 p-0"
-                              onClick={() => {
-                                navigator.clipboard.writeText(report.reportText);
-                                toast.success('보고문자가 복사되었습니다.');
-                              }}
-                            >
-                              <Copy className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <Suspense fallback={<TabFallback />}>
+              <AdminWeeklyReportTab
+                weeklyReports={weeklyReports}
+                reportsLoading={reportsLoading}
+                weeklyClosePending={weeklyCloseMutation.isPending}
+                weeklyUnlockPending={weeklyUnlockMutation.isPending}
+                onWeeklyClose={(weekStart) => weeklyCloseMutation.mutate(weekStart)}
+                onWeeklyUnlock={(weekStart) => weeklyUnlockMutation.mutate(weekStart)}
+              />
+            </Suspense>
           </TabsContent>
 
           {/* Kakao Notice Tab */}
           <TabsContent value="kakao" className="space-y-4">
-            <KakaoNoticeGenerator />
+            <Suspense fallback={<TabFallback />}>
+              <KakaoNoticeGenerator />
+            </Suspense>
           </TabsContent>
         </Tabs>
 

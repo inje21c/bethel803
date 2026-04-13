@@ -43,20 +43,20 @@ export default function GlobalSearch() {
   }, []);
 
   const { data: studies = [] } = useQuery({
-    queryKey: ['bible_studies', currentDistrictId],
-    queryFn: () => getBibleStudies(currentDistrictId),
+    queryKey: ['bible_studies', 'search_preview', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId, { limit: 5 }),
     enabled: open && !!currentDistrictId,
   });
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules', currentDistrictId],
-    queryFn: () => getSchedules(currentDistrictId),
+    queryKey: ['schedules', 'search_preview', currentDistrictId],
+    queryFn: () => getSchedules(currentDistrictId, { limit: 5 }),
     enabled: open && !!currentDistrictId,
   });
 
   const { data: prayers = [] } = useQuery({
-    queryKey: ['prayer_requests', currentDistrictId],
-    queryFn: () => getPrayerRequests(currentDistrictId),
+    queryKey: ['prayer_requests', 'search_preview', currentDistrictId],
+    queryFn: () => getPrayerRequests(currentDistrictId, { limit: 5 }),
     enabled: open && !!currentDistrictId,
   });
 
