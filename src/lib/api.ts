@@ -129,6 +129,10 @@ export interface Schedule {
   createdAt: string;
 }
 
+interface ListOptions {
+  limit?: number;
+}
+
 export interface Attendance {
   scheduleId: string;
   userId: string;
@@ -223,15 +227,21 @@ export async function changeUserDistrict(userId: string, districtId: string): Pr
 // 성경공부
 // ============================================================
 
-export async function getBibleStudies(districtId: string): Promise<BibleStudy[]> {
+export async function getBibleStudies(districtId: string, options: ListOptions = {}): Promise<BibleStudy[]> {
+  let query = supabase
+    .from('bible_studies')
+    .select('*')
+    .eq('published', true)
+    .eq('district_id', districtId)
+    .order('study_date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (options.limit !== undefined) {
+    query = query.limit(options.limit);
+  }
+
   const { data, error } = await withApiTimeout(
-    supabase
-      .from('bible_studies')
-      .select('*')
-      .eq('published', true)
-      .eq('district_id', districtId)
-      .order('study_date', { ascending: false })
-      .order('created_at', { ascending: false }),
+    query,
     '성경공부 목록 조회'
   );
   if (error) throw error;
@@ -485,17 +495,36 @@ function mapPrayerRow(row: Record<string, unknown>): PrayerRequest {
   };
 }
 
-export async function getPrayerRequests(districtId: string): Promise<PrayerRequest[]> {
+export async function getPrayerRequests(districtId: string, options: ListOptions = {}): Promise<PrayerRequest[]> {
+  let query = supabase
+    .from('prayer_requests')
+    .select('*, users!inner(name, district_id)')
+    .eq('users.district_id', districtId)
+    .order('created_at', { ascending: false });
+
+  if (options.limit !== undefined) {
+    query = query.limit(options.limit);
+  }
+
   const { data, error } = await withApiTimeout(
-    supabase
-      .from('prayer_requests')
-      .select('*, users!inner(name, district_id)')
-      .eq('users.district_id', districtId)
-      .order('created_at', { ascending: false }),
+    query,
     '기도제목 조회'
   );
   if (error) throw error;
   return (data ?? []).map(mapPrayerRow);
+}
+
+export async function getUnansweredPrayerCount(districtId: string): Promise<number> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('id, users!inner(id)', { count: 'exact', head: true })
+      .eq('answered', false)
+      .eq('users.district_id', districtId),
+    '미응답 기도제목 수 조회'
+  );
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function getPrayerRequest(id: string): Promise<PrayerRequest | null> {
@@ -571,14 +600,20 @@ export async function getSharedPrayerRequests(districtId: string): Promise<Praye
   return (data ?? []).map(mapPrayerRow);
 }
 
-export async function getGroupPrayerRequests(districtId: string): Promise<PrayerRequest[]> {
+export async function getGroupPrayerRequests(districtId: string, options: ListOptions = {}): Promise<PrayerRequest[]> {
+  let query = supabase
+    .from('prayer_requests')
+    .select('*, users!inner(name, district_id)')
+    .eq('shared_with_group', true)
+    .eq('users.district_id', districtId)
+    .order('created_at', { ascending: false });
+
+  if (options.limit !== undefined) {
+    query = query.limit(options.limit);
+  }
+
   const { data, error } = await withApiTimeout(
-    supabase
-      .from('prayer_requests')
-      .select('*, users!inner(name, district_id)')
-      .eq('shared_with_group', true)
-      .eq('users.district_id', districtId)
-      .order('created_at', { ascending: false }),
+    query,
     '중보기도 목록 조회'
   );
   if (error) throw error;
@@ -861,14 +896,47 @@ export async function getBibleReadingSummariesByRange(
 // 일정
 // ============================================================
 
-export async function getSchedules(districtId: string): Promise<Schedule[]> {
+export async function getSchedules(districtId: string, options: ListOptions = {}): Promise<Schedule[]> {
+  let query = supabase
+    .from('schedules')
+    .select('*')
+    .eq('district_id', districtId)
+    .order('schedule_date', { ascending: true });
+
+  if (options.limit !== undefined) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await withApiTimeout(
+    query,
+    '일정 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    title: row.title,
+    date: row.schedule_date,
+    time: row.schedule_time ?? '',
+    location: row.location ?? '',
+    memo: row.memo ?? '',
+    attachment: row.attachment ?? '',
+    attendanceCheck: row.attendance_check,
+    createdBy: row.created_by,
+    createdAt: row.created_at.slice(0, 10),
+  }));
+}
+
+export async function getUpcomingSchedules(districtId: string, limit = 3): Promise<Schedule[]> {
+  const today = getKSTDateString(new Date());
   const { data, error } = await withApiTimeout(
     supabase
       .from('schedules')
       .select('*')
       .eq('district_id', districtId)
-      .order('schedule_date', { ascending: true }),
-    '일정 조회'
+      .gte('schedule_date', today)
+      .order('schedule_date', { ascending: true })
+      .limit(limit),
+    '다가오는 일정 조회'
   );
   if (error) throw error;
   return (data ?? []).map(row => ({
@@ -1352,17 +1420,13 @@ export async function getNotifications(userId: string, districtId: string): Prom
     supabase
       .from('notifications')
       .select('*, notification_reads(user_id)')
-      .order('created_at', { ascending: false }),
+      .or(`scope_type.eq.service,and(scope_type.eq.district,district_id.eq.${districtId}),and(scope_type.is.null,district_id.eq.${districtId})`)
+      .order('created_at', { ascending: false })
+      .limit(30),
     '알림 조회'
   );
   if (error) throw error;
-  return (data ?? [])
-    .filter((row) => {
-      const scopeType = (row.scope_type as 'district' | 'service' | undefined) ?? 'district';
-      if (scopeType === 'service') return true;
-      return (row.district_id as string | null | undefined) === districtId;
-    })
-    .map(row => ({
+  return (data ?? []).map(row => ({
       id: row.id,
       title: row.title,
       body: row.body,

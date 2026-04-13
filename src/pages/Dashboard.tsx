@@ -5,7 +5,7 @@ import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circl
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getPrayerRequests, getTotalChapters, getSchedules, getTodayDevotional, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayDevotional, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -15,10 +15,17 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 export default function Dashboard() {
   const { user } = useAuth();
   const { currentDistrictId } = useDistrict();
+  const [secondaryReady, setSecondaryReady] = useState(false);
+
+  useEffect(() => {
+    setSecondaryReady(false);
+    const timer = window.setTimeout(() => setSecondaryReady(true), 350);
+    return () => window.clearTimeout(timer);
+  }, [user?.id, currentDistrictId]);
 
   const { data: studies = [] } = useQuery({
-    queryKey: ['bible_studies', currentDistrictId],
-    queryFn: () => getBibleStudies(currentDistrictId),
+    queryKey: ['bible_studies', 'dashboard_preview', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId, { limit: 2 }),
     enabled: !!currentDistrictId,
   });
 
@@ -31,34 +38,35 @@ export default function Dashboard() {
     enabled: !!latestStudy && !!user,
   });
 
-  const { data: prayers = [] } = useQuery({
-    queryKey: ['prayer_requests', currentDistrictId],
-    queryFn: () => getPrayerRequests(currentDistrictId),
+  const { data: unansweredPrayerCount = 0 } = useQuery({
+    queryKey: ['prayer_requests', 'unanswered_count', currentDistrictId],
+    queryFn: () => getUnansweredPrayerCount(currentDistrictId),
     enabled: !!currentDistrictId,
   });
 
   const { data: totalChapters = 0 } = useQuery({
     queryKey: ['total_chapters', user?.id],
     queryFn: () => getTotalChapters(user!.id),
-    enabled: !!user,
+    enabled: !!user && secondaryReady,
   });
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules', currentDistrictId],
-    queryFn: () => getSchedules(currentDistrictId),
+    queryKey: ['schedules', 'upcoming', currentDistrictId],
+    queryFn: () => getUpcomingSchedules(currentDistrictId, 3),
     enabled: !!currentDistrictId,
   });
 
   const { data: devotional, isLoading: devotionalLoading } = useQuery({
     queryKey: ['today_devotional'],
     queryFn: getTodayDevotional,
+    enabled: secondaryReady,
     staleTime: 1000 * 60 * 30, // 30분 캐시
   });
 
   const { data: groupPrayers = [] } = useQuery({
-    queryKey: ['group_prayer_requests', currentDistrictId],
-    queryFn: () => getGroupPrayerRequests(currentDistrictId),
-    enabled: !!currentDistrictId,
+    queryKey: ['group_prayer_requests', 'dashboard_preview', currentDistrictId],
+    queryFn: () => getGroupPrayerRequests(currentDistrictId, { limit: 5 }),
+    enabled: !!currentDistrictId && secondaryReady,
   });
 
   const otherGroupPrayers = groupPrayers.slice(0, 5);
@@ -67,13 +75,13 @@ export default function Dashboard() {
   const { data: myIntercessions = new Set<string>() } = useQuery({
     queryKey: ['my_intercessions', user?.id],
     queryFn: () => getMyIntercessions(user!.id),
-    enabled: !!user,
+    enabled: !!user && secondaryReady,
   });
 
   const { data: intercessionCounts = {} } = useQuery({
     queryKey: ['intercession_counts', groupPrayerIds],
     queryFn: () => getIntercessionCounts(groupPrayerIds),
-    enabled: groupPrayerIds.length > 0,
+    enabled: secondaryReady && groupPrayerIds.length > 0,
   });
 
   const queryClient = useQueryClient();
@@ -86,21 +94,11 @@ export default function Dashboard() {
   });
 
   const studyCompleted = latestAnswer?.completed ?? false;
-  const unansweredPrayers = prayers.filter(p => !p.answered);
-
-  const now = new Date();
-  const twoMonthsLater = new Date(now);
-  twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
-  const upcomingSchedules = useMemo(() =>
-    schedules
-      .filter(s => { const d = new Date(s.date); return d >= new Date(now.toISOString().split('T')[0]) && d <= twoMonthsLater; })
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 3),
-    [schedules]
-  );
+  const upcomingSchedules = useMemo(() => schedules, [schedules]);
 
   const [showPopup, setShowPopup] = useState(false);
   useEffect(() => {
+    const now = new Date();
     const popupKey = `bethel-popup-${now.toISOString().split('T')[0]}`;
     if (upcomingSchedules.length > 0 && !sessionStorage.getItem(popupKey)) {
       setShowPopup(true);
@@ -180,7 +178,7 @@ export default function Dashboard() {
                 <MessageSquareHeart className="w-4 h-4 text-destructive" />
                 <span className="text-xs text-muted-foreground">기도제목</span>
               </div>
-              <p className="text-2xl font-bold">{unansweredPrayers.length}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+              <p className="text-2xl font-bold">{unansweredPrayerCount}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
             </Link>
           </motion.div>
 

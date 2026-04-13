@@ -30,10 +30,18 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
   const [currentDistrictId, setCurrentDistrictId] = useState('');
   const [currentDistrictName, setCurrentDistrictName] = useState('');
   const prevUserIdRef = useRef<string | null>(null);
+  const currentDistrictIdRef = useRef('');
+
+  useEffect(() => {
+    currentDistrictIdRef.current = currentDistrictId;
+  }, [currentDistrictId]);
 
   useEffect(() => {
     if (!user) {
       prevUserIdRef.current = null;
+      setCurrentDistrictId('');
+      setCurrentDistrictName('');
+      setDistricts([]);
       return;
     }
 
@@ -49,29 +57,37 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
       setCurrentDistrictId(nextDistrictId);
       setCurrentDistrictName(nextDistrictId === user.districtId ? user.districtName : '');
     }
+  }, [user, isMaster]);
 
-    if (isMaster) {
-      getDistricts()
-        .then((loadedDistricts) => {
-          setDistricts(loadedDistricts);
+  useEffect(() => {
+    if (!user) return;
 
-          const selectedDistrict = loadedDistricts.find((district) => district.id === (currentDistrictId || user.districtId));
-          if (selectedDistrict) {
-            setCurrentDistrictId(selectedDistrict.id);
-            setCurrentDistrictName(selectedDistrict.name);
-            window.localStorage.setItem(MASTER_DISTRICT_STORAGE_KEY, selectedDistrict.id);
-            return;
-          }
-
-          setCurrentDistrictId(user.districtId);
-          setCurrentDistrictName(user.districtName);
-          window.localStorage.setItem(MASTER_DISTRICT_STORAGE_KEY, user.districtId);
-        })
-        .catch(() => {});
-    } else {
+    if (!isMaster) {
       setDistricts([]);
+      return;
     }
-  }, [user, isMaster, currentDistrictId]);
+
+    getDistricts()
+      .then((loadedDistricts) => {
+        setDistricts(loadedDistricts);
+
+        const storedDistrictId = window.localStorage.getItem(MASTER_DISTRICT_STORAGE_KEY);
+        const preferredDistrictId = currentDistrictIdRef.current || storedDistrictId || user.districtId;
+        const selectedDistrict = loadedDistricts.find((district) => district.id === preferredDistrictId);
+
+        if (selectedDistrict) {
+          setCurrentDistrictId(selectedDistrict.id);
+          setCurrentDistrictName(selectedDistrict.name);
+          window.localStorage.setItem(MASTER_DISTRICT_STORAGE_KEY, selectedDistrict.id);
+          return;
+        }
+
+        setCurrentDistrictId(user.districtId);
+        setCurrentDistrictName(user.districtName);
+        window.localStorage.setItem(MASTER_DISTRICT_STORAGE_KEY, user.districtId);
+      })
+      .catch(() => {});
+  }, [user, isMaster]);
 
   const switchDistrict = useCallback((id: string) => {
     if (!isMaster) return;

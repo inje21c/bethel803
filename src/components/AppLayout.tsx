@@ -1,15 +1,16 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { lazy, ReactNode, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2 } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
 import { Button } from '@/components/ui/button';
-import NotificationCenter from '@/components/NotificationCenter';
-import GlobalSearch from '@/components/GlobalSearch';
 import DistrictSelector from '@/components/DistrictSelector';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+
+const NotificationCenter = lazy(() => import('@/components/NotificationCenter'));
+const GlobalSearch = lazy(() => import('@/components/GlobalSearch'));
 
 const navItems = [
   { path: '/dashboard', label: '대시보드', icon: Home },
@@ -36,6 +37,34 @@ function isItemVisible(
   if (item.masterOnly && !isMaster) return false;
   if (item.leaderOnly && !isLeader) return false;
   return true;
+}
+
+function HeaderActionFallback({ type }: { type: 'search' | 'notification' }) {
+  if (type === 'search') {
+    return (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden md:flex items-center gap-2 text-muted-foreground text-xs h-8 px-3 w-40"
+          disabled
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>검색</span>
+          <kbd className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded">⌘K</kbd>
+        </Button>
+        <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground" disabled>
+          <Search className="w-4 h-4" />
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <Button variant="ghost" size="icon" className="relative text-muted-foreground" disabled>
+      <Bell className="w-4 h-4" />
+    </Button>
+  );
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -143,7 +172,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 내 구역으로
               </Button>
             )}
-            <GlobalSearch />
+            <Suspense fallback={<HeaderActionFallback type="search" />}>
+              <GlobalSearch />
+            </Suspense>
             <Link
               to="/profile"
               className="hidden sm:flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -151,7 +182,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <UserCircle className="w-4 h-4 md:w-5 md:h-5" />
               {user?.name} {user?.role === 'master' ? '(마스터)' : user?.role === 'leader' ? '(구역장)' : ''}
             </Link>
-            <NotificationCenter />
+            <Suspense fallback={<HeaderActionFallback type="notification" />}>
+              <NotificationCenter />
+            </Suspense>
             <Button
               variant="ghost"
               size="icon"
