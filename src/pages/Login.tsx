@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/authContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,12 +111,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-sm"
-      >
+      <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-500">
         {/* 로고 */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-primary mx-auto mb-4 flex items-center justify-center shadow-lg">
@@ -176,11 +170,7 @@ export default function Login() {
           {/* 회원가입 탭 */}
           <TabsContent value="register">
             {regDone ? (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-4 space-y-3"
-              >
+              <div className="text-center py-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                   <BookOpen className="w-6 h-6 text-primary" />
                 </div>
@@ -196,7 +186,7 @@ export default function Login() {
                 >
                   로그인으로 돌아가기
                 </Button>
-              </motion.div>
+              </div>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
@@ -252,7 +242,7 @@ export default function Login() {
             )}
           </TabsContent>
         </Tabs>
-      </motion.div>
+      </div>
     </div>
   );
 }
