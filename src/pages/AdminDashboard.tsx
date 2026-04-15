@@ -52,7 +52,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -528,7 +527,7 @@ export default function AdminDashboard() {
           </div>
           <Badge variant="secondary" className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {format(new Date(), 'yyyy.MM.dd HH:mm', { locale: ko })}
+            {format(new Date(), 'yyyy.MM.dd HH:mm')}
           </Badge>
         </div>
 
@@ -888,7 +887,7 @@ export default function AdminDashboard() {
                         <TableCell className="font-medium">{a.name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {a.lastLoginAt
-                            ? format(new Date(a.lastLoginAt), 'MM/dd HH:mm', { locale: ko })
+                            ? format(new Date(a.lastLoginAt), 'MM/dd HH:mm')
                             : '접속 기록 없음'}
                         </TableCell>
                       </TableRow>

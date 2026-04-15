@@ -21,7 +21,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 export default function NotificationCenter() {
@@ -182,7 +181,7 @@ export default function NotificationCenter() {
                   <p className="text-sm font-medium truncate">{n.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{n.body}</p>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    {format(new Date(n.createdAt), 'MM/dd HH:mm', { locale: ko })}
+                    {format(new Date(n.createdAt), 'MM/dd HH:mm')}
                   </p>
                 </div>
                 {(user?.role === 'leader' || user?.role === 'master') && (
