@@ -110,15 +110,6 @@ export default function Login() {
     }
   };
 
-  // loading 중이면서 세션이 복원될 수 있으므로 스피너 표시
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <motion.div
@@ -167,7 +158,7 @@ export default function Login() {
                   autoComplete="current-password"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loginLoading}>
+              <Button type="submit" className="w-full" disabled={loading || loginLoading}>
                 {loginLoading ? '로그인 중...' : '로그인'}
               </Button>
               <Button

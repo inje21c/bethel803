@@ -4,7 +4,7 @@ import { updateLastLogin } from './api';
 import { queryClient } from './queryClient';
 import { debugLog, startTrace } from './utils';
 
-function withAuthTimeout<T>(promise: Promise<T>, message: string, ms = 10000): Promise<T> {
+function withAuthTimeout<T>(promise: Promise<T>, message: string, ms = 5000): Promise<T> {
   const trace = startTrace('Auth', 'request', { timeoutMs: ms });
   const watchedPromise = promise
     .then((result) => {
@@ -126,7 +126,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
 
 async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']): Promise<UserProfile | null> {
   if (!session?.user) return null;
-  const retryDelays = [0, 300, 1000];
+  const retryDelays = [0, 500];
 
   for (const delayMs of retryDelays) {
     if (delayMs > 0) {
@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted.current) setLoading(false);
         }
       })();
-    }, 8000);
+    }, 4000);
 
     const applySession = async (
       event: string,
@@ -289,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     debugLog('Auth', 'login requested', { email });
     if (mounted.current) setLoading(true);
-    const { data, error } = await withAuthTimeout(
+    const { error } = await withAuthTimeout(
       supabase.auth.signInWithPassword({ email, password }),
       '로그인 요청이 지연되고 있습니다. 다시 시도해주세요.'
     );
@@ -297,18 +297,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted.current) setLoading(false);
       throw error;
     }
-
-    const stableSession = data.session ?? (await supabase.auth.getSession()).data.session;
-    const profile = await resolveSessionProfileCached(stableSession);
-    if (!profile) {
-      if (mounted.current) setLoading(false);
-      throw new Error('로그인은 되었지만 사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-    }
+    // 프로필 fetch와 navigate는 onAuthStateChange(SIGNED_IN)에서 처리
     queryClient.clear();
-    if (mounted.current) {
-      setUser(profile);
-      setLoading(false);
-    }
   }, []);
 
   const logout = useCallback(async () => {
