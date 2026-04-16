@@ -288,7 +288,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     debugLog('Auth', 'login requested', { email });
-    if (mounted.current) setLoading(true);
     const { error } = await withAuthTimeout(
       supabase.auth.signInWithPassword({ email, password }),
       '로그인 요청이 지연되고 있습니다. 다시 시도해주세요.'

@@ -47,6 +47,8 @@ export default function Login() {
       toast.error('이메일과 비밀번호를 입력해주세요.');
       return;
     }
+    // 인증 처리 중 Dashboard 청크 미리 로드 (navigate 시 Suspense 스피너 제거)
+    import('./Dashboard').catch(() => {});
     setLoginLoading(true);
     try {
       await login(loginEmail.trim(), loginPassword);
@@ -161,7 +163,7 @@ export default function Login() {
                   autoComplete="current-password"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading || loginLoading}>
+              <Button type="submit" className="w-full" disabled={loginLoading}>
                 {loginLoading ? '로그인 중...' : '로그인'}
               </Button>
               <Button
