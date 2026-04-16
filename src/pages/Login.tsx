@@ -109,6 +109,15 @@ export default function Login() {
     }
   };
 
+  // 세션 확인 중에는 폼 렌더링 차단 (확인 완료 후 이미 로그인 상태면 바로 대시보드로)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-500">
