@@ -87,6 +87,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  // 인증 후 모든 페이지 청크를 백그라운드에서 미리 로드 (첫 방문 Suspense 스피너 제거)
+  useEffect(() => {
+    const prefetch = () => {
+      import('@/pages/BibleStudyList').catch(() => {});
+      import('@/pages/BibleStudyDetail').catch(() => {});
+      import('@/pages/PrayerRequests').catch(() => {});
+      import('@/pages/PrayerRequestDetail').catch(() => {});
+      import('@/pages/ScheduleManagement').catch(() => {});
+      import('@/pages/BibleReading').catch(() => {});
+      import('@/pages/AdminDashboard').catch(() => {});
+      import('@/pages/Profile').catch(() => {});
+      import('@/pages/UserManual').catch(() => {});
+      import('@/pages/DistrictManagement').catch(() => {});
+    };
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(prefetch);
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(prefetch, 1000);
+      return () => clearTimeout(id);
+    }
+  }, []);
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
