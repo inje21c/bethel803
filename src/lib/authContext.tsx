@@ -303,10 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     debugLog('Auth', 'logout requested');
     requestId.current += 1;
-    if (mounted.current) {
-      setLoading(true);
-      setUser(null);
-    }
+    if (mounted.current) setUser(null);
     queryClient.clear();
     try {
       await withAuthTimeout(
@@ -315,8 +312,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     } catch {
       // signOut 실패해도 로컬 상태는 이미 초기화됨
-    } finally {
-      if (mounted.current) setLoading(false);
     }
   }, []);
 
