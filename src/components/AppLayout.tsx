@@ -1,7 +1,7 @@
 import { lazy, ReactNode, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
@@ -14,18 +14,20 @@ const GlobalSearch = lazy(() => import('@/components/GlobalSearch'));
 
 const navItems = [
   { path: '/dashboard', label: '대시보드', icon: Home },
+  { path: '/qt', label: '오늘의 묵상', icon: BookHeart },
   { path: '/bible-study', label: '구역성경공부', icon: BookOpen },
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
   { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
+  { path: '/leader/qt-dashboard', label: 'QT 현황', icon: BookHeart, leaderOnly: true },
   { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
   { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
 
 const mobileTabItems = [
   { path: '/dashboard', label: '홈', icon: Home },
+  { path: '/qt', label: '묵상', icon: BookHeart },
   { path: '/bible-study', label: '공부', icon: BookOpen },
-  { path: '/schedule', label: '일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
 ];
 
@@ -100,6 +102,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       import('@/pages/Profile').catch(() => {});
       import('@/pages/UserManual').catch(() => {});
       import('@/pages/DistrictManagement').catch(() => {});
+      import('@/pages/QTMain').catch(() => {});
+      import('@/pages/QTPray').catch(() => {});
+      import('@/pages/QTComplete').catch(() => {});
     };
     if ('requestIdleCallback' in window) {
       const id = requestIdleCallback(prefetch);
@@ -124,7 +129,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     location.pathname === '/manual' ||
     location.pathname === '/bible-reading' ||
     location.pathname === '/admin' ||
-    location.pathname === '/districts';
+    location.pathname === '/districts' ||
+    location.pathname.startsWith('/leader/') ||
+    location.pathname === '/qt/complete';
 
   return (
     <div className="min-h-screen bg-background">

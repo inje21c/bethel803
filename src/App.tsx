@@ -38,6 +38,11 @@ const Profile = lazy(() => import("./pages/Profile"));
 const UserManual = lazy(() => import("./pages/UserManual"));
 const DistrictManagement = lazy(() => import("./pages/DistrictManagement"));
 const FirebaseLanding = lazy(() => import("./pages/FirebaseLanding"));
+const QTMain = lazy(() => import("./pages/QTMain"));
+const QTPray = lazy(() => import("./pages/QTPray"));
+const QTComplete = lazy(() => import("./pages/QTComplete"));
+const QTDate = lazy(() => import("./pages/QTDate"));
+const QTLeaderDashboard = lazy(() => import("./pages/QTLeaderDashboard"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -91,6 +96,11 @@ function AppRoutes() {
         <Route path="/bible-reading" element={<ProtectedRoute><BibleReading /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><LeaderRoute><AdminDashboard /></LeaderRoute></ProtectedRoute>} />
         <Route path="/districts" element={<ProtectedRoute><MasterRoute><DistrictManagement /></MasterRoute></ProtectedRoute>} />
+        <Route path="/qt" element={<ProtectedRoute><QTMain /></ProtectedRoute>} />
+        <Route path="/qt/pray" element={<ProtectedRoute><QTPray /></ProtectedRoute>} />
+        <Route path="/qt/complete" element={<ProtectedRoute><QTComplete /></ProtectedRoute>} />
+        <Route path="/qt/:date" element={<ProtectedRoute><QTDate /></ProtectedRoute>} />
+        <Route path="/leader/qt-dashboard" element={<ProtectedRoute><LeaderRoute><QTLeaderDashboard /></LeaderRoute></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
