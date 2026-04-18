@@ -5,7 +5,7 @@ import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circl
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayDevotional, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -49,10 +49,17 @@ export default function Dashboard() {
     enabled: !!currentDistrictId,
   });
 
-  const { data: devotional, isLoading: devotionalLoading } = useQuery({
-    queryKey: ['today_devotional'],
-    queryFn: getTodayDevotional,
-    staleTime: 1000 * 60 * 30, // 30분 캐시
+  const today = getKSTDateString(new Date());
+  const { data: todayQt, isLoading: devotionalLoading } = useQuery({
+    queryKey: ['qt_content', today],
+    queryFn: getTodayQT,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const { data: streak } = useQuery({
+    queryKey: ['streak', user?.id],
+    queryFn: () => getMyStreak(user!.id),
+    enabled: !!user?.id,
   });
 
   const { data: groupPrayers = [] } = useQuery({
@@ -105,23 +112,19 @@ export default function Dashboard() {
   };
 
   const todayQT = useMemo(() => {
-    if (devotional) {
+    if (todayQt) {
       return {
-        verse: devotional.verse,
-        summary: `${devotional.content}${devotional.applicationQuestion ? `\n\n✦ ${devotional.applicationQuestion}` : ''}`,
-        link: devotional.sourceUrl ?? 'https://sum.su.or.kr:8888/bible/today',
+        verse: todayQt.scripture ?? '',
+        summary: todayQt.summary ?? '',
         isLoaded: true,
       };
     }
     return {
       verse: '매일 06:00 업데이트',
-      summary: devotionalLoading
-        ? '오늘의 묵상을 불러오는 중...'
-        : '오늘의 묵상이 아직 준비되지 않았습니다.',
-      link: 'https://sum.su.or.kr:8888/bible/today',
+      summary: devotionalLoading ? '불러오는 중...' : '오늘의 묵상이 아직 준비되지 않았습니다.',
       isLoaded: false,
     };
-  }, [devotional, devotionalLoading]);
+  }, [todayQt, devotionalLoading]);
 
   return (
     <AppLayout>
@@ -230,24 +233,24 @@ export default function Dashboard() {
 
         {/* Today's QT */}
         <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
-          <div className="card-elevated p-5">
+          <Link to="/qt" className="block card-elevated p-5 hover:shadow-lg transition-shadow">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-gold" />
               <h2 className="font-display font-semibold">오늘의 묵상</h2>
-              <span className="gold-badge ml-auto">{todayQT.verse.slice(0, 20)}</span>
+              {(streak?.currentStreak ?? 0) > 0 && (
+                <span className="ml-auto text-xs text-orange-500 font-semibold">🔥 {streak!.currentStreak}일</span>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{todayQT.summary}</p>
-            {todayQT.isLoaded && (
-              <a
-                href={todayQT.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-3 text-xs text-primary font-medium hover:underline"
-              >
-                오늘의 묵상 원문 보기 →
-              </a>
+            {todayQT.verse && todayQT.isLoaded && (
+              <p className="text-xs text-primary font-medium mb-1">{todayQT.verse}</p>
             )}
-          </div>
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{todayQT.summary}</p>
+            {todayQT.isLoaded && (
+              <span className="inline-block mt-3 text-xs text-primary font-medium">
+                묵상하러 가기 →
+              </span>
+            )}
+          </Link>
         </motion.div>
 
         {/* Latest study preview */}
