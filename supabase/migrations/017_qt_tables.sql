@@ -54,32 +54,38 @@ ALTER TABLE public.qt_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.streaks      ENABLE ROW LEVEL SECURITY;
 
 -- qt_contents: 활성 구역원 조회
+DROP POLICY IF EXISTS "qt_contents_select_active" ON public.qt_contents;
 CREATE POLICY "qt_contents_select_active" ON public.qt_contents
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND status = 'active')
   );
 
 -- qt_contents: 구역장/마스터 leader_comment 수정
+DROP POLICY IF EXISTS "qt_contents_update_leader" ON public.qt_contents;
 CREATE POLICY "qt_contents_update_leader" ON public.qt_contents
   FOR UPDATE USING (
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('leader', 'master'))
   );
 
 -- qt_responses: 본인 CRUD
+DROP POLICY IF EXISTS "qt_responses_own" ON public.qt_responses;
 CREATE POLICY "qt_responses_own" ON public.qt_responses
   FOR ALL USING (user_id = auth.uid());
 
 -- qt_responses: 구역장/마스터 전체 조회
+DROP POLICY IF EXISTS "qt_responses_leader_select" ON public.qt_responses;
 CREATE POLICY "qt_responses_leader_select" ON public.qt_responses
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('leader', 'master'))
   );
 
 -- streaks: 본인 CRUD
+DROP POLICY IF EXISTS "streaks_own" ON public.streaks;
 CREATE POLICY "streaks_own" ON public.streaks
   FOR ALL USING (user_id = auth.uid());
 
 -- streaks: 구역장/마스터 전체 조회
+DROP POLICY IF EXISTS "streaks_leader_select" ON public.streaks;
 CREATE POLICY "streaks_leader_select" ON public.streaks
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('leader', 'master'))
