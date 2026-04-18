@@ -814,14 +814,11 @@ export async function deleteBibleReadingLog(id: string): Promise<void> {
 
 export async function getTotalChapters(userId: string): Promise<number> {
   const { data, error } = await withApiTimeout(
-    supabase
-      .from('bible_reading_logs')
-      .select('chapters')
-      .eq('user_id', userId),
+    supabase.rpc('get_total_chapters', { p_user_id: userId }),
     '성경읽기 누적 조회'
   );
   if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + row.chapters, 0);
+  return Number(data ?? 0);
 }
 
 export interface BibleReadingSummary {
@@ -832,30 +829,15 @@ export interface BibleReadingSummary {
 
 export async function getAllBibleReadingSummaries(districtId: string): Promise<BibleReadingSummary[]> {
   const { data, error } = await withApiTimeout(
-    supabase
-      .from('bible_reading_logs')
-      .select('user_id, chapters, users!inner(name, district_id)')
-      .eq('users.district_id', districtId),
+    supabase.rpc('get_bible_reading_summaries', { p_district_id: districtId }),
     '성경읽기 요약 조회'
   );
   if (error) throw error;
-
-  const map = new Map<string, { name: string; total: number }>();
-  for (const row of data ?? []) {
-    const uid = row.user_id as string;
-    const name = (row.users as { name: string } | null)?.name ?? '알 수 없음';
-    const existing = map.get(uid);
-    if (existing) {
-      existing.total += row.chapters as number;
-    } else {
-      map.set(uid, { name, total: row.chapters as number });
-    }
-  }
-  return Array.from(map.entries()).map(([userId, { name, total }]) => ({
-    userId,
-    userName: name,
-    totalChapters: total,
-  })).sort((a, b) => b.totalChapters - a.totalChapters);
+  return (data ?? []).map((row: { user_id: string; user_name: string; total_chapters: number }) => ({
+    userId: row.user_id,
+    userName: row.user_name,
+    totalChapters: Number(row.total_chapters),
+  }));
 }
 
 export async function getBibleReadingSummariesByRange(
@@ -864,32 +846,19 @@ export async function getBibleReadingSummariesByRange(
   to: string
 ): Promise<BibleReadingSummary[]> {
   const { data, error } = await withApiTimeout(
-    supabase
-      .from('bible_reading_logs')
-      .select('user_id, chapters, users!inner(name, district_id)')
-      .eq('users.district_id', districtId)
-      .gte('log_date', from)
-      .lte('log_date', to),
+    supabase.rpc('get_bible_reading_summaries_by_range', {
+      p_district_id: districtId,
+      p_from: from,
+      p_to: to,
+    }),
     '성경읽기 기간별 조회'
   );
   if (error) throw error;
-
-  const map = new Map<string, { name: string; total: number }>();
-  for (const row of data ?? []) {
-    const uid = row.user_id as string;
-    const name = (row.users as { name: string } | null)?.name ?? '알 수 없음';
-    const existing = map.get(uid);
-    if (existing) {
-      existing.total += row.chapters as number;
-    } else {
-      map.set(uid, { name, total: row.chapters as number });
-    }
-  }
-  return Array.from(map.entries()).map(([userId, { name, total }]) => ({
-    userId,
-    userName: name,
-    totalChapters: total,
-  })).sort((a, b) => b.totalChapters - a.totalChapters);
+  return (data ?? []).map((row: { user_id: string; user_name: string; total_chapters: number }) => ({
+    userId: row.user_id,
+    userName: row.user_name,
+    totalChapters: Number(row.total_chapters),
+  }));
 }
 
 // ============================================================
