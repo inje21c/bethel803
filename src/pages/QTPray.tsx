@@ -1,0 +1,154 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ExternalLink, Music, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
+import {
+  getTodayQT,
+  getMyQTResponse,
+  upsertQTResponse,
+  updateQTStreak,
+  getGroupPrayerRequests,
+  getKSTDateString,
+} from '@/lib/api';
+import AppLayout from '@/components/AppLayout';
+import { Button } from '@/components/ui/button';
+
+const BGM_HIDDEN_KEY = 'qt_bgm_hidden';
+
+export default function QTPray() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { currentDistrictId } = useDistrict();
+  const queryClient = useQueryClient();
+  const today = getKSTDateString(new Date());
+
+  const [bgmHidden, setBgmHidden] = useState(() => localStorage.getItem(BGM_HIDDEN_KEY) === '1');
+
+  const { data: qt } = useQuery({
+    queryKey: ['qt_content', today],
+    queryFn: getTodayQT,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const { data: myResponse } = useQuery({
+    queryKey: ['qt_response', qt?.id, user?.id],
+    queryFn: () => getMyQTResponse(qt!.id, user!.id),
+    enabled: !!qt?.id && !!user?.id,
+  });
+
+  const { data: groupPrayers = [] } = useQuery({
+    queryKey: ['group_prayer_requests', 'qt', currentDistrictId],
+    queryFn: () => getGroupPrayerRequests(currentDistrictId, { limit: 10 }),
+    enabled: !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async () => {
+      await upsertQTResponse({
+        contentId: qt!.id,
+        userId: user!.id,
+        answer: myResponse?.answer ?? null,
+        isCompleted: true,
+        isPastDay: false,
+      });
+      await updateQTStreak(user!.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qt_response', qt?.id] });
+      queryClient.invalidateQueries({ queryKey: ['streak', user?.id] });
+      navigate('/qt/complete');
+    },
+  });
+
+  const toggleBgm = () => {
+    const next = !bgmHidden;
+    setBgmHidden(next);
+    localStorage.setItem(BGM_HIDDEN_KEY, next ? '1' : '0');
+  };
+
+  const hymns = qt?.hymnSuggestions ?? [];
+
+  return (
+    <AppLayout>
+      <div className="max-w-2xl mx-auto space-y-6 pb-8">
+        <div>
+          <h1 className="font-display text-2xl font-bold">기도하기</h1>
+          {qt?.question && (
+            <p className="mt-2 text-muted-foreground italic leading-relaxed">"{qt.question}"</p>
+          )}
+        </div>
+
+        {/* BGM 섹션 */}
+        {hymns.length > 0 && (
+          <div className="card-elevated p-5">
+            <button
+              className="w-full flex items-center justify-between"
+              onClick={toggleBgm}
+            >
+              <div className="flex items-center gap-2">
+                <Music className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-sm">찬송가 듣기</span>
+              </div>
+              {bgmHidden
+                ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                : <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              }
+            </button>
+            {!bgmHidden && (
+              <ul className="mt-4 space-y-2">
+                {hymns.map((hymn, i) => (
+                  <li key={i}>
+                    <a
+                      href={hymn.youtube_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between rounded-lg border px-4 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{hymn.title}</p>
+                        <p className="text-xs text-muted-foreground">{hymn.type}</p>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* 구역 기도 제목 */}
+        {groupPrayers.length > 0 && (
+          <div className="card-elevated p-5">
+            <p className="text-sm font-semibold mb-3">이번 주 구역 기도 제목</p>
+            <ul className="space-y-2">
+              {groupPrayers.map((p) => (
+                <li key={p.id} className="flex gap-2 text-sm">
+                  <span className="text-primary mt-0.5 shrink-0">•</span>
+                  <span className="leading-relaxed">{p.content}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 완료 버튼 */}
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={() => completeMutation.mutate()}
+          disabled={completeMutation.isPending || myResponse?.isCompleted}
+        >
+          {myResponse?.isCompleted ? (
+            <><CheckCircle2 className="w-4 h-4 mr-2" />오늘 QT 완료됨</>
+          ) : (
+            <><CheckCircle2 className="w-4 h-4 mr-2" />오늘 QT 완료하기</>
+          )}
+        </Button>
+      </div>
+    </AppLayout>
+  );
+}

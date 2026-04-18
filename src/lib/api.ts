@@ -1641,6 +1641,248 @@ export async function uploadScheduleAttachment(file: File): Promise<string> {
   return data.publicUrl;
 }
 
+// ============================================================
+// QT (오늘의 묵상)
+// ============================================================
+
+export interface HymnSuggestion {
+  title: string;
+  type: string;
+  youtube_url: string;
+}
+
+export interface QTContent {
+  id: string;
+  date: string;
+  title: string | null;
+  scripture: string | null;
+  scriptureText: string | null;
+  summary: string | null;
+  question: string | null;
+  audioUrl: string | null;
+  hymnSuggestions: HymnSuggestion[];
+  leaderComment: string | null;
+  createdAt: string;
+}
+
+export interface QTResponse {
+  id: string;
+  userId: string;
+  contentId: string;
+  answer: string | null;
+  isCompleted: boolean;
+  completedAt: string | null;
+  isPastDay: boolean;
+  createdAt: string;
+}
+
+export interface Streak {
+  userId: string;
+  currentStreak: number;
+  maxStreak: number;
+  lastCompletedDate: string | null;
+}
+
+export interface QTMemberSummary {
+  userId: string;
+  userName: string;
+  isCompleted: boolean;
+  currentStreak: number;
+  lastCompleted: string | null;
+}
+
+export interface QTCalendarDay {
+  date: string;
+  completed: boolean;
+}
+
+function mapQTContent(row: Record<string, unknown>): QTContent {
+  return {
+    id: row.id as string,
+    date: row.date as string,
+    title: (row.title as string) ?? null,
+    scripture: (row.scripture as string) ?? null,
+    scriptureText: (row.scripture_text as string) ?? null,
+    summary: (row.summary as string) ?? null,
+    question: (row.question as string) ?? null,
+    audioUrl: (row.audio_url as string) ?? null,
+    hymnSuggestions: Array.isArray(row.hymn_suggestions) ? (row.hymn_suggestions as HymnSuggestion[]) : [],
+    leaderComment: (row.leader_comment as string) ?? null,
+    createdAt: row.created_at as string,
+  };
+}
+
+export async function getQTByDate(date: string): Promise<QTContent | null> {
+  const { data, error } = await withApiTimeout(
+    supabase.from('qt_contents').select('*').eq('date', date).maybeSingle(),
+    'QT 조회'
+  );
+  if (error) throw error;
+  return data ? mapQTContent(data as Record<string, unknown>) : null;
+}
+
+export async function getTodayQT(): Promise<QTContent | null> {
+  const today = getKSTDateString(new Date());
+  return getQTByDate(today);
+}
+
+export async function getMyQTResponse(contentId: string, userId: string): Promise<QTResponse | null> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('qt_responses')
+      .select('*')
+      .eq('content_id', contentId)
+      .eq('user_id', userId)
+      .maybeSingle(),
+    'QT 응답 조회'
+  );
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    contentId: row.content_id as string,
+    answer: (row.answer as string) ?? null,
+    isCompleted: row.is_completed as boolean,
+    completedAt: (row.completed_at as string) ?? null,
+    isPastDay: row.is_past_day as boolean,
+    createdAt: row.created_at as string,
+  };
+}
+
+export async function upsertQTResponse(params: {
+  contentId: string;
+  userId: string;
+  answer: string | null;
+  isCompleted: boolean;
+  isPastDay: boolean;
+}): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('qt_responses').upsert(
+      {
+        content_id: params.contentId,
+        user_id: params.userId,
+        answer: params.answer,
+        is_completed: params.isCompleted,
+        completed_at: params.isCompleted ? new Date().toISOString() : null,
+        is_past_day: params.isPastDay,
+      },
+      { onConflict: 'user_id,content_id' }
+    ),
+    'QT 응답 저장'
+  );
+  if (error) throw error;
+}
+
+export async function updateQTStreak(userId: string): Promise<{ currentStreak: number; maxStreak: number }> {
+  const today = getKSTDateString(new Date());
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('streaks')
+    .select('current_streak, max_streak, last_completed_date')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+
+  if (!existing) {
+    const { error } = await supabase.from('streaks').insert({
+      user_id: userId, current_streak: 1, max_streak: 1, last_completed_date: today,
+    });
+    if (error) throw error;
+    return { currentStreak: 1, maxStreak: 1 };
+  }
+
+  const row = existing as { current_streak: number; max_streak: number; last_completed_date: string | null };
+  if (row.last_completed_date === today) {
+    return { currentStreak: row.current_streak, maxStreak: row.max_streak };
+  }
+
+  let current = row.current_streak;
+  let max = row.max_streak;
+  if (row.last_completed_date) {
+    const diffDays = Math.floor(
+      (new Date(today + 'T00:00:00').getTime() - new Date(row.last_completed_date + 'T00:00:00').getTime()) / 86400000
+    );
+    current = diffDays === 1 ? current + 1 : 1;
+  } else {
+    current = 1;
+  }
+  max = Math.max(max, current);
+
+  const { error: updateErr } = await supabase
+    .from('streaks')
+    .update({ current_streak: current, max_streak: max, last_completed_date: today, updated_at: new Date().toISOString() })
+    .eq('user_id', userId);
+  if (updateErr) throw updateErr;
+
+  return { currentStreak: current, maxStreak: max };
+}
+
+export async function getMyStreak(userId: string): Promise<Streak | null> {
+  const { data, error } = await withApiTimeout(
+    supabase.from('streaks').select('*').eq('user_id', userId).maybeSingle(),
+    '스트릭 조회'
+  );
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    userId: row.user_id as string,
+    currentStreak: row.current_streak as number,
+    maxStreak: row.max_streak as number,
+    lastCompletedDate: (row.last_completed_date as string) ?? null,
+  };
+}
+
+export async function getQTCalendar(userId: string, year: number, month: number): Promise<QTCalendarDay[]> {
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('qt_responses')
+      .select('content_id, is_completed, qt_contents!inner(date)')
+      .eq('user_id', userId)
+      .eq('is_completed', true)
+      .gte('qt_contents.date', from)
+      .lte('qt_contents.date', to),
+    'QT 캘린더 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    const contents = r.qt_contents as Record<string, unknown>;
+    return { date: contents.date as string, completed: true };
+  });
+}
+
+export async function updateQTLeaderComment(date: string, comment: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('qt_contents').update({ leader_comment: comment }).eq('date', date),
+    '구역장 코멘트 저장'
+  );
+  if (error) throw error;
+}
+
+export async function getQTDistrictSummary(districtId: string, date?: string): Promise<QTMemberSummary[]> {
+  const params: Record<string, unknown> = { p_district_id: districtId };
+  if (date) params.p_date = date;
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_qt_district_summary', params),
+    'QT 구역 현황 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    userId: row.user_id as string,
+    userName: row.user_name as string,
+    isCompleted: row.is_completed as boolean,
+    currentStreak: row.current_streak as number,
+    lastCompleted: (row.last_completed as string) ?? null,
+  }));
+}
+
 /** 주어진 날짜의 ISO 주차 번호 */
 export function getISOWeekNumber(dateStr: string): number {
   const date = new Date(dateStr);
