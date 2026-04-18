@@ -446,7 +446,7 @@ export async function getStudyAnswersForStudy(studyId: string, districtId: strin
   const { data, error } = await withApiTimeout(
     supabase
       .from('study_answers')
-      .select('*, users!inner(name, district_id)')
+      .select('id, user_id, answers, completed, updated_at, users!inner(name, district_id)')
       .eq('study_id', studyId)
       .eq('users.district_id', districtId)
       .order('updated_at', { ascending: false }),
@@ -866,7 +866,7 @@ export async function getBibleReadingSummariesByRange(
   const { data, error } = await withApiTimeout(
     supabase
       .from('bible_reading_logs')
-      .select('user_id, chapters, log_date, users!inner(name, district_id)')
+      .select('user_id, chapters, users!inner(name, district_id)')
       .eq('users.district_id', districtId)
       .gte('log_date', from)
       .lte('log_date', to),

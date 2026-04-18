@@ -42,22 +42,26 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
+  // open 여부와 무관하게 미리 fetch → 검색창 열릴 때 즉시 표시
   const { data: studies = [] } = useQuery({
     queryKey: ['bible_studies', 'search_preview', currentDistrictId],
     queryFn: () => getBibleStudies(currentDistrictId, { limit: 5 }),
-    enabled: open && !!currentDistrictId,
+    enabled: !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules', 'search_preview', currentDistrictId],
     queryFn: () => getSchedules(currentDistrictId, { limit: 5 }),
-    enabled: open && !!currentDistrictId,
+    enabled: !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: prayers = [] } = useQuery({
     queryKey: ['prayer_requests', 'search_preview', currentDistrictId],
     queryFn: () => getPrayerRequests(currentDistrictId, { limit: 5 }),
-    enabled: open && !!currentDistrictId,
+    enabled: !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
   });
 
   const handleSelect = (path: string) => {
