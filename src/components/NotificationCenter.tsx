@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Bell, Trash2, Plus, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -31,21 +31,10 @@ export default function NotificationCenter() {
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
-  const [canLoadNotifications, setCanLoadNotifications] = useState(false);
-
-  useEffect(() => {
-    setCanLoadNotifications(false);
-
-    if (!user?.id || !currentDistrictId) return;
-
-    const timer = window.setTimeout(() => setCanLoadNotifications(true), 1200);
-    return () => window.clearTimeout(timer);
-  }, [user?.id, currentDistrictId]);
-
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications', user?.id, currentDistrictId],
     queryFn: () => getNotifications(user!.id, currentDistrictId),
-    enabled: !!user && !!currentDistrictId && canLoadNotifications,
+    enabled: !!user && !!currentDistrictId,
     refetchInterval: open ? 60_000 : false,
   });
 

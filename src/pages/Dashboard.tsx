@@ -15,13 +15,6 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 export default function Dashboard() {
   const { user } = useAuth();
   const { currentDistrictId } = useDistrict();
-  const [secondaryReady, setSecondaryReady] = useState(false);
-
-  useEffect(() => {
-    setSecondaryReady(false);
-    const timer = window.setTimeout(() => setSecondaryReady(true), 350);
-    return () => window.clearTimeout(timer);
-  }, [user?.id, currentDistrictId]);
 
   const { data: studies = [] } = useQuery({
     queryKey: ['bible_studies', 'dashboard_preview', currentDistrictId],
@@ -47,7 +40,7 @@ export default function Dashboard() {
   const { data: totalChapters = 0 } = useQuery({
     queryKey: ['total_chapters', user?.id],
     queryFn: () => getTotalChapters(user!.id),
-    enabled: !!user && secondaryReady,
+    enabled: !!user,
   });
 
   const { data: schedules = [] } = useQuery({
@@ -59,29 +52,28 @@ export default function Dashboard() {
   const { data: devotional, isLoading: devotionalLoading } = useQuery({
     queryKey: ['today_devotional'],
     queryFn: getTodayDevotional,
-    enabled: secondaryReady,
     staleTime: 1000 * 60 * 30, // 30분 캐시
   });
 
   const { data: groupPrayers = [] } = useQuery({
     queryKey: ['group_prayer_requests', 'dashboard_preview', currentDistrictId],
     queryFn: () => getGroupPrayerRequests(currentDistrictId, { limit: 5 }),
-    enabled: !!currentDistrictId && secondaryReady,
+    enabled: !!currentDistrictId,
   });
 
   const otherGroupPrayers = groupPrayers.slice(0, 5);
-  const groupPrayerIds = groupPrayers.map(p => p.id);
+  const groupPrayerIds = useMemo(() => groupPrayers.map(p => p.id), [groupPrayers]);
 
   const { data: myIntercessions = new Set<string>() } = useQuery({
     queryKey: ['my_intercessions', user?.id],
     queryFn: () => getMyIntercessions(user!.id),
-    enabled: !!user && secondaryReady,
+    enabled: !!user,
   });
 
   const { data: intercessionCounts = {} } = useQuery({
     queryKey: ['intercession_counts', groupPrayerIds],
     queryFn: () => getIntercessionCounts(groupPrayerIds),
-    enabled: secondaryReady && groupPrayerIds.length > 0,
+    enabled: groupPrayerIds.length > 0,
   });
 
   const queryClient = useQueryClient();
@@ -94,7 +86,7 @@ export default function Dashboard() {
   });
 
   const studyCompleted = latestAnswer?.completed ?? false;
-  const upcomingSchedules = useMemo(() => schedules, [schedules]);
+  const upcomingSchedules = schedules;
 
   const [showPopup, setShowPopup] = useState(false);
   useEffect(() => {
