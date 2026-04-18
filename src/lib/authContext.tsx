@@ -4,6 +4,30 @@ import { updateLastLogin } from './api';
 import { queryClient } from './queryClient';
 import { debugLog, startTrace } from './utils';
 
+const PROFILE_CACHE_KEY = 'bethel_profile_v1';
+
+function loadCachedProfile(): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as UserProfile;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedProfile(profile: UserProfile | null) {
+  try {
+    if (profile) {
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+    } else {
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+    }
+  } catch {
+    // localStorage 접근 실패 시 무시
+  }
+}
+
 function withAuthTimeout<T>(promise: Promise<T>, message: string, ms = 5000): Promise<T> {
   const trace = startTrace('Auth', 'request', { timeoutMs: ms });
   const watchedPromise = promise
@@ -165,20 +189,24 @@ function resolveSessionProfileCached(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  // localStorage 캐시: 초기 렌더링 즉시 프로필 복원, loading 블록 없음
+  const initialProfile = useRef(loadCachedProfile());
+  const [user, setUserState] = useState<UserProfile | null>(initialProfile.current);
+  const [loading, setLoading] = useState(initialProfile.current === null);
   const requestId = useRef(0);
   const mounted = useRef(true);
-  const userRef = useRef<UserProfile | null>(null);
+  const userRef = useRef<UserProfile | null>(initialProfile.current);
 
-  // userRef를 항상 최신 user와 동기화
-  useEffect(() => { userRef.current = user; }, [user]);
+  const setUser = useCallback((profile: UserProfile | null) => {
+    saveCachedProfile(profile);
+    userRef.current = profile;
+    setUserState(profile);
+  }, []);
 
   useEffect(() => {
     mounted.current = true;
 
-    // 세션 복구가 너무 늦을 때는 "세션이 아예 없는 경우"에만 loading을 해제한다.
-    // 세션이 존재하는데 profile 조회만 늦는 상황에서 /login으로 튕기는 현상을 막는다.
+    // 캐시가 없을 때만 의미 있는 fallback: 세션이 없으면 loading 해제
     const fallbackTimer = setTimeout(() => {
       void (async () => {
         if (!mounted.current) return;
@@ -228,13 +256,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile = await resolveSessionProfileCached(session);
       } catch (error) {
         invalidSession = error instanceof InvalidSessionError;
-        // 네트워크 실패 시에도 loading 해제 (fallback timer가 살아있으므로 이중 보호)
       }
 
       // stale response 방지: 이 요청 이후 새 이벤트가 발화됐으면 무시
       if (id !== requestId.current || !mounted.current) return;
 
-      if (invalidSession && event !== 'SIGNED_IN') {
+      if (invalidSession) {
         clearTimeout(fallbackTimer);
         await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
         if (mounted.current) {
@@ -245,15 +272,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       clearTimeout(fallbackTimer);
-      // 프로필 조회가 잠시 실패해도, 동일 사용자의 기존 상태가 있으면 유지한다.
       if (profile !== null) {
         setUser(profile);
       } else if (userRef.current?.id === session.user.id) {
+        // 프로필 조회 일시 실패 → 캐시된 상태 유지
         debugLog('Auth', 'profile unavailable, keeping existing user state', {
           event,
           userId: session.user.id,
         });
-      } else if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION_CHECK') {
+      } else {
         setUser(null);
       }
       setLoading(false);
@@ -263,21 +290,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // onAuthStateChange만 사용 (INITIAL_SESSION 이벤트 자동 발화)
+    // 수동 getSession() 호출 제거 → 이중 applySession race condition 제거
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       await applySession(event, session);
     });
-
-    void (async () => {
-      try {
-        const { data: { session } } = await withAuthTimeout(
-          supabase.auth.getSession(),
-          '초기 세션 확인이 지연되고 있습니다.'
-        );
-        await applySession('INITIAL_SESSION_CHECK', session);
-      } catch {
-        if (mounted.current) setLoading(false);
-      }
-    })();
 
     return () => {
       mounted.current = false;
