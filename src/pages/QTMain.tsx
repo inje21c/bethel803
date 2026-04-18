@@ -38,19 +38,17 @@ export default function QTMain() {
   }, [myResponse?.answer]);
 
   const saveMutation = useMutation({
-    mutationFn: (isCompleted: boolean) =>
+    mutationFn: () =>
       upsertQTResponse({
         contentId: qt!.id,
         userId: user!.id,
         answer: answer || null,
-        isCompleted,
+        isCompleted: false,
         isPastDay: false,
       }),
-    onSuccess: (_, isCompleted) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['qt_response', qt?.id] });
-      if (isCompleted) {
-        navigate('/qt/pray');
-      }
+      navigate('/qt/pray');
     },
   });
 
@@ -162,7 +160,7 @@ export default function QTMain() {
           <div className="flex gap-3">
             <Button
               className="flex-1"
-              onClick={() => saveMutation.mutate(false)}
+              onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
             >
               기도하기 <ChevronRight className="w-4 h-4 ml-1" />
