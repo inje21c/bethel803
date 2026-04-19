@@ -117,6 +117,9 @@ export default function QTMain() {
           </div>
         )}
 
+        {/* 해설 듣기 */}
+        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
+
         {/* 성경 본문 */}
         {qt.scriptureText && (
           <div className="card-elevated p-5">
@@ -124,9 +127,6 @@ export default function QTMain() {
             <p className="text-sm leading-loose whitespace-pre-line text-foreground/90">{qt.scriptureText}</p>
           </div>
         )}
-
-        {/* 해설 듣기 */}
-        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
 
         {/* QT 질문 */}
         {qt.question && (
