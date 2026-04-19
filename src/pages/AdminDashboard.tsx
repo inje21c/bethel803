@@ -339,7 +339,7 @@ export default function AdminDashboard() {
   const { data: qtMembers = [], isLoading: qtMembersLoading } = useQuery({
     queryKey: ['qt_district_summary', currentDistrictId, today],
     queryFn: () => getQTDistrictSummary(currentDistrictId, today),
-    enabled: activeTab === 'qt' && !!currentDistrictId && isLeader,
+    enabled: activeTab === 'qt' && !!currentDistrictId,
     refetchInterval: 60_000,
   });
 
