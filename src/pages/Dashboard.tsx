@@ -239,17 +239,21 @@ export default function Dashboard() {
             </Link>
           </motion.div>
 
-          {/* 기도제목 + 중보 */}
+          {/* 함께기도 */}
           <motion.div variants={item}>
-            <Link to="/prayer-requests" className="stat-card block hover:shadow-lg transition-shadow">
+            <Link to="/prayer-requests?tab=intercession" className="stat-card block hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-2 mb-2">
-                <MessageSquareHeart className="w-4 h-4 text-destructive" />
-                <span className="text-xs text-muted-foreground">기도제목</span>
+                <HeartHandshake className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">함께기도</span>
               </div>
-              <p className="text-xl font-bold leading-none">{unansweredPrayerCount}<span className="text-xs font-normal text-muted-foreground ml-1">건</span></p>
-              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                <HeartHandshake className="w-3 h-3" /> 중보 {myIntercessions.size}건
-              </p>
+              {myIntercessions.size > 0 ? (
+                <>
+                  <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">개</span></p>
+                  <p className="text-xs text-primary font-medium mt-1">참여 중</p>
+                </>
+              ) : (
+                <p className="text-sm font-semibold text-muted-foreground">시작해볼까요?</p>
+              )}
             </Link>
           </motion.div>
         </motion.div>
