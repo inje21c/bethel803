@@ -62,7 +62,7 @@ export default function QTMain() {
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-2">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-sm text-muted-foreground">오늘의 묵상을 불러오는 중...</p>
+            <p className="text-sm text-muted-foreground">오늘의 QT을 불러오는 중...</p>
           </div>
         </div>
       </AppLayout>
@@ -74,7 +74,7 @@ export default function QTMain() {
       <AppLayout>
         <div className="max-w-2xl mx-auto py-10 text-center space-y-3">
           <Clock className="w-10 h-10 text-muted-foreground mx-auto" />
-          <p className="font-semibold">오늘의 묵상이 아직 준비되지 않았습니다.</p>
+          <p className="font-semibold">오늘의 QT이 아직 준비되지 않았습니다.</p>
           <p className="text-sm text-muted-foreground">매일 오전 6시에 업데이트됩니다.</p>
         </div>
       </AppLayout>
@@ -90,7 +90,7 @@ export default function QTMain() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{formattedDate}</p>
-            <h1 className="font-display text-2xl font-bold mt-0.5">오늘의 묵상</h1>
+            <h1 className="font-display text-2xl font-bold mt-0.5">오늘의 QT</h1>
           </div>
           {(streak?.currentStreak ?? 0) > 0 && (
             <div className="flex items-center gap-1.5 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-full px-3 py-1.5">
@@ -104,7 +104,7 @@ export default function QTMain() {
 
         {/* 제목 + 구절 */}
         <div className="card-elevated p-5 space-y-1">
-          <p className="text-xs text-primary font-semibold uppercase tracking-wide">제목</p>
+          <p className="text-xs text-primary font-semibold uppercase tracking-wide">본문</p>
           {qt.title && <h2 className="font-display text-xl font-bold">{qt.title}</h2>}
           <p className="text-muted-foreground font-medium">{qt.scripture}</p>
         </div>
@@ -117,9 +117,6 @@ export default function QTMain() {
           </div>
         )}
 
-        {/* 해설 듣기 */}
-        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
-
         {/* 성경 본문 */}
         {qt.scriptureText && (
           <div className="card-elevated p-5">
@@ -128,10 +125,13 @@ export default function QTMain() {
           </div>
         )}
 
-        {/* 묵상 질문 */}
+        {/* 해설 듣기 */}
+        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
+
+        {/* QT 질문 */}
         {qt.question && (
           <div className="rounded-xl bg-muted/50 p-5">
-            <p className="text-xs text-muted-foreground font-semibold mb-2">묵상 질문</p>
+            <p className="text-xs text-muted-foreground font-semibold mb-2">QT 질문</p>
             <p className="font-medium leading-relaxed">{qt.question}</p>
           </div>
         )}
@@ -151,7 +151,7 @@ export default function QTMain() {
         {/* 버튼 */}
         {alreadyCompleted ? (
           <div className="flex items-center gap-2 rounded-xl bg-success/10 border border-success/20 p-4">
-            <span className="text-success font-semibold text-sm">오늘 묵상 완료</span>
+            <span className="text-success font-semibold text-sm">오늘 QT 완료</span>
             <Button variant="ghost" size="sm" className="ml-auto" onClick={() => navigate('/qt/complete')}>
               완료 화면 보기 <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
