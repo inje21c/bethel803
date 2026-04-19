@@ -25,9 +25,9 @@ const navItems = [
 
 const mobileTabItems = [
   { path: '/dashboard', label: '홈', icon: Home },
-  { path: '/qt', label: '묵상', icon: BookHeart },
-  { path: '/bible-study', label: '공부', icon: BookOpen },
   { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
+  { path: '/bible-study', label: '공부', icon: BookOpen },
+  { path: '/qt', label: '묵상', icon: BookHeart },
 ];
 
 function isItemVisible(
@@ -153,9 +153,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-6 h-14 md:h-16">
           <Link to="/dashboard" className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-display font-bold text-sm md:text-base">벧</span>
-            </div>
+            <img src="/icon-192.svg" alt="벧엘" className="w-8 h-8 md:w-10 md:h-10 rounded-lg" />
             <div className="hidden sm:flex flex-col">
               <span className="font-display font-semibold text-sm md:text-base">{currentDistrictName} 구역</span>
               {isViewingOtherDistrict && (

@@ -1,11 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, Sparkles, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle } from 'lucide-react';
+import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -62,6 +62,12 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
+  const { data: myQTResponse } = useQuery({
+    queryKey: ['qt_response', todayQt?.id, user?.id],
+    queryFn: () => getMyQTResponse(todayQt!.id, user!.id),
+    enabled: !!todayQt?.id && !!user?.id,
+  });
+
   const { data: groupPrayers = [] } = useQuery({
     queryKey: ['group_prayer_requests', 'dashboard_preview', currentDistrictId],
     queryFn: () => getGroupPrayerRequests(currentDistrictId, { limit: 5 }),
@@ -94,6 +100,8 @@ export default function Dashboard() {
 
   const studyCompleted = latestAnswer?.completed ?? false;
   const upcomingSchedules = schedules;
+  const qtCompleted = myQTResponse?.isCompleted === true;
+  const currentStreak = streak?.currentStreak ?? 0;
 
   const [showPopup, setShowPopup] = useState(false);
   useEffect(() => {
@@ -129,15 +137,80 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="space-y-6">
+
+        {/* 인사말 */}
         <div>
-          <h1 className="font-display text-2xl font-bold">
-            안녕하세요, {user?.name}님
-          </h1>
+          <h1 className="font-display text-2xl font-bold">안녕하세요, {user?.name}님</h1>
           <p className="text-muted-foreground text-sm mt-1">이번 주도 은혜로운 한 주 보내세요!</p>
         </div>
 
+        {/* QT 히어로 카드 */}
+        <motion.div variants={item} initial="hidden" animate="show">
+          <Link to="/qt" className="block rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
+            {qtCompleted ? (
+              <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/40 dark:to-amber-950/40 border border-orange-200 dark:border-orange-800 p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <BookHeart className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm font-semibold text-orange-700 dark:text-orange-300">오늘의 묵상</span>
+                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-success" />
+                </div>
+                <p className="font-display text-lg font-bold text-orange-900 dark:text-orange-100">
+                  {currentStreak > 0 ? `🔥 ${currentStreak}일 연속 완료!` : '오늘 묵상 완료!'}
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">내일도 함께해요 →</p>
+              </div>
+            ) : (
+              <div className="card-elevated p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookHeart className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold">오늘의 묵상</span>
+                  </div>
+                  {currentStreak >= 3 && (
+                    <span className="flex items-center gap-1 text-xs text-orange-500 font-semibold bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-full px-2 py-0.5">
+                      <Flame className="w-3 h-3" />{currentStreak}일 연속
+                    </span>
+                  )}
+                </div>
+                {todayQT.isLoaded ? (
+                  <>
+                    <p className="font-display font-bold text-base leading-snug mb-1">
+                      {todayQt?.title ?? '오늘의 묵상'}
+                    </p>
+                    <p className="text-xs text-primary font-medium mb-2">{todayQT.verse}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{todayQT.summary}</p>
+                    <span className="inline-block mt-3 text-xs text-primary font-semibold">말씀 묵상하기 →</span>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{devotionalLoading ? '불러오는 중...' : '오늘의 말씀이 기다리고 있어요'}</p>
+                )}
+              </div>
+            )}
+          </Link>
+        </motion.div>
+
+        {/* 요약 카드 4개 */}
         <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Study status */}
+          {/* QT 스트릭 */}
+          <motion.div variants={item}>
+            <Link to="/qt/complete" className={`stat-card block hover:shadow-lg transition-shadow ${currentStreak >= 3 ? 'border-orange-200 dark:border-orange-800' : ''}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className={`w-4 h-4 ${currentStreak >= 1 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+                <span className="text-xs text-muted-foreground">묵상 챌린지</span>
+              </div>
+              {currentStreak > 0 ? (
+                <p className={`text-2xl font-bold ${currentStreak >= 3 ? 'text-orange-500' : ''}`}>
+                  {currentStreak}<span className="text-sm font-normal text-muted-foreground ml-1">일 연속</span>
+                </p>
+              ) : (
+                <p className="text-sm font-semibold text-muted-foreground">시작해볼까요?</p>
+              )}
+            </Link>
+          </motion.div>
+
+          {/* 이번 주 공부 */}
           <motion.div variants={item}>
             <Link to="/bible-study" className="stat-card block hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-2 mb-2">
@@ -155,7 +228,7 @@ export default function Dashboard() {
             </Link>
           </motion.div>
 
-          {/* Bible reading */}
+          {/* 성경읽기 */}
           <motion.div variants={item}>
             <Link to="/bible-reading" className="stat-card block hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-2 mb-2">
@@ -166,30 +239,53 @@ export default function Dashboard() {
             </Link>
           </motion.div>
 
-          {/* Prayer requests */}
+          {/* 기도제목 + 중보 */}
           <motion.div variants={item}>
             <Link to="/prayer-requests" className="stat-card block hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-2 mb-2">
                 <MessageSquareHeart className="w-4 h-4 text-destructive" />
                 <span className="text-xs text-muted-foreground">기도제목</span>
               </div>
-              <p className="text-2xl font-bold">{unansweredPrayerCount}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
-            </Link>
-          </motion.div>
-
-          {/* 함께 기도 (중보기도 참여 수) */}
-          <motion.div variants={item}>
-            <Link to="/prayer-requests" className="stat-card block hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-2 mb-2">
-                <HeartHandshake className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">함께 기도</span>
-              </div>
-              <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+              <p className="text-xl font-bold leading-none">{unansweredPrayerCount}<span className="text-xs font-normal text-muted-foreground ml-1">건</span></p>
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                <HeartHandshake className="w-3 h-3" /> 중보 {myIntercessions.size}건
+              </p>
             </Link>
           </motion.div>
         </motion.div>
 
-        {/* 중보기도 섹션 */}
+        {/* 다가오는 일정 */}
+        {upcomingSchedules.length > 0 && (
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.2 }}>
+            <div className="card-elevated p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-semibold flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-primary" /> 다가오는 일정
+                </h2>
+                <Link to="/schedule" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
+              </div>
+              <div className="space-y-3">
+                {upcomingSchedules.map(s => (
+                  <div key={s.id} className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary leading-none">{new Date(s.date).getDate()}</span>
+                      <span className="text-[10px] text-primary/70">{['일','월','화','수','목','금','토'][new Date(s.date).getDay()]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold truncate">{s.title}</h4>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        {s.time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{s.time}</span>}
+                        {s.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{s.location}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 중보기도 */}
         {otherGroupPrayers.length > 0 && (
           <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.25 }}>
             <div className="card-elevated p-5">
@@ -231,31 +327,9 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Today's QT */}
-        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
-          <Link to="/qt" className="block card-elevated p-5 hover:shadow-lg transition-shadow">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-gold" />
-              <h2 className="font-display font-semibold">오늘의 묵상</h2>
-              {(streak?.currentStreak ?? 0) > 0 && (
-                <span className="ml-auto text-xs text-orange-500 font-semibold">🔥 {streak!.currentStreak}일</span>
-              )}
-            </div>
-            {todayQT.verse && todayQT.isLoaded && (
-              <p className="text-xs text-primary font-medium mb-1">{todayQT.verse}</p>
-            )}
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{todayQT.summary}</p>
-            {todayQT.isLoaded && (
-              <span className="inline-block mt-3 text-xs text-primary font-medium">
-                묵상하러 가기 →
-              </span>
-            )}
-          </Link>
-        </motion.div>
-
-        {/* Latest study preview */}
+        {/* 성경공부 */}
         {recentStudies.length > 0 && (
-          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
+          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-display font-semibold flex items-center gap-2">
@@ -266,9 +340,7 @@ export default function Dashboard() {
               {recentStudies.map(s => (
                 <Link key={s.id} to={`/bible-study/${s.id}`} className="card-elevated p-5 block group">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-display font-semibold group-hover:text-primary transition-colors">
-                      {s.title}
-                    </h3>
+                    <h3 className="font-display font-semibold group-hover:text-primary transition-colors">{s.title}</h3>
                     <span className="text-xs text-muted-foreground">{s.weekNumber}주차</span>
                   </div>
                   <p className="text-sm text-muted-foreground">{s.scripture}</p>
@@ -279,39 +351,8 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Upcoming schedules */}
-        {upcomingSchedules.length > 0 && (
-          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.4 }}>
-            <div className="card-elevated p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-display font-semibold flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-primary" /> 다가오는 일정
-                </h2>
-                <Link to="/schedule" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
-              </div>
-              <div className="space-y-3">
-                {upcomingSchedules.map(s => (
-                  <div key={s.id} className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-primary leading-none">{new Date(s.date).getDate()}</span>
-                      <span className="text-[10px] text-primary/70">{['일','월','화','수','목','금','토'][new Date(s.date).getDay()]}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold truncate">{s.title}</h4>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                        {s.time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{s.time}</span>}
-                        {s.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{s.location}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Manual link */}
-        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.45 }}>
+        {/* 사용 안내 */}
+        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.35 }}>
           <Link to="/manual" className="card-elevated p-4 flex items-center gap-3 group hover:shadow-lg transition-shadow block">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <HelpCircle className="w-5 h-5 text-primary" />
