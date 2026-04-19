@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, CheckCircle2, Circle, Pencil, Trash2, Lock, Users, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 
@@ -29,6 +30,8 @@ export default function PrayerRequests() {
   const { user } = useAuth();
   const { currentDistrictId } = useDistrict();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'intercession' ? 'intercession' : 'prayers';
   const queryClient = useQueryClient();
   const [newContent, setNewContent] = useState('');
   const [sharedWithLeader, setSharedWithLeader] = useState(false);
@@ -234,70 +237,109 @@ export default function PrayerRequests() {
     );
   };
 
+  const joinedPrayers = otherGroupPrayers.filter(p => myIntercessions.has(p.id));
+  const notJoinedPrayers = otherGroupPrayers.filter(p => !myIntercessions.has(p.id));
+
   return (
     <AppLayout>
       <div className="space-y-5 max-w-2xl mx-auto">
         <h1 className="font-display text-2xl font-bold">기도제목</h1>
 
-        {/* Add new */}
-        <div className="card-elevated p-4 space-y-3">
-          {isLocked ? (
-            <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm">
-              <Lock className="w-4 h-4 shrink-0" />
-              이번 주 마감이 완료되어 기도제목을 추가할 수 없습니다.
-            </div>
-          ) : (
-            <>
-              <Input
-                value={newContent}
-                onChange={e => setNewContent(e.target.value)}
-                placeholder="새 기도제목을 입력하세요..."
-                onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={sharedWithLeader}
-                    onCheckedChange={setSharedWithLeader}
-                    id="share-with-leader"
-                  />
-                  <label htmlFor="share-with-leader" className="text-xs text-muted-foreground">구역장에게 공유</label>
-                </div>
-                <Button onClick={handleAdd} size="sm" className="gap-1" disabled={addMutation.isPending}>
-                  <Plus className="w-3.5 h-3.5" /> {addMutation.isPending ? '등록 중...' : '등록'}
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
+        <Tabs defaultValue={initialTab} className="space-y-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="prayers" className="flex-1 gap-1.5">
+              <MessageSquareHeart className="w-3.5 h-3.5" /> 기도제목
+            </TabsTrigger>
+            <TabsTrigger value="intercession" className="flex-1 gap-1.5">
+              <HeartHandshake className="w-3.5 h-3.5" /> 함께기도
+              {myIntercessions.size > 0 && (
+                <span className="ml-1 text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 leading-none">
+                  {myIntercessions.size}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* List */}
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <>
-            {/* 내 기도제목 */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">내 기도제목</h2>
-              {myPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, true))}
-              {myPrayers.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">등록된 기도제목이 없습니다.</p>
+          {/* 기도제목 탭 */}
+          <TabsContent value="prayers" className="space-y-5 mt-0">
+            <div className="card-elevated p-4 space-y-3">
+              {isLocked ? (
+                <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm">
+                  <Lock className="w-4 h-4 shrink-0" />
+                  이번 주 마감이 완료되어 기도제목을 추가할 수 없습니다.
+                </div>
+              ) : (
+                <>
+                  <Input
+                    value={newContent}
+                    onChange={e => setNewContent(e.target.value)}
+                    placeholder="새 기도제목을 입력하세요..."
+                    onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                  />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={sharedWithLeader}
+                        onCheckedChange={setSharedWithLeader}
+                        id="share-with-leader"
+                      />
+                      <label htmlFor="share-with-leader" className="text-xs text-muted-foreground">구역장에게 공유</label>
+                    </div>
+                    <Button onClick={handleAdd} size="sm" className="gap-1" disabled={addMutation.isPending}>
+                      <Plus className="w-3.5 h-3.5" /> {addMutation.isPending ? '등록 중...' : '등록'}
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
 
-            {/* 중보기도 */}
-            {otherGroupPrayers.length > 0 && (
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <h2 className="text-sm font-semibold text-muted-foreground">내 기도제목</h2>
+                  {myPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, true))}
+                  {myPrayers.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">등록된 기도제목이 없습니다.</p>
+                  )}
+                </div>
+                {otherGroupPrayers.length > 0 && (
+                  <div className="space-y-3">
+                    <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Users className="w-4 h-4" /> 구역 기도제목
+                    </h2>
+                    {otherGroupPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, false, true))}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* 함께기도 탭 */}
+          <TabsContent value="intercession" className="space-y-5 mt-0">
+            {joinedPrayers.length === 0 ? (
+              <div className="text-center py-12 space-y-3">
+                <HeartHandshake className="w-10 h-10 text-muted-foreground mx-auto" />
+                <p className="font-semibold">아직 함께기도에 참여하지 않았어요</p>
+                <p className="text-sm text-muted-foreground">기도제목 탭에서 구역 식구의 기도에 동참해보세요</p>
+              </div>
+            ) : (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
-                  <Users className="w-4 h-4" /> 중보기도
-                </h2>
-                {otherGroupPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, false, true))}
+                <h2 className="text-sm font-semibold text-muted-foreground">내가 함께기도 중인 기도제목</h2>
+                {joinedPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, false, true))}
               </div>
             )}
-          </>
-        )}
+            {notJoinedPrayers.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted-foreground">아직 참여하지 않은 기도제목</h2>
+                {notJoinedPrayers.map((prayer: PrayerRequest, i: number) => renderPrayerItem(prayer, i, false, true))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
