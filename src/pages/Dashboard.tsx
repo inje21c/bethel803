@@ -193,7 +193,7 @@ export default function Dashboard() {
 
         {/* 요약 카드 4개 */}
         <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* QT 스트릭 */}
+          {/* QT 챌린지 */}
           <motion.div variants={item}>
             <Link to="/qt/complete" className={`stat-card block hover:shadow-lg transition-shadow ${currentStreak >= 3 ? 'border-orange-200 dark:border-orange-800' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
@@ -207,6 +207,17 @@ export default function Dashboard() {
               ) : (
                 <p className="text-sm font-semibold text-muted-foreground">시작해볼까요?</p>
               )}
+            </Link>
+          </motion.div>
+
+          {/* 성경읽기 챌린지 */}
+          <motion.div variants={item}>
+            <Link to="/bible-reading" className="stat-card block hover:shadow-lg transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <BookMarked className="w-4 h-4 text-gold" />
+                <span className="text-xs text-muted-foreground">성경읽기 챌린지</span>
+              </div>
+              <p className="text-2xl font-bold">{totalChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
             </Link>
           </motion.div>
 
@@ -225,17 +236,6 @@ export default function Dashboard() {
                 )}
                 <span className="text-sm font-semibold">{studyCompleted ? '완료' : '미완료'}</span>
               </div>
-            </Link>
-          </motion.div>
-
-          {/* 성경읽기 */}
-          <motion.div variants={item}>
-            <Link to="/bible-reading" className="stat-card block hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-2 mb-2">
-                <BookMarked className="w-4 h-4 text-gold" />
-                <span className="text-xs text-muted-foreground">2026 성경읽기</span>
-              </div>
-              <p className="text-2xl font-bold">{totalChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
             </Link>
           </motion.div>
 
