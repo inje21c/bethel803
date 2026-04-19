@@ -1,10 +1,11 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked,
   CalendarDays, CheckCircle2, Clock, TrendingUp,
   RefreshCw, Edit, Trash2, MessageCircle, Lock, LockOpen,
-  UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft
+  UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft,
+  BookHeart, Circle, AlertTriangle, Save, Flame
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -34,6 +35,10 @@ import {
   parseBulletin,
   changeUserDistrict,
   getDistricts,
+  getQTDistrictSummary,
+  getTodayQT,
+  updateQTLeaderComment,
+  getKSTDateString,
 } from '@/lib/api';
 import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport, StudySource } from '@/lib/api';
 import type { BibleStudy } from '@/lib/api';
@@ -239,6 +244,8 @@ export default function AdminDashboard() {
   const [districtChangeTarget, setDistrictChangeTarget] = useState<FullUser | null>(null);
   const [readingFrom, setReadingFrom] = useState('');
   const [readingTo, setReadingTo] = useState('');
+  const today = getKSTDateString(new Date());
+  const [qtComment, setQtComment] = useState('');
 
   const { data: allDistricts = [] } = useQuery({
     queryKey: ['districts'],
@@ -321,6 +328,30 @@ export default function AdminDashboard() {
     enabled: activeTab === 'report' && !!currentDistrictId,
     placeholderData: (previous) => previous,
   });
+
+  const { data: qtContent } = useQuery({
+    queryKey: ['qt_content', today],
+    queryFn: getTodayQT,
+    staleTime: 1000 * 60 * 30,
+    enabled: activeTab === 'qt',
+  });
+
+  const { data: qtMembers = [], isLoading: qtMembersLoading } = useQuery({
+    queryKey: ['qt_district_summary', currentDistrictId, today],
+    queryFn: () => getQTDistrictSummary(currentDistrictId, today),
+    enabled: activeTab === 'qt' && !!currentDistrictId && isLeader,
+    refetchInterval: 60_000,
+  });
+
+  const qtCommentMutation = useMutation({
+    mutationFn: () => updateQTLeaderComment(today, qtComment),
+    onSuccess: () => toast.success('코멘트가 저장되었습니다.'),
+    onError: () => toast.error('저장에 실패했습니다.'),
+  });
+
+  useEffect(() => {
+    if (qtContent?.leaderComment) setQtComment(qtContent.leaderComment);
+  }, [qtContent?.leaderComment]);
 
   const weeklyCloseMutation = useMutation({
     mutationFn: (weekStart?: string) => triggerWeeklyClose(weekStart, currentDistrictId),
@@ -586,6 +617,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="kakao" className="text-xs px-2 py-1.5">
               <MessageCircle className="w-3 h-3 mr-1" />
               공지생성
+            </TabsTrigger>
+            <TabsTrigger value="qt" className="text-xs px-2 py-1.5">
+              <BookHeart className="w-3 h-3 mr-1" />
+              QT 현황
             </TabsTrigger>
           </TabsList>
 
@@ -1370,6 +1405,118 @@ export default function AdminDashboard() {
             <Suspense fallback={<TabFallback />}>
               <KakaoNoticeGenerator />
             </Suspense>
+          </TabsContent>
+
+          {/* QT 현황 Tab */}
+          <TabsContent value="qt" className="space-y-4">
+            {(() => {
+              const completedCount = qtMembers.filter((m) => m.isCompleted).length;
+              const totalCount = qtMembers.length;
+              const absentRisk = qtMembers.filter((m) => {
+                if (m.isCompleted) return false;
+                if (!m.lastCompleted) return true;
+                const last = new Date(m.lastCompleted + 'T00:00:00');
+                const t = new Date(today + 'T00:00:00');
+                return Math.floor((t.getTime() - last.getTime()) / 86400000) >= 3;
+              });
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card>
+                      <CardContent className="pt-4 text-center">
+                        <CheckCircle2 className="w-5 h-5 text-success mx-auto mb-1" />
+                        <p className="text-2xl font-bold text-success">{completedCount}</p>
+                        <p className="text-xs text-muted-foreground">완료</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 text-center">
+                        <Circle className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+                        <p className="text-2xl font-bold">{totalCount - completedCount}</p>
+                        <p className="text-xs text-muted-foreground">미완료</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 text-center">
+                        <AlertTriangle className="w-5 h-5 text-destructive mx-auto mb-1" />
+                        <p className="text-2xl font-bold text-destructive">{absentRisk.length}</p>
+                        <p className="text-xs text-muted-foreground">3일↑ 결석</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        구역원 현황 ({today} 기준)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {qtMembersLoading ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">불러오는 중...</p>
+                      ) : qtMembers.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">구역원 정보가 없습니다.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {qtMembers.map((m) => {
+                            const isRisk = absentRisk.some((a) => a.userId === m.userId);
+                            return (
+                              <li
+                                key={m.userId}
+                                className={`flex items-center justify-between rounded-lg px-4 py-3 ${
+                                  isRisk ? 'bg-destructive/5 border border-destructive/20' : 'border'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {isRisk && <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                                  <span className="text-sm font-medium">{m.userName}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {m.currentStreak > 0 && (
+                                    <span className="text-xs text-orange-500 font-semibold flex items-center gap-0.5">
+                                      <Flame className="w-3 h-3" />{m.currentStreak}일
+                                    </span>
+                                  )}
+                                  {m.isCompleted ? (
+                                    <CheckCircle2 className="w-4 h-4 text-success" />
+                                  ) : (
+                                    <Circle className="w-4 h-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">구역장 코멘트</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Textarea
+                        value={qtComment}
+                        onChange={(e) => setQtComment(e.target.value)}
+                        placeholder="내일 07:00 푸시 알림에 포함될 코멘트를 작성하세요 (선택 사항)"
+                        className="min-h-[100px] resize-none"
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => qtCommentMutation.mutate()}
+                        disabled={qtCommentMutation.isPending}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        저장 → 내일 07:00 발송 포함
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
 
