@@ -14,7 +14,7 @@ const GlobalSearch = lazy(() => import('@/components/GlobalSearch'));
 
 const navItems = [
   { path: '/dashboard', label: '대시보드', icon: Home },
-  { path: '/qt', label: '오늘의 묵상', icon: BookHeart },
+  { path: '/qt', label: '오늘의 QT', icon: BookHeart },
   { path: '/bible-study', label: '구역성경공부', icon: BookOpen },
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
@@ -27,7 +27,7 @@ const mobileTabItems = [
   { path: '/dashboard', label: '홈', icon: Home },
   { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
   { path: '/bible-study', label: '공부', icon: BookOpen },
-  { path: '/qt', label: '묵상', icon: BookHeart },
+  { path: '/qt', label: 'QT', icon: BookHeart },
 ];
 
 function isItemVisible(
