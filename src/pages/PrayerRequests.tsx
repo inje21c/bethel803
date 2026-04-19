@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, CheckCircle2, Circle, Pencil, Trash2, Lock, Users, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Pencil, Trash2, Lock, Users, ShieldCheck, HeartHandshake, MessageSquareHeart } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
