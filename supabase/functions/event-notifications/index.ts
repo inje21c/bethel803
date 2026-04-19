@@ -2,9 +2,9 @@
 // Supabase Database Webhook으로 호출됨 (INSERT/UPDATE 이벤트)
 //
 // Webhook 설정 (Supabase 대시보드 → Database → Webhooks):
-//   1. bible_studies   UPDATE  → https://<project>.supabase.co/functions/v1/event-notifications
-//   2. schedules       INSERT  → https://<project>.supabase.co/functions/v1/event-notifications
-//   3. prayer_requests INSERT  → https://<project>.supabase.co/functions/v1/event-notifications
+//   1. on-bible-study-published     bible_studies   UPDATE  → .../functions/v1/event-notifications
+//   2. on-schedule-insert           schedules       INSERT  → .../functions/v1/event-notifications
+//   3. on-prayer-request-intercession prayer_requests UPDATE → .../functions/v1/event-notifications
 //
 // Header: x-webhook-secret: <EVENT_WEBHOOK_SECRET>
 
@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'x-dispatch-secret': PUSH_DISPATCH_SECRET,
       },
       body: JSON.stringify({
@@ -131,10 +132,10 @@ async function resolveNotification(
     };
   }
 
-  // 중보기도 등록 (INSERT: 기도제목 공유)
-  if (table === 'prayer_requests' && type === 'INSERT') {
-    // 본인 기도제목이라 구역 알림 여부와 무관하게 등록 시 발송
-    // user_id로 구역 조회
+  // 중보기도 공개 (UPDATE: shared_with_group false → true)
+  if (table === 'prayer_requests' && type === 'UPDATE') {
+    if (record.shared_with_group !== true || oldRecord?.shared_with_group === true) return null;
+
     const { data: userRow } = await supabase
       .from('users')
       .select('district_id, name')

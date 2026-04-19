@@ -112,6 +112,10 @@ interface QTResult {
 }
 
 async function extractQTContent(html: string, date: string): Promise<QTResult> {
+  // <div class="bible_text">에서 묵상 제목 직접 추출
+  const bibleTextTitle = html.match(/<div[^>]*class=["'][^"']*bible_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
+    ?.[1]?.replace(/<[^>]+>/g, '').trim() ?? '';
+
   const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -121,6 +125,7 @@ async function extractQTContent(html: string, date: string): Promise<QTResult> {
     .slice(0, 8000);
 
   const prompt = `다음은 ${date} 날짜의 매일성경 묵상 웹페이지 텍스트입니다.
+오늘 묵상 제목(확정값, 반드시 이 값을 title 필드에 사용): "${bibleTextTitle}"
 아래 JSON 형식으로 정보를 추출하세요.
 
 규칙:
@@ -178,7 +183,7 @@ ${stripped}`;
 
   const parsed = JSON.parse(raw);
   return {
-    title: parsed.title || '오늘의 묵상',
+    title: bibleTextTitle || parsed.title || '오늘의 묵상',
     scripture: parsed.scripture || '시편 119:105',
     scriptureText: parsed.scripture_text || '',
     summary: parsed.summary || '말씀으로 하루를 시작하는 은혜가 있기를 바랍니다.',

@@ -99,6 +99,7 @@ async function createAndDispatch(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
       'x-dispatch-secret': PUSH_DISPATCH_SECRET,
     },
     body: JSON.stringify({
