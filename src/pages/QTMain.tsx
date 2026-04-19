@@ -104,7 +104,7 @@ export default function QTMain() {
 
         {/* 제목 + 구절 */}
         <div className="card-elevated p-5 space-y-1">
-          <p className="text-xs text-primary font-semibold uppercase tracking-wide">본문</p>
+          <p className="text-xs text-primary font-semibold uppercase tracking-wide">제목</p>
           {qt.title && <h2 className="font-display text-xl font-bold">{qt.title}</h2>}
           <p className="text-muted-foreground font-medium">{qt.scripture}</p>
         </div>
@@ -117,6 +117,9 @@ export default function QTMain() {
           </div>
         )}
 
+        {/* 해설 듣기 */}
+        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
+
         {/* 성경 본문 */}
         {qt.scriptureText && (
           <div className="card-elevated p-5">
@@ -124,9 +127,6 @@ export default function QTMain() {
             <p className="text-sm leading-loose whitespace-pre-line text-foreground/90">{qt.scriptureText}</p>
           </div>
         )}
-
-        {/* 해설 듣기 */}
-        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
 
         {/* 묵상 질문 */}
         {qt.question && (
