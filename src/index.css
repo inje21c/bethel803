@@ -63,6 +63,42 @@ html, body {
     --shadow-card: 0 2px 12px -2px hsl(222 60% 28% / 0.08);
     --shadow-elevated: 0 8px 30px -8px hsl(222 60% 28% / 0.15);
   }
+
+  .dark {
+    --background: 222 30% 8%;
+    --foreground: 40 20% 92%;
+
+    --card: 222 25% 12%;
+    --card-foreground: 40 20% 92%;
+
+    --popover: 222 25% 12%;
+    --popover-foreground: 40 20% 92%;
+
+    --primary: 222 65% 62%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 222 20% 18%;
+    --secondary-foreground: 40 20% 92%;
+
+    --muted: 222 18% 18%;
+    --muted-foreground: 220 10% 58%;
+
+    --accent: 38 80% 55%;
+    --accent-foreground: 222 47% 8%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 20% 22%;
+    --input: 222 20% 22%;
+    --ring: 222 65% 62%;
+
+    --success: 142 55% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.3);
+    --shadow-elevated: 0 8px 30px -8px hsl(0 0% 0% / 0.5);
+  }
 }
 
 @layer base {
