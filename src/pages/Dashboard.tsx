@@ -152,7 +152,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <BookHeart className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-semibold text-orange-700 dark:text-orange-300">오늘의 묵상</span>
+                    <span className="text-sm font-semibold text-orange-700 dark:text-orange-300">오늘의 QT</span>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-success" />
                 </div>
@@ -166,7 +166,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BookHeart className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold">오늘의 묵상</span>
+                    <span className="text-sm font-semibold">오늘의 QT</span>
                   </div>
                   {currentStreak >= 3 && (
                     <span className="flex items-center gap-1 text-xs text-orange-500 font-semibold bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-full px-2 py-0.5">
@@ -198,7 +198,7 @@ export default function Dashboard() {
             <Link to="/qt/complete" className={`stat-card block hover:shadow-lg transition-shadow ${currentStreak >= 3 ? 'border-orange-200 dark:border-orange-800' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <Flame className={`w-4 h-4 ${currentStreak >= 1 ? 'text-orange-500' : 'text-muted-foreground'}`} />
-                <span className="text-xs text-muted-foreground">묵상 챌린지</span>
+                <span className="text-xs text-muted-foreground">QT 챌린지</span>
               </div>
               {currentStreak > 0 ? (
                 <p className={`text-2xl font-bold ${currentStreak >= 3 ? 'text-orange-500' : ''}`}>
