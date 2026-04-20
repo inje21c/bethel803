@@ -1659,6 +1659,8 @@ export interface QTContent {
   scriptureText: string | null;
   summary: string | null;
   question: string | null;
+  prayer: string | null;
+  application: string | null;
   audioUrl: string | null;
   hymnSuggestions: HymnSuggestion[];
   leaderComment: string | null;
@@ -1705,6 +1707,8 @@ function mapQTContent(row: Record<string, unknown>): QTContent {
     scriptureText: (row.scripture_text as string) ?? null,
     summary: (row.summary as string) ?? null,
     question: (row.question as string) ?? null,
+    prayer: (row.prayer as string) ?? null,
+    application: (row.application as string) ?? null,
     audioUrl: (row.audio_url as string) ?? null,
     hymnSuggestions: Array.isArray(row.hymn_suggestions) ? (row.hymn_suggestions as HymnSuggestion[]) : [],
     leaderComment: (row.leader_comment as string) ?? null,

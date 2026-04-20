@@ -109,6 +109,9 @@ export default function QTMain() {
           <p className="text-muted-foreground font-medium">{qt.scripture}</p>
         </div>
 
+        {/* 해설 듣기 */}
+        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
+
         {/* 해설 요약 */}
         {qt.summary && (
           <div className="rounded-xl bg-primary/5 border border-primary/10 p-5">
@@ -116,9 +119,6 @@ export default function QTMain() {
             <p className="text-sm leading-relaxed whitespace-pre-line">{qt.summary}</p>
           </div>
         )}
-
-        {/* 해설 듣기 */}
-        {qt.audioUrl && <AudioPlayer url={qt.audioUrl} />}
 
         {/* 성경 본문 */}
         {qt.scriptureText && (
