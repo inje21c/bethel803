@@ -23,6 +23,8 @@ export default function QTLeaderDashboard() {
     queryKey: ['qt_content', today],
     queryFn: getTodayQT,
     staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => (query.state.data ? false : 60_000),
   });
 
   const { data: members = [], isLoading } = useQuery({
