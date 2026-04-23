@@ -334,6 +334,8 @@ export default function AdminDashboard() {
     queryFn: getTodayQT,
     staleTime: 1000 * 60 * 30,
     enabled: activeTab === 'qt',
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => (query.state.data ? false : 60_000),
   });
 
   const { data: qtMembers = [], isLoading: qtMembersLoading } = useQuery({
