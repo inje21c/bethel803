@@ -164,29 +164,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-1.5">
-            {navItems.map(item => {
-              if (item.masterOnly && !isMaster) return null;
-              if (item.leaderOnly && !isLeader) return null;
-              const active = location.pathname.startsWith(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-2 rounded-lg text-sm lg:text-[15px] font-medium transition-colors ${
-                    active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <item.icon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
           <div className="flex items-center gap-2 md:gap-3">
             <DistrictSelector />
             {isViewingOtherDistrict && (
@@ -325,20 +302,51 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </AnimatePresence>
       </header>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 pb-24 pt-6 md:px-6 md:py-6">
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {children}
-        </motion.div>
-      </main>
+      <div className="mx-auto flex max-w-7xl md:px-6">
+        {/* Tablet / desktop nav */}
+        <aside className="hidden w-52 shrink-0 md:block lg:w-56">
+          <nav
+            className="sticky top-20 flex flex-col gap-1 py-6 pr-4"
+            aria-label="주 메뉴"
+          >
+            {navItems.map(item => {
+              if (!isItemVisible(item, isLeader, isMaster)) return null;
+              const active = location.pathname.startsWith(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* Content */}
+        <main className="min-w-0 flex-1 px-4 pb-24 pt-6 md:px-0 md:py-6">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {children}
+          </motion.div>
+        </main>
+      </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1">
+        <div
+          className="grid grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1"
+        >
           {mobileTabItems.map(item => {
             const active = location.pathname.startsWith(item.path);
             return (
