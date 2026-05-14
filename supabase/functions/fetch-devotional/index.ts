@@ -6,9 +6,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
 const SOURCE_URL = 'https://sum.su.or.kr:8888/bible/today';
 const BASE_API = 'https://sum.su.or.kr:8888/Ajax/Bible';
+const MAX_RANGE_DAYS = 14;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,57 +23,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const today = getTodayKST();
-
-    const [detail, scriptureText] = await Promise.all([
-      fetchQTDetail(today),
-      fetchScriptureText(today),
-    ]);
-
-    const [question, prayer, application] = await Promise.all([
-      generateQuestion(detail.summary),
-      generatePrayer(detail.summary),
-      generateApplication(detail.summary),
-    ]);
-
+    const dates = await getRequestedDates(req);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const results: { date: string; scripture: string }[] = [];
 
-    const { error: qtError } = await supabase
-      .from('qt_contents')
-      .upsert(
-        {
-          date: today,
-          title: detail.title,
-          scripture: detail.scripture,
-          scripture_text: scriptureText,
-          summary: detail.summary,
-          question,
-          prayer,
-          application,
-          audio_url: detail.audioUrl,
-          hymn_suggestions: detail.hymnSuggestions,
-        },
-        { onConflict: 'date' }
-      );
-    if (qtError) throw qtError;
+    for (const date of dates) {
+      results.push(await fetchAndStoreQT(supabase, date));
+    }
 
-    const { error: devError } = await supabase
-      .from('daily_devotionals')
-      .upsert(
-        {
-          devotional_date: today,
-          scripture: detail.scripture,
-          content: detail.summary,
-          summary: detail.summary,
-          application_question: question,
-          source_url: SOURCE_URL,
-        },
-        { onConflict: 'devotional_date' }
-      );
-    if (devError) console.error('daily_devotionals upsert error (non-fatal):', devError.message);
-
+    const first = results[0];
     return new Response(
-      JSON.stringify({ ok: true, date: today, scripture: detail.scripture }),
+      JSON.stringify({
+        ok: true,
+        date: first?.date,
+        scripture: first?.scripture,
+        count: results.length,
+        results,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
@@ -85,30 +52,158 @@ Deno.serve(async (req) => {
   }
 });
 
+async function fetchAndStoreQT(
+  supabase: ReturnType<typeof createClient>,
+  date: string,
+): Promise<{ date: string; scripture: string }> {
+  const [detail, scriptureText] = await Promise.all([
+    fetchQTDetail(date),
+    fetchScriptureText(date),
+  ]);
+
+  const { question, prayer, application } = await generateAIFields(detail.summary);
+
+  const { error: qtError } = await supabase
+    .from('qt_contents')
+    .upsert(
+      {
+        date,
+        title: detail.title,
+        scripture: detail.scripture,
+        scripture_text: scriptureText,
+        summary: detail.summary,
+        question,
+        prayer,
+        application,
+        audio_url: detail.audioUrl,
+        hymn_suggestions: detail.hymnSuggestions,
+      },
+      { onConflict: 'date' }
+    );
+  if (qtError) throw qtError;
+
+  const { error: devError } = await supabase
+    .from('daily_devotionals')
+    .upsert(
+      {
+        devotional_date: date,
+        scripture: detail.scripture,
+        content: detail.summary,
+        summary: detail.summary,
+        application_question: question,
+        source_url: SOURCE_URL,
+      },
+      { onConflict: 'devotional_date' }
+    );
+  if (devError) console.error('daily_devotionals upsert error (non-fatal):', devError.message);
+
+  return { date, scripture: detail.scripture };
+}
+
 function getTodayKST(): string {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
 }
 
-async function postApi(endpoint: string, date: string): Promise<unknown> {
-  const res = await fetch(`${BASE_API}/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'User-Agent': 'Mozilla/5.0 (compatible; BethelBot/1.0)',
-      'Referer': SOURCE_URL,
-    },
-    body: `{ 'qt_ty' : 'QT1' , 'Base_de' : '${date}'}`,
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`${endpoint} HTTP ${res.status}`);
+async function getRequestedDates(req: Request): Promise<string[]> {
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    return buildDateRange(
+      url.searchParams.get('date') ?? undefined,
+      url.searchParams.get('from') ?? undefined,
+      url.searchParams.get('to') ?? undefined,
+    );
+  }
 
-  const buffer = await res.arrayBuffer();
-  const contentType = res.headers.get('content-type') ?? '';
-  const charset = /euc-kr/i.test(contentType) ? 'euc-kr' : 'utf-8';
-  const text = new TextDecoder(charset, { fatal: false }).decode(buffer);
-  return JSON.parse(text);
+  const body = await req.json().catch(() => ({})) as {
+    date?: string;
+    from?: string;
+    to?: string;
+  };
+  return buildDateRange(body.date, body.from, body.to);
+}
+
+function buildDateRange(date?: string, from?: string, to?: string): string[] {
+  if (date) {
+    assertDate(date, 'date');
+    return [date];
+  }
+
+  if (!from && !to) return [getTodayKST()];
+  const start = from ?? to;
+  const end = to ?? from;
+  assertDate(start, 'from');
+  assertDate(end, 'to');
+
+  const dates: string[] = [];
+  const cursor = parseUTCDate(start);
+  const last = parseUTCDate(end);
+  if (cursor.getTime() > last.getTime()) throw new Error('from must be on or before to');
+
+  while (cursor.getTime() <= last.getTime()) {
+    if (dates.length >= MAX_RANGE_DAYS) {
+      throw new Error(`date range is too large; maximum ${MAX_RANGE_DAYS} days`);
+    }
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
+function assertDate(date: string | undefined, field: string): asserts date is string {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`${field} must be YYYY-MM-DD`);
+  }
+  const parsed = parseUTCDate(date);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new Error(`${field} is not a valid date`);
+  }
+}
+
+function parseUTCDate(date: string): Date {
+  return new Date(`${date}T00:00:00Z`);
+}
+
+async function postApi(endpoint: string, date: string): Promise<unknown> {
+  const bodies = [
+    JSON.stringify({ qt_ty: 'QT1', Base_de: date }),
+    `{ 'qt_ty' : 'QT1' , 'Base_de' : '${date}'}`,
+  ];
+  let lastError = '';
+
+  for (const body of bodies) {
+    const res = await fetch(`${BASE_API}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'User-Agent': 'Mozilla/5.0 (compatible; BethelBot/1.0)',
+        'Referer': SOURCE_URL,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body,
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const buffer = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') ?? '';
+    const charset = /euc-kr/i.test(contentType) ? 'euc-kr' : 'utf-8';
+    const text = new TextDecoder(charset, { fatal: false }).decode(buffer);
+
+    if (!res.ok) {
+      lastError = `${endpoint} HTTP ${res.status}: ${text.slice(0, 200)}`;
+      continue;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      lastError = `${endpoint} returned invalid JSON: ${text.slice(0, 200)}`;
+    }
+  }
+
+  throw new Error(lastError || `${endpoint} request failed`);
 }
 
 function stripHtml(html: string): string {
@@ -175,6 +270,8 @@ async function fetchScriptureText(date: string): Promise<string> {
 }
 
 async function callOpenAI(prompt: string, fallback: string): Promise<string> {
+  if (openAIDisabled || !OPENAI_API_KEY) return fallback;
+
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -190,7 +287,13 @@ async function callOpenAI(prompt: string, fallback: string): Promise<string> {
     signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) {
-    console.error('OpenAI error:', await res.text());
+    const err = await res.text();
+    if (res.status === 401) {
+      openAIDisabled = true;
+      console.warn('OpenAI authentication failed; using QT fallback fields. Check OPENAI_API_KEY.');
+    } else {
+      console.error('OpenAI error:', err);
+    }
     return fallback;
   }
   const data = await res.json();
@@ -201,6 +304,19 @@ async function callOpenAI(prompt: string, fallback: string): Promise<string> {
   } catch {
     return fallback;
   }
+}
+
+let openAIDisabled = false;
+
+async function generateAIFields(summary: string): Promise<{
+  question: string;
+  prayer: string;
+  application: string;
+}> {
+  const question = await generateQuestion(summary);
+  const prayer = await generatePrayer(summary);
+  const application = await generateApplication(summary);
+  return { question, prayer, application };
 }
 
 function generateQuestion(summary: string): Promise<string> {
