@@ -577,13 +577,17 @@ export default function AdminDashboard() {
           </Card>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="flex flex-wrap gap-1 h-auto">
-            <TabsTrigger value="overview" className="text-xs px-2 py-1.5">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4 md:grid md:grid-cols-[14rem_minmax(0,1fr)] md:items-start md:gap-6 md:space-y-0"
+        >
+          <TabsList className="flex flex-wrap gap-1 h-auto md:sticky md:top-24 md:col-start-1 md:flex-col md:items-stretch md:justify-start md:rounded-lg md:border md:bg-card md:p-2 md:shadow-sm">
+            <TabsTrigger value="overview" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <BarChart3 className="w-3 h-3 mr-1" />
               대시보드
             </TabsTrigger>
-            <TabsTrigger value="members" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="members" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <Users className="w-3 h-3 mr-1" />
               구역원 관리
               {pendingUsers.length > 0 && (
@@ -592,42 +596,42 @@ export default function AdminDashboard() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="access" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="access" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <TrendingUp className="w-3 h-3 mr-1" />
               접속현황
             </TabsTrigger>
-            <TabsTrigger value="study" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="study" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <BookOpen className="w-3 h-3 mr-1" />
               성경공부
             </TabsTrigger>
-            <TabsTrigger value="prayer" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="prayer" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <MessageSquareHeart className="w-3 h-3 mr-1" />
               기도제목
             </TabsTrigger>
-            <TabsTrigger value="bible" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="bible" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <BookMarked className="w-3 h-3 mr-1" />
               성경읽기
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="schedule" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <CalendarDays className="w-3 h-3 mr-1" />
               일정관리
             </TabsTrigger>
-            <TabsTrigger value="report" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="report" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <FileText className="w-3 h-3 mr-1" />
               주간보고
             </TabsTrigger>
-            <TabsTrigger value="kakao" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="kakao" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <MessageCircle className="w-3 h-3 mr-1" />
               공지생성
             </TabsTrigger>
-            <TabsTrigger value="qt" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="qt" className="text-xs px-2 py-1.5 md:w-full md:justify-start md:px-3 md:py-2 md:text-sm">
               <BookHeart className="w-3 h-3 mr-1" />
               QT 현황
             </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-4">
+          <TabsContent value="overview" className="space-y-4 md:col-start-2 md:mt-0">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <Card>
@@ -688,7 +692,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Members Management Tab */}
-          <TabsContent value="members" className="space-y-4">
+          <TabsContent value="members" className="space-y-4 md:col-start-2 md:mt-0">
             {/* Pending Approval */}
             {pendingUsers.length > 0 && (
               <Card>
@@ -867,7 +871,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Access Logs Tab */}
-          <TabsContent value="access" className="space-y-4">
+          <TabsContent value="access" className="space-y-4 md:col-start-2 md:mt-0">
             {(() => {
               const today = new Date().toISOString().slice(0, 10);
               const loggedInToday = accessInfo.filter((a: AccessInfo) =>
@@ -943,7 +947,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Bible Study Management Tab */}
-          <TabsContent value="study" className="space-y-4">
+          <TabsContent value="study" className="space-y-4 md:col-start-2 md:mt-0">
             <Card>
               <CardHeader className="flex flex-row items-start justify-between">
                 <div>
@@ -1216,7 +1220,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Prayer Management Tab */}
-          <TabsContent value="prayer" className="space-y-4">
+          <TabsContent value="prayer" className="space-y-4 md:col-start-2 md:mt-0">
             <div className="grid grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -1299,7 +1303,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Bible Reading Tab */}
-          <TabsContent value="bible" className="space-y-4">
+          <TabsContent value="bible" className="space-y-4 md:col-start-2 md:mt-0">
             <Suspense fallback={<TabFallback />}>
               <AdminBibleReadingTab
                 readingFrom={readingFrom}
@@ -1314,7 +1318,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Schedule Management Tab */}
-          <TabsContent value="schedule" className="space-y-4">
+          <TabsContent value="schedule" className="space-y-4 md:col-start-2 md:mt-0">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -1389,7 +1393,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Weekly Report Tab */}
-          <TabsContent value="report" className="space-y-4">
+          <TabsContent value="report" className="space-y-4 md:col-start-2 md:mt-0">
             <Suspense fallback={<TabFallback />}>
               <AdminWeeklyReportTab
                 weeklyReports={weeklyReports}
@@ -1403,14 +1407,14 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Kakao Notice Tab */}
-          <TabsContent value="kakao" className="space-y-4">
+          <TabsContent value="kakao" className="space-y-4 md:col-start-2 md:mt-0">
             <Suspense fallback={<TabFallback />}>
               <KakaoNoticeGenerator />
             </Suspense>
           </TabsContent>
 
           {/* QT 현황 Tab */}
-          <TabsContent value="qt" className="space-y-4">
+          <TabsContent value="qt" className="space-y-4 md:col-start-2 md:mt-0">
             {(() => {
               const completedCount = qtMembers.filter((m) => m.isCompleted).length;
               const totalCount = qtMembers.length;
