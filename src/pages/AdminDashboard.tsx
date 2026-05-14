@@ -696,105 +696,133 @@ export default function AdminDashboard() {
             {/* Pending Approval */}
             {pendingUsers.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
+                <CardHeader className="px-4 py-4 md:px-6 md:py-6">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                     <Clock className="w-4 h-4 text-amber-500" />
                     승인 대기 중
                     <Badge variant="destructive" className="ml-1">{pendingUsers.length}명</Badge>
                   </CardTitle>
-                  <CardDescription>가입 요청한 구역원을 승인하거나 거절하세요</CardDescription>
+                  <CardDescription className="text-xs md:text-sm">가입 요청한 구역원을 승인하거나 거절하세요</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>이름</TableHead>
-                        <TableHead>가입 신청일</TableHead>
-                        <TableHead className="text-right">처리</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingUsers.map((u: FullUser) => (
-                        <TableRow key={u.id}>
-                          <TableCell className="font-medium">{u.name}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                className="gap-1 bg-green-600 hover:bg-green-700 text-white h-7"
-                                onClick={() => approveMutation.mutate(u.id)}
-                                disabled={approveMutation.isPending}
-                              >
-                                <UserCheck className="w-3 h-3" />
-                                승인
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="gap-1 h-7"
-                                onClick={() => rejectMutation.mutate(u.id)}
-                                disabled={rejectMutation.isPending}
-                              >
-                                <UserX className="w-3 h-3" />
-                                거절
-                              </Button>
-                            </div>
-                          </TableCell>
+                <CardContent className="px-4 pb-4 md:px-6 md:pb-6">
+                  <div className="space-y-3 md:hidden">
+                    {pendingUsers.map((u: FullUser) => (
+                      <div key={u.id} className="rounded-lg border bg-background p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium">{u.name}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">신청일 {u.createdAt}</p>
+                          </div>
+                          <Badge variant="outline" className="shrink-0 text-xs">대기</Badge>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            className="h-9 gap-1 bg-green-600 text-white hover:bg-green-700"
+                            onClick={() => approveMutation.mutate(u.id)}
+                            disabled={approveMutation.isPending}
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            승인
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-9 gap-1"
+                            onClick={() => rejectMutation.mutate(u.id)}
+                            disabled={rejectMutation.isPending}
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                            거절
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>이름</TableHead>
+                          <TableHead>가입 신청일</TableHead>
+                          <TableHead className="text-right">처리</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingUsers.map((u: FullUser) => (
+                          <TableRow key={u.id}>
+                            <TableCell className="font-medium">{u.name}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  className="gap-1 bg-green-600 hover:bg-green-700 text-white h-7"
+                                  onClick={() => approveMutation.mutate(u.id)}
+                                  disabled={approveMutation.isPending}
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                  승인
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="gap-1 h-7"
+                                  onClick={() => rejectMutation.mutate(u.id)}
+                                  disabled={rejectMutation.isPending}
+                                >
+                                  <UserX className="w-3 h-3" />
+                                  거절
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             )}
 
             {/* Active Members */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">활성 구역원</CardTitle>
-                <CardDescription>현재 활성화된 구역원 목록</CardDescription>
+              <CardHeader className="px-4 py-4 md:px-6 md:py-6">
+                <CardTitle className="text-base md:text-lg">활성 구역원</CardTitle>
+                <CardDescription className="text-xs md:text-sm">현재 활성화된 구역원 목록</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 pb-4 md:px-6 md:pb-6">
                 {usersLoading ? (
                   <div className="flex justify-center py-4">
                     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>이름</TableHead>
-                        <TableHead>역할</TableHead>
-                        <TableHead>소속 구역</TableHead>
-                        <TableHead>가입일</TableHead>
-                        <TableHead className="text-right">관리</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <>
+                    <div className="space-y-3 md:hidden">
                       {activeUsers.map((u: FullUser) => (
-                        <TableRow key={u.id}>
-                          <TableCell className="font-medium">{u.name}</TableCell>
-                          <TableCell>
+                        <div key={u.id} className="rounded-lg border bg-background p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium">{u.name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{u.districtName}</p>
+                            </div>
                             {u.role === 'master' ? (
-                              <Badge variant="default" className="text-xs">마스터</Badge>
+                              <Badge variant="default" className="shrink-0 text-xs">마스터</Badge>
                             ) : u.role === 'leader' ? (
-                              <Badge variant="default" className="text-xs">구역장</Badge>
+                              <Badge variant="default" className="shrink-0 text-xs">구역장</Badge>
                             ) : (
-                              <Badge variant="secondary" className="text-xs">구역원</Badge>
+                              <Badge variant="secondary" className="shrink-0 text-xs">구역원</Badge>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{u.districtName}</span>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              {isMaster && u.id !== user?.id && u.role !== 'master' && (
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">가입일 {u.createdAt}</p>
+                          {isMaster && u.id !== user?.id && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              {u.role !== 'master' && (
                                 <Button
                                   size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-xs gap-1"
+                                  variant="outline"
+                                  className="h-9 gap-1 text-xs"
                                   disabled={changeRoleMutation.isPending}
                                   onClick={() => changeRoleMutation.mutate({
                                     userId: u.id,
@@ -802,34 +830,103 @@ export default function AdminDashboard() {
                                   })}
                                 >
                                   {u.role === 'leader'
-                                    ? <><Shield className="w-3 h-3" /> 구역원으로</>
-                                    : <><ShieldCheck className="w-3 h-3" /> 구역장으로</>
+                                    ? <><Shield className="w-3.5 h-3.5" /> 구역원으로</>
+                                    : <><ShieldCheck className="w-3.5 h-3.5" /> 구역장으로</>
                                   }
                                 </Button>
                               )}
-                              {isMaster && u.id !== user?.id && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-xs gap-1"
-                                  onClick={() => setDistrictChangeTarget(u)}
-                                >
-                                  <ArrowRightLeft className="w-3 h-3" /> 구역이동
-                                </Button>
-                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-9 gap-1 text-xs"
+                                onClick={() => setDistrictChangeTarget(u)}
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                                구역이동
+                              </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          )}
+                        </div>
                       ))}
                       {activeUsers.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                            활성 구역원이 없습니다.
-                          </TableCell>
-                        </TableRow>
+                        <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                          활성 구역원이 없습니다.
+                        </p>
                       )}
-                    </TableBody>
-                  </Table>
+                    </div>
+
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>이름</TableHead>
+                            <TableHead>역할</TableHead>
+                            <TableHead>소속 구역</TableHead>
+                            <TableHead>가입일</TableHead>
+                            <TableHead className="text-right">관리</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeUsers.map((u: FullUser) => (
+                            <TableRow key={u.id}>
+                              <TableCell className="font-medium">{u.name}</TableCell>
+                              <TableCell>
+                                {u.role === 'master' ? (
+                                  <Badge variant="default" className="text-xs">마스터</Badge>
+                                ) : u.role === 'leader' ? (
+                                  <Badge variant="default" className="text-xs">구역장</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">구역원</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm">{u.districtName}</span>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{u.createdAt}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {isMaster && u.id !== user?.id && u.role !== 'master' && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs gap-1"
+                                      disabled={changeRoleMutation.isPending}
+                                      onClick={() => changeRoleMutation.mutate({
+                                        userId: u.id,
+                                        role: u.role === 'leader' ? 'member' : 'leader',
+                                      })}
+                                    >
+                                      {u.role === 'leader'
+                                        ? <><Shield className="w-3 h-3" /> 구역원으로</>
+                                        : <><ShieldCheck className="w-3 h-3" /> 구역장으로</>
+                                      }
+                                    </Button>
+                                  )}
+                                  {isMaster && u.id !== user?.id && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs gap-1"
+                                      onClick={() => setDistrictChangeTarget(u)}
+                                    >
+                                      <ArrowRightLeft className="w-3 h-3" /> 구역이동
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {activeUsers.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                                활성 구역원이 없습니다.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -1221,83 +1318,146 @@ export default function AdminDashboard() {
 
           {/* Prayer Management Tab */}
           <TabsContent value="prayer" className="space-y-4 md:col-start-2 md:mt-0">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader className="px-4 py-3 md:px-6 md:pb-2 md:pt-6">
                   <CardDescription className="text-xs">공유된 기도제목</CardDescription>
-                  <CardTitle className="text-2xl">{prayers.length}건</CardTitle>
+                  <CardTitle className="text-xl md:text-2xl">{prayers.length}건</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader className="px-4 py-3 md:px-6 md:pb-2 md:pt-6">
                   <CardDescription className="text-xs">활성 기도제목</CardDescription>
-                  <CardTitle className="text-2xl text-primary">{activePrayerRequests}건</CardTitle>
+                  <CardTitle className="text-xl text-primary md:text-2xl">{activePrayerRequests}건</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader className="px-4 py-3 md:px-6 md:pb-2 md:pt-6">
                   <CardDescription className="text-xs">응답된 기도</CardDescription>
-                  <CardTitle className="text-2xl text-green-600">{prayers.filter(p => p.answered).length}건</CardTitle>
+                  <CardTitle className="text-xl text-green-600 md:text-2xl">{prayers.filter(p => p.answered).length}건</CardTitle>
                 </CardHeader>
               </Card>
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">공유된 기도제목 관리</CardTitle>
+              <CardHeader className="px-4 py-4 md:px-6 md:py-6">
+                <CardTitle className="text-base md:text-lg">공유된 기도제목 관리</CardTitle>
+                <CardDescription className="text-xs md:text-sm">제목을 누르면 상세 화면으로 이동합니다.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>작성자</TableHead>
-                      <TableHead>기도제목</TableHead>
-                      <TableHead>등록일</TableHead>
-                      <TableHead>상태</TableHead>
-                      <TableHead>중보기도</TableHead>
-                      <TableHead className="text-right">관리</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {prayers.map((prayer) => (
-                      <TableRow
-                        key={prayer.id}
-                        className="cursor-pointer hover:bg-muted/50"
+              <CardContent className="px-4 pb-4 md:px-6 md:pb-6">
+                <div className="space-y-3 md:hidden">
+                  {prayers.map((prayer) => (
+                    <div key={prayer.id} className="rounded-lg border bg-background p-3">
+                      <button
+                        type="button"
+                        className="block w-full text-left"
                         onClick={() => navigate(`/prayer-requests/${prayer.id}`)}
                       >
-                        <TableCell className="font-medium">{prayer.userName}</TableCell>
-                        <TableCell className="max-w-xs truncate">{prayer.content}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{prayer.createdAt}</TableCell>
-                        <TableCell>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium">{prayer.userName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{prayer.createdAt}</p>
+                          </div>
                           {prayer.answered ? (
-                            <Badge className="bg-green-500/10 text-green-600 text-xs">응답됨</Badge>
+                            <Badge className="shrink-0 bg-green-500/10 text-xs text-green-600">응답됨</Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">기도중</Badge>
+                            <Badge variant="secondary" className="shrink-0 text-xs">기도중</Badge>
                           )}
-                        </TableCell>
-                        <TableCell onClick={e => e.stopPropagation()}>
-                          <Switch
-                            checked={prayer.sharedWithGroup}
-                            onCheckedChange={async (checked) => {
-                              try {
-                                await updatePrayerRequest({ id: prayer.id, sharedWithGroup: checked });
-                                queryClient.invalidateQueries({ queryKey: ['shared_prayer_requests'] });
-                                toast.success(checked ? '중보기도로 공유되었습니다.' : '중보기도 공유가 해제되었습니다.');
-                              } catch {
-                                toast.error('변경에 실패했습니다.');
-                              }
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); navigate(`/prayer-requests/${prayer.id}`); }}>
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                        </TableCell>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-foreground">{prayer.content}</p>
+                      </button>
+
+                      <div className="mt-3 flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-medium">중보기도 공유</p>
+                          <p className="text-xs text-muted-foreground">
+                            {prayer.sharedWithGroup ? '구역원에게 공유 중' : '공유하지 않음'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={prayer.sharedWithGroup}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updatePrayerRequest({ id: prayer.id, sharedWithGroup: checked });
+                              queryClient.invalidateQueries({ queryKey: ['shared_prayer_requests'] });
+                              toast.success(checked ? '중보기도로 공유되었습니다.' : '중보기도 공유가 해제되었습니다.');
+                            } catch {
+                              toast.error('변경에 실패했습니다.');
+                            }
+                          }}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 h-9 w-full gap-1"
+                        onClick={() => navigate(`/prayer-requests/${prayer.id}`)}
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        상세 보기
+                      </Button>
+                    </div>
+                  ))}
+                  {prayers.length === 0 && (
+                    <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                      공유된 기도제목이 없습니다.
+                    </p>
+                  )}
+                </div>
+
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>작성자</TableHead>
+                        <TableHead>기도제목</TableHead>
+                        <TableHead>등록일</TableHead>
+                        <TableHead>상태</TableHead>
+                        <TableHead>중보기도</TableHead>
+                        <TableHead className="text-right">관리</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {prayers.map((prayer) => (
+                        <TableRow
+                          key={prayer.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => navigate(`/prayer-requests/${prayer.id}`)}
+                        >
+                          <TableCell className="font-medium">{prayer.userName}</TableCell>
+                          <TableCell className="max-w-xs truncate">{prayer.content}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{prayer.createdAt}</TableCell>
+                          <TableCell>
+                            {prayer.answered ? (
+                              <Badge className="bg-green-500/10 text-green-600 text-xs">응답됨</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">기도중</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell onClick={e => e.stopPropagation()}>
+                            <Switch
+                              checked={prayer.sharedWithGroup}
+                              onCheckedChange={async (checked) => {
+                                try {
+                                  await updatePrayerRequest({ id: prayer.id, sharedWithGroup: checked });
+                                  queryClient.invalidateQueries({ queryKey: ['shared_prayer_requests'] });
+                                  toast.success(checked ? '중보기도로 공유되었습니다.' : '중보기도 공유가 해제되었습니다.');
+                                } catch {
+                                  toast.error('변경에 실패했습니다.');
+                                }
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); navigate(`/prayer-requests/${prayer.id}`); }}>
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
