@@ -13,7 +13,7 @@
 - shadcn-ui
 - TanStack Query
 - Supabase Auth / PostgreSQL / Storage / Edge Functions
-- Firebase Hosting
+- Vercel
 
 ## 주요 기능
 
@@ -65,18 +65,20 @@ npm run dev
 
 ```bash
 npm test
-npm run build
 ```
+
+EC2 서버에서는 하드웨어 여유가 부족하므로 프론트 빌드를 필수 로컬 검증으로 보지 않는다. 실제 빌드는 GitHub에 커밋/push한 뒤 Vercel 배포 과정에서 확인한다.
 
 ## 배포
 
-프론트는 현재 `firebase.json` 기준 정적 배포 구성을 포함한다.
+프론트 배포는 GitHub에 커밋한 뒤 Vercel에서 빌드하고 배포하는 방식을 기준으로 한다.
 
 배포 전 확인:
 
-1. `npm run build`
-2. `dist/` 생성 확인
-3. 운영 URL에 맞춰 `VITE_APP_URL`과 Supabase Auth Redirect URL 정렬
+1. 변경 파일과 커밋 범위 확인
+2. 가능한 경우 가벼운 로컬 검사 수행
+3. Vercel 배포 로그에서 `npm run build` 성공 여부 확인
+4. 운영 URL에 맞춰 `VITE_APP_URL`과 Supabase Auth Redirect URL 정렬
 
 ## Supabase 운영 메모
 
