@@ -24,9 +24,40 @@ type PushDeliveryStatus = 'pending' | 'sent' | 'failed' | 'expired' | 'skipped';
 export interface Database {
   public: {
     Tables: {
+      churches: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          status: 'active' | 'trialing' | 'past_due' | 'suspended' | 'archived';
+          plan: 'legacy' | 'free' | 'starter' | 'standard' | 'premium';
+          billing_status: 'manual' | 'trialing' | 'active' | 'past_due' | 'canceled';
+          trial_ends_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          status?: 'active' | 'trialing' | 'past_due' | 'suspended' | 'archived';
+          plan?: 'legacy' | 'free' | 'starter' | 'standard' | 'premium';
+          billing_status?: 'manual' | 'trialing' | 'active' | 'past_due' | 'canceled';
+          trial_ends_at?: string | null;
+        };
+        Update: {
+          name?: string;
+          slug?: string;
+          status?: 'active' | 'trialing' | 'past_due' | 'suspended' | 'archived';
+          plan?: 'legacy' | 'free' | 'starter' | 'standard' | 'premium';
+          billing_status?: 'manual' | 'trialing' | 'active' | 'past_due' | 'canceled';
+          trial_ends_at?: string | null;
+        };
+      };
       districts: {
         Row: {
           id: string;
+          church_id: string;
           name: string;
           description: string | null;
           is_active: boolean;
@@ -35,11 +66,13 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          church_id?: string;
           name: string;
           description?: string | null;
           is_active?: boolean;
         };
         Update: {
+          church_id?: string;
           name?: string;
           description?: string | null;
           is_active?: boolean;
@@ -51,6 +84,7 @@ export interface Database {
           name: string;
           role: UserRole;
           status: UserStatus;
+          church_id: string;
           district_id: string;
           created_at: string;
           updated_at: string;
@@ -60,12 +94,14 @@ export interface Database {
           name: string;
           role?: UserRole;
           status?: UserStatus;
+          church_id?: string;
           district_id?: string;
         };
         Update: {
           name?: string;
           role?: UserRole;
           status?: UserStatus;
+          church_id?: string;
           district_id?: string;
         };
       };
