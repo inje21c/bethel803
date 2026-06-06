@@ -260,6 +260,74 @@ export interface Database {
           chapters?: number;
         };
       };
+      bible_books: {
+        Row: {
+          id: number;
+          korean_name: string;
+          abbreviation: string | null;
+          testament: 'old' | 'new';
+          book_order: number;
+          chapter_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id: number;
+          korean_name: string;
+          abbreviation?: string | null;
+          testament: 'old' | 'new';
+          book_order: number;
+          chapter_count: number;
+        };
+        Update: {
+          korean_name?: string;
+          abbreviation?: string | null;
+          testament?: 'old' | 'new';
+          book_order?: number;
+          chapter_count?: number;
+        };
+      };
+      bible_verses: {
+        Row: {
+          book_id: number;
+          chapter: number;
+          verse: number;
+          text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          book_id: number;
+          chapter: number;
+          verse: number;
+          text: string;
+        };
+        Update: {
+          text?: string;
+        };
+      };
+      bible_bookmarks: {
+        Row: {
+          id: string;
+          user_id: string;
+          book_id: number;
+          chapter: number;
+          verse: number;
+          note: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          book_id: number;
+          chapter: number;
+          verse: number;
+          note?: string;
+        };
+        Update: {
+          note?: string;
+        };
+      };
       schedules: {
         Row: {
           id: string;

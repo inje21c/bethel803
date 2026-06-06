@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "bible:import": "node scripts/import_bible_kr.mjs docs/bible_kr.json",
+    "bible:seed": "node scripts/generate_bible_seed_sql.mjs docs/bible_kr.json docs/bible_kr_seed.sql docs/bible_seed_chunks",
     "staging:env-check": "bash scripts/staging_env_audit.sh",
     "staging:preflight": "bash scripts/staging_preflight.sh",
     "test": "vitest run",

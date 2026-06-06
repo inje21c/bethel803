@@ -25,3 +25,7 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Generated Bible seed SQL files
+docs/bible_kr_seed.sql
+docs/bible_seed_chunks/
