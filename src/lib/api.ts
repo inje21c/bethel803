@@ -116,6 +116,33 @@ export interface BibleReadingLog {
   chapters: number;
 }
 
+export interface BibleBook {
+  id: number;
+  koreanName: string;
+  abbreviation: string;
+  testament: 'old' | 'new';
+  order: number;
+  chapterCount: number;
+}
+
+export interface BibleVerse {
+  bookId: number;
+  chapter: number;
+  verse: number;
+  text: string;
+}
+
+export interface BibleBookmark {
+  id: string;
+  userId: string;
+  bookId: number;
+  bookName: string;
+  chapter: number;
+  verse: number;
+  note: string;
+  createdAt: string;
+}
+
 export interface Schedule {
   id: string;
   title: string;
@@ -753,6 +780,99 @@ export async function getIntercessionUsers(prayerRequestId: string): Promise<{ u
 // ============================================================
 // 성경읽기
 // ============================================================
+
+export async function getBibleBooks(): Promise<BibleBook[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_books')
+      .select('*')
+      .order('book_order', { ascending: true }),
+    '성경 권 목록 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    koreanName: row.korean_name,
+    abbreviation: row.abbreviation ?? row.korean_name,
+    testament: row.testament,
+    order: row.book_order,
+    chapterCount: row.chapter_count,
+  }));
+}
+
+export async function getBibleChapter(bookId: number, chapter: number): Promise<BibleVerse[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_verses')
+      .select('*')
+      .eq('book_id', bookId)
+      .eq('chapter', chapter)
+      .order('verse', { ascending: true }),
+    '성경 본문 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    bookId: row.book_id,
+    chapter: row.chapter,
+    verse: row.verse,
+    text: row.text,
+  }));
+}
+
+export async function getBibleBookmarks(userId: string): Promise<BibleBookmark[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_bookmarks')
+      .select('*, bible_books(korean_name)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    '성경 북마크 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    userId: row.user_id,
+    bookId: row.book_id,
+    bookName: (row.bible_books as { korean_name: string } | null)?.korean_name ?? '',
+    chapter: row.chapter,
+    verse: row.verse,
+    note: row.note ?? '',
+    createdAt: row.created_at,
+  }));
+}
+
+export async function addBibleBookmark(params: {
+  userId: string;
+  bookId: number;
+  chapter: number;
+  verse: number;
+  note?: string;
+}): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase
+      .from('bible_bookmarks')
+      .upsert(
+        {
+          user_id: params.userId,
+          book_id: params.bookId,
+          chapter: params.chapter,
+          verse: params.verse,
+          note: params.note ?? '',
+        },
+        { onConflict: 'user_id,book_id,chapter,verse' }
+      ),
+    '성경 북마크 저장'
+  );
+  if (error) throw error;
+}
+
+export async function deleteBibleBookmark(id: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('bible_bookmarks').delete().eq('id', id),
+    '성경 북마크 삭제'
+  );
+  if (error) throw error;
+}
 
 export async function getBibleReadingLogs(userId: string): Promise<BibleReadingLog[]> {
   const { data, error } = await withApiTimeout(

@@ -18,7 +18,7 @@ const navItems = [
   { path: '/bible-study', label: '구역성경공부', icon: BookOpen },
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
-  { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
+  { path: '/bible-reading', label: '성경', icon: BookMarked },
   { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
   { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
@@ -26,7 +26,7 @@ const navItems = [
 const mobileTabItems = [
   { path: '/dashboard', label: '홈', icon: Home },
   { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
-  { path: '/bible-study', label: '공부', icon: BookOpen },
+  { path: '/bible-reading', label: '성경', icon: BookMarked },
   { path: '/qt', label: 'QT', icon: BookHeart },
 ];
 
