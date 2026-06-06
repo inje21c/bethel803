@@ -26,7 +26,7 @@ const navItems = [
 const mobileTabItems = [
   { path: '/dashboard', label: '홈', icon: Home },
   { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
-  { path: '/bible-reading', label: '성경', icon: BookMarked },
+  { path: '/bible-study', label: '공부', icon: BookOpen },
   { path: '/qt', label: 'QT', icon: BookHeart },
 ];
 
