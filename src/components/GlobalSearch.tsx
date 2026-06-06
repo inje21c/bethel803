@@ -21,7 +21,7 @@ const NAV_ITEMS = [
   { label: '구역성경공부', path: '/bible-study', icon: BookOpen },
   { label: '주요일정', path: '/schedule', icon: CalendarDays },
   { label: '기도제목', path: '/prayer-requests', icon: MessageSquareHeart },
-  { label: '성경읽기', path: '/bible-reading', icon: BookMarked },
+  { label: '성경', path: '/bible-reading', icon: BookMarked },
 ];
 
 export default function GlobalSearch() {
