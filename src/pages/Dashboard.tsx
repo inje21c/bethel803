@@ -232,9 +232,9 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-1.5">
                 {studyCompleted ? (
-                  <CheckCircle2 className="w-5 h-5 text-success" />
+                  <CheckCircle2 className="w-8 h-8 text-success" />
                 ) : (
-                  <Circle className="w-5 h-5 text-muted-foreground" />
+                  <Circle className="w-8 h-8 text-muted-foreground" />
                 )}
                 <span className="text-sm font-semibold">{studyCompleted ? '완료' : '미완료'}</span>
               </div>
