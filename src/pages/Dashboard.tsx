@@ -249,10 +249,7 @@ export default function Dashboard() {
                 <span className="text-xs text-muted-foreground">함께기도</span>
               </div>
               {myIntercessions.size > 0 ? (
-                <>
-                  <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">개</span></p>
-                  <p className="text-xs text-primary font-medium mt-1">참여 중</p>
-                </>
+                <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">개</span></p>
               ) : (
                 <p className="text-sm font-semibold text-muted-foreground">시작해볼까요?</p>
               )}
