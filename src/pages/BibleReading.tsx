@@ -64,6 +64,7 @@ export default function BibleReading() {
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [selectedVerse, setSelectedVerse] = useState(1);
+  const [pendingJumpVerse, setPendingJumpVerse] = useState<number | null>(null);
   const [fontSizeLevel, setFontSizeLevel] = useState(() => {
     const saved = Number(localStorage.getItem('bethel_bible_font_level'));
     return Number.isInteger(saved) && saved >= 0 && saved <= 4 ? saved : 1;
@@ -122,6 +123,14 @@ export default function BibleReading() {
       bookmark,
     ]));
   }, [bookmarks]);
+
+  useEffect(() => {
+    if (!pendingJumpVerse || chapterLoading || verses.length === 0) return;
+    requestAnimationFrame(() => {
+      verseRefs.current[pendingJumpVerse]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setPendingJumpVerse(null);
+    });
+  }, [chapterLoading, pendingJumpVerse, verses]);
 
   const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
   const progress = Math.min((totalChapters / target) * 100, 100);
@@ -259,7 +268,7 @@ export default function BibleReading() {
     setSelectedChapter(bookmark.chapter);
     setSelectedVerse(bookmark.verse);
     setActiveTab('reader');
-    setTimeout(() => jumpToVerse(bookmark.verse), 100);
+    setPendingJumpVerse(bookmark.verse);
   };
 
   const handleAddReading = () => {
@@ -317,10 +326,14 @@ export default function BibleReading() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-          <TabsList className="grid w-full grid-cols-2 md:w-[360px]">
+          <TabsList className="grid w-full grid-cols-3 md:w-[480px]">
             <TabsTrigger value="reader" className="gap-1.5">
               <BookOpen className="h-4 w-4" />
               본문 읽기
+            </TabsTrigger>
+            <TabsTrigger value="bookmarks" className="gap-1.5">
+              <Bookmark className="h-4 w-4" />
+              북마크
             </TabsTrigger>
             <TabsTrigger value="log" className="gap-1.5">
               <TrendingUp className="h-4 w-4" />
@@ -386,7 +399,7 @@ export default function BibleReading() {
               </div>
             </section>
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
               <section ref={readerRef} className="min-w-0 rounded-lg border bg-card">
                 <div className="flex items-center justify-between border-b px-4 py-3">
                   <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(-1)}>
@@ -459,7 +472,7 @@ export default function BibleReading() {
 
               <aside className="rounded-lg border bg-card p-4 lg:sticky lg:top-24 lg:self-start">
                 <div className="mb-3 flex items-center justify-between">
-                  <h2 className="font-display text-sm font-semibold">내 북마크</h2>
+                  <h2 className="font-display text-sm font-semibold">최근 북마크</h2>
                   <span className="text-xs text-muted-foreground">{bookmarks.length}개</span>
                 </div>
                 {bookmarks.length === 0 ? (
@@ -468,7 +481,7 @@ export default function BibleReading() {
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {bookmarks.map(bookmark => (
+                    {bookmarks.slice(0, 5).map(bookmark => (
                       <div key={bookmark.id} className="rounded-md border p-3">
                         <button
                           type="button"
@@ -477,6 +490,11 @@ export default function BibleReading() {
                         >
                           {bookmark.bookName} {bookmark.chapter}:{bookmark.verse}
                         </button>
+                        {bookmark.text && (
+                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                            {bookmark.text}
+                          </p>
+                        )}
                         <div className="mt-2 flex justify-end">
                           <Button
                             variant="ghost"
@@ -490,10 +508,76 @@ export default function BibleReading() {
                         </div>
                       </div>
                     ))}
+                    {bookmarks.length > 5 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setActiveTab('bookmarks')}
+                      >
+                        전체 북마크 보기
+                      </Button>
+                    )}
                   </div>
                 )}
               </aside>
             </div>
+          </TabsContent>
+
+          <TabsContent value="bookmarks" className="mt-0">
+            <section className="rounded-lg border bg-card p-4">
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="font-display text-lg font-semibold">내 북마크</h2>
+                  <p className="text-sm text-muted-foreground">저장한 절을 모아보고 바로 본문으로 이동합니다.</p>
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">{bookmarks.length}개 저장됨</span>
+              </div>
+
+              {bookmarks.length === 0 ? (
+                <div className="rounded-lg bg-muted/50 px-4 py-12 text-center">
+                  <Bookmark className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium">저장된 북마크가 없습니다.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">본문 읽기에서 절 옆 북마크 아이콘을 눌러 저장하세요.</p>
+                  <Button className="mt-4" onClick={() => setActiveTab('reader')}>
+                    본문 읽기로 이동
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {bookmarks.map(bookmark => (
+                    <article key={bookmark.id} className="rounded-lg border p-4">
+                      <button
+                        type="button"
+                        className="text-left font-display text-base font-semibold hover:text-primary"
+                        onClick={() => goToBookmark(bookmark)}
+                      >
+                        {bookmark.bookName} {bookmark.chapter}:{bookmark.verse}
+                      </button>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        {bookmark.text || '본문을 불러오지 못했습니다.'}
+                      </p>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => goToBookmark(bookmark)}>
+                          보기
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => removeBookmarkMutation.mutate(bookmark.id)}
+                          disabled={removeBookmarkMutation.isPending}
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          삭제
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
           </TabsContent>
 
           <TabsContent value="log" className="mt-0">
