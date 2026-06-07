@@ -824,13 +824,26 @@ export async function getBibleBookmarks(userId: string): Promise<BibleBookmark[]
   const { data, error } = await withApiTimeout(
     supabase
       .from('bible_bookmarks')
-      .select('*, bible_books(korean_name)')
+      .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false }),
     '성경 북마크 조회'
   );
   if (error) throw error;
   const bookmarks = data ?? [];
+  const bookIds = [...new Set(bookmarks.map(row => row.book_id))];
+  const { data: books, error: booksError } = bookIds.length > 0
+    ? await withApiTimeout(
+      supabase
+        .from('bible_books')
+        .select('id, korean_name')
+        .in('id', bookIds),
+      '북마크 성경 권 조회'
+    )
+    : { data: [], error: null };
+  if (booksError) throw booksError;
+
+  const bookNameMap = new Map((books ?? []).map(book => [book.id, book.korean_name]));
   const texts = await Promise.all(
     bookmarks.map(async row => {
       const { data: verse } = await supabase
@@ -848,7 +861,7 @@ export async function getBibleBookmarks(userId: string): Promise<BibleBookmark[]
     id: row.id,
     userId: row.user_id,
     bookId: row.book_id,
-    bookName: (row.bible_books as { korean_name: string } | null)?.korean_name ?? '',
+    bookName: bookNameMap.get(row.book_id) ?? '',
     chapter: row.chapter,
     verse: row.verse,
     text: texts[index],
