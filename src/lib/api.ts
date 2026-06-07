@@ -139,6 +139,7 @@ export interface BibleBookmark {
   bookName: string;
   chapter: number;
   verse: number;
+  text: string;
   note: string;
   createdAt: string;
 }
@@ -829,13 +830,28 @@ export async function getBibleBookmarks(userId: string): Promise<BibleBookmark[]
     '성경 북마크 조회'
   );
   if (error) throw error;
-  return (data ?? []).map(row => ({
+  const bookmarks = data ?? [];
+  const texts = await Promise.all(
+    bookmarks.map(async row => {
+      const { data: verse } = await supabase
+        .from('bible_verses')
+        .select('text')
+        .eq('book_id', row.book_id)
+        .eq('chapter', row.chapter)
+        .eq('verse', row.verse)
+        .maybeSingle();
+      return verse?.text ?? '';
+    })
+  );
+
+  return bookmarks.map((row, index) => ({
     id: row.id,
     userId: row.user_id,
     bookId: row.book_id,
     bookName: (row.bible_books as { korean_name: string } | null)?.korean_name ?? '',
     chapter: row.chapter,
     verse: row.verse,
+    text: texts[index],
     note: row.note ?? '',
     createdAt: row.created_at,
   }));
