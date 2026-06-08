@@ -10,6 +10,7 @@ const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')?.trim() ?? '';
 const SOURCE_URL = 'https://sum.su.or.kr:8888/bible/today';
 const BASE_API = 'https://sum.su.or.kr:8888/Ajax/Bible';
 const MAX_RANGE_DAYS = 14;
+const SOURCE_API_RETRIES = 2;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,10 +57,26 @@ async function fetchAndStoreQT(
   supabase: ReturnType<typeof createClient>,
   date: string,
 ): Promise<{ date: string; scripture: string }> {
-  const [detail, scriptureText] = await Promise.all([
-    fetchQTDetail(date),
-    fetchScriptureText(date),
-  ]);
+  const cached = await getCachedDevotional(supabase, date);
+  if (cached) return cached;
+
+  let detail: QTDetail;
+  let scriptureText = '';
+
+  try {
+    [detail, scriptureText] = await Promise.all([
+      fetchQTDetail(date),
+      fetchScriptureText(date),
+    ]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : JSON.stringify(err);
+    console.warn(`QT source fetch failed for ${date}; checking cached devotional: ${msg}`);
+
+    const fallback = await getCachedDevotional(supabase, date);
+    if (fallback) return fallback;
+
+    throw err;
+  }
 
   const { question, prayer, application } = await generateAIFields(detail.summary);
 
@@ -98,6 +115,38 @@ async function fetchAndStoreQT(
   if (devError) console.error('daily_devotionals upsert error (non-fatal):', devError.message);
 
   return { date, scripture: detail.scripture };
+}
+
+async function getCachedDevotional(
+  supabase: ReturnType<typeof createClient>,
+  date: string,
+): Promise<{ date: string; scripture: string } | null> {
+  const { data: qt, error: qtError } = await supabase
+    .from('qt_contents')
+    .select('date, scripture')
+    .eq('date', date)
+    .maybeSingle();
+
+  if (qt?.scripture) return { date: qt.date as string, scripture: qt.scripture as string };
+  if (qtError) console.warn(`qt_contents cache lookup failed for ${date}: ${qtError.message}`);
+
+  const { data: devotional, error: devotionalError } = await supabase
+    .from('daily_devotionals')
+    .select('devotional_date, scripture')
+    .eq('devotional_date', date)
+    .maybeSingle();
+
+  if (devotional?.scripture) {
+    return {
+      date: devotional.devotional_date as string,
+      scripture: devotional.scripture as string,
+    };
+  }
+  if (devotionalError) {
+    console.warn(`daily_devotionals cache lookup failed for ${date}: ${devotionalError.message}`);
+  }
+
+  return null;
 }
 
 function getTodayKST(): string {
@@ -173,37 +222,65 @@ async function postApi(endpoint: string, date: string): Promise<unknown> {
   ];
   let lastError = '';
 
-  for (const body of bodies) {
-    const res = await fetch(`${BASE_API}/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'User-Agent': 'Mozilla/5.0 (compatible; BethelBot/1.0)',
-        'Referer': SOURCE_URL,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body,
-      signal: AbortSignal.timeout(15000),
-    });
+  for (let attempt = 1; attempt <= SOURCE_API_RETRIES + 1; attempt += 1) {
+    let shouldRetry = false;
 
-    const buffer = await res.arrayBuffer();
-    const contentType = res.headers.get('content-type') ?? '';
-    const charset = /euc-kr/i.test(contentType) ? 'euc-kr' : 'utf-8';
-    const text = new TextDecoder(charset, { fatal: false }).decode(buffer);
+    for (const body of bodies) {
+      try {
+        const res = await fetch(`${BASE_API}/${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'User-Agent': 'Mozilla/5.0 (compatible; BethelBot/1.0)',
+            'Referer': SOURCE_URL,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body,
+          signal: AbortSignal.timeout(15000),
+        });
 
-    if (!res.ok) {
-      lastError = `${endpoint} HTTP ${res.status}: ${text.slice(0, 200)}`;
-      continue;
+        const buffer = await res.arrayBuffer();
+        const contentType = res.headers.get('content-type') ?? '';
+        const charset = /euc-kr/i.test(contentType) ? 'euc-kr' : 'utf-8';
+        const text = new TextDecoder(charset, { fatal: false }).decode(buffer);
+
+        if (!res.ok) {
+          lastError = `${endpoint} HTTP ${res.status}: ${text.slice(0, 200)}`;
+          shouldRetry = isTransientStatus(res.status) || shouldRetry;
+          continue;
+        } else {
+          try {
+            return JSON.parse(text);
+          } catch {
+            lastError = `${endpoint} returned invalid JSON: ${text.slice(0, 200)}`;
+            continue;
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : JSON.stringify(err);
+        lastError = `${endpoint} request error: ${msg}`;
+        shouldRetry = true;
+      }
     }
 
-    try {
-      return JSON.parse(text);
-    } catch {
-      lastError = `${endpoint} returned invalid JSON: ${text.slice(0, 200)}`;
+    if (!shouldRetry || attempt > SOURCE_API_RETRIES) {
+      break;
     }
+
+    const delayMs = 2000 * attempt;
+    console.warn(`${endpoint} retry ${attempt}/${SOURCE_API_RETRIES} for ${date} after ${delayMs}ms: ${lastError}`);
+    await delay(delayMs);
   }
 
   throw new Error(lastError || `${endpoint} request failed`);
+}
+
+function isTransientStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function stripHtml(html: string): string {
@@ -258,7 +335,9 @@ async function fetchScriptureText(date: string): Promise<string> {
   let data: unknown;
   try {
     data = await postApi('BodyBible', date);
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : JSON.stringify(err);
+    console.warn(`BodyBible failed for ${date}; continuing without scripture text: ${msg}`);
     return '';
   }
 
@@ -272,36 +351,46 @@ async function fetchScriptureText(date: string): Promise<string> {
 async function callOpenAI(prompt: string, fallback: string): Promise<string> {
   if (openAIDisabled || !OPENAI_API_KEY) return fallback;
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.4,
-      response_format: { type: 'json_object' },
-    }),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    if (res.status === 401) {
-      openAIDisabled = true;
-      console.warn('OpenAI authentication failed; using QT fallback fields. Check OPENAI_API_KEY.');
-    } else {
-      console.error('OpenAI error:', err);
-    }
-    return fallback;
-  }
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content;
   try {
-    const parsed = JSON.parse(raw);
-    return parsed.result || fallback;
-  } catch {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.4,
+        response_format: { type: 'json_object' },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      if (res.status === 401) {
+        openAIDisabled = true;
+        console.warn('OpenAI authentication failed; using QT fallback fields. Check OPENAI_API_KEY.');
+      } else {
+        console.error('OpenAI error:', err);
+      }
+      return fallback;
+    }
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed.result || fallback;
+    } catch {
+      return fallback;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : JSON.stringify(err);
+    if (msg.toLowerCase().includes('abort')) {
+      console.warn('OpenAI request timed out; using QT fallback field.');
+    } else {
+      console.warn(`OpenAI request failed; using QT fallback field: ${msg}`);
+    }
     return fallback;
   }
 }
@@ -313,9 +402,11 @@ async function generateAIFields(summary: string): Promise<{
   prayer: string;
   application: string;
 }> {
-  const question = await generateQuestion(summary);
-  const prayer = await generatePrayer(summary);
-  const application = await generateApplication(summary);
+  const [question, prayer, application] = await Promise.all([
+    generateQuestion(summary),
+    generatePrayer(summary),
+    generateApplication(summary),
+  ]);
   return { question, prayer, application };
 }
 
