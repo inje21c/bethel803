@@ -56,6 +56,16 @@ async function fetchAndStoreQT(
   supabase: ReturnType<typeof createClient>,
   date: string,
 ): Promise<{ date: string; scripture: string }> {
+  // Cache-first: if data already stored for this date, skip external fetch
+  const { data: cached } = await supabase
+    .from('qt_contents')
+    .select('date, scripture')
+    .eq('date', date)
+    .maybeSingle();
+  if (cached?.scripture) {
+    return { date: cached.date as string, scripture: cached.scripture as string };
+  }
+
   const [detail, scriptureText] = await Promise.all([
     fetchQTDetail(date),
     fetchScriptureText(date),
@@ -171,36 +181,58 @@ async function postApi(endpoint: string, date: string): Promise<unknown> {
     JSON.stringify({ qt_ty: 'QT1', Base_de: date }),
     `{ 'qt_ty' : 'QT1' , 'Base_de' : '${date}'}`,
   ];
+
+  const MAX_RETRIES = 2; // 최대 3회 시도 (초기 1회 + 재시도 2회)
   let lastError = '';
 
-  for (const body of bodies) {
-    const res = await fetch(`${BASE_API}/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'User-Agent': 'Mozilla/5.0 (compatible; BethelBot/1.0)',
-        'Referer': SOURCE_URL,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body,
-      signal: AbortSignal.timeout(15000),
-    });
-
-    const buffer = await res.arrayBuffer();
-    const contentType = res.headers.get('content-type') ?? '';
-    const charset = /euc-kr/i.test(contentType) ? 'euc-kr' : 'utf-8';
-    const text = new TextDecoder(charset, { fatal: false }).decode(buffer);
-
-    if (!res.ok) {
-      lastError = `${endpoint} HTTP ${res.status}: ${text.slice(0, 200)}`;
-      continue;
+  for (let retry = 0; retry <= MAX_RETRIES; retry++) {
+    if (retry > 0) {
+      const delayMs = 2000 * retry; // 2s, 4s
+      console.log(`${endpoint} retry ${retry}/${MAX_RETRIES} after ${delayMs}ms`);
+      await new Promise((r) => setTimeout(r, delayMs));
     }
 
-    try {
-      return JSON.parse(text);
-    } catch {
-      lastError = `${endpoint} returned invalid JSON: ${text.slice(0, 200)}`;
+    let isTransientError = false;
+
+    for (const body of bodies) {
+      try {
+        const res = await fetch(`${BASE_API}/${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'User-Agent': 'Mozilla/5.0 (compatible; BethelBot/1.0)',
+            'Referer': SOURCE_URL,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body,
+          signal: AbortSignal.timeout(15000),
+        });
+
+        const buffer = await res.arrayBuffer();
+        const contentType = res.headers.get('content-type') ?? '';
+        const charset = /euc-kr/i.test(contentType) ? 'euc-kr' : 'utf-8';
+        const text = new TextDecoder(charset, { fatal: false }).decode(buffer);
+
+        if (!res.ok) {
+          lastError = `${endpoint} HTTP ${res.status}: ${text.slice(0, 200)}`;
+          continue;
+        }
+
+        try {
+          return JSON.parse(text);
+        } catch {
+          lastError = `${endpoint} returned invalid JSON: ${text.slice(0, 200)}`;
+        }
+      } catch (err) {
+        // 타임아웃·네트워크 오류는 재시도 대상
+        const msg = err instanceof Error ? err.message : String(err);
+        lastError = `${endpoint} request error: ${msg}`;
+        isTransientError = true;
+        console.warn(`${endpoint} transient error (attempt ${retry + 1}): ${msg}`);
+      }
     }
+
+    if (!isTransientError) break; // HTTP 오류·JSON 파싱 실패는 재시도해도 무의미
   }
 
   throw new Error(lastError || `${endpoint} request failed`);
