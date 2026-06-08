@@ -255,7 +255,10 @@ export default function BibleReading() {
   useEffect(() => {
     if (!pendingJumpVerse || chapterLoading || verses.length === 0) return;
     requestAnimationFrame(() => {
-      verseRefs.current[pendingJumpVerse]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      verseRefs.current[pendingJumpVerse]?.scrollIntoView({
+        behavior: 'smooth',
+        block: pendingJumpVerse === 1 ? 'start' : 'center',
+      });
       setPendingJumpVerse(null);
     });
   }, [chapterLoading, pendingJumpVerse, verses]);
@@ -432,11 +435,13 @@ export default function BibleReading() {
     if (direction === -1 && selectedChapter > 1) {
       setSelectedChapter(selectedChapter - 1);
       setSelectedVerse(1);
+      setPendingJumpVerse(1);
       return;
     }
     if (direction === 1 && selectedChapter < selectedBook.chapterCount) {
       setSelectedChapter(selectedChapter + 1);
       setSelectedVerse(1);
+      setPendingJumpVerse(1);
       return;
     }
 
@@ -445,6 +450,7 @@ export default function BibleReading() {
     setSelectedBookId(nextBook.id);
     setSelectedChapter(direction === -1 ? nextBook.chapterCount : 1);
     setSelectedVerse(1);
+    setPendingJumpVerse(1);
   };
 
   const toggleBookmark = (verse: number) => {
