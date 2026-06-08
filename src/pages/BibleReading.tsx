@@ -4,9 +4,12 @@ import {
   Bookmark,
   BookmarkCheck,
   BookOpen,
+  CalendarDays,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Lock,
   Pencil,
   Plus,
@@ -20,6 +23,8 @@ import { useDistrict } from '@/lib/districtContext';
 import {
   addBibleBookmark,
   addBibleReadingLog,
+  completeBiblePlanDay,
+  createBibleReadingPlan,
   deleteBibleBookmark,
   deleteBibleReadingLog,
   getBibleBookmarks,
@@ -28,9 +33,15 @@ import {
   getBibleReadingLogs,
   getCurrentLockStatus,
   getKSTDateString,
+  getPrimaryBibleReadingPlan,
+  setBiblePlanItemCompleted,
   updateBibleReadingLog,
   type BibleBookmark,
   type BibleBook,
+  type BibleReadingPlan,
+  type BibleReadingPlanDay,
+  type BibleReadingPlanItem,
+  type BibleReadingPlanScope,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +54,11 @@ import { toast } from 'sonner';
 const FONT_SIZE_CLASSES = ['text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl'];
 const FONT_SIZE_LABELS = ['작게', '기본', '크게', '더 크게', '아주 크게'];
 const LAST_LOCATION_KEY_PREFIX = 'bethel_bible_last_location';
+const PLAN_SCOPE_LABELS: Record<BibleReadingPlanScope, string> = {
+  all: '성경 전체',
+  old: '구약',
+  new: '신약',
+};
 
 interface LastBibleLocation {
   bookId: number;
@@ -86,6 +102,47 @@ function findNextBook(books: BibleBook[], currentBookId: number, direction: -1 |
   return books[index + direction] ?? null;
 }
 
+function formatPlanItems(items: BibleReadingPlanItem[]) {
+  if (items.length === 0) return '';
+  const groups: { bookName: string; chapters: number[] }[] = [];
+
+  items.forEach(item => {
+    const last = groups[groups.length - 1];
+    if (last?.bookName === item.bookName) {
+      last.chapters.push(item.chapter);
+      return;
+    }
+    groups.push({ bookName: item.bookName, chapters: [item.chapter] });
+  });
+
+  return groups.map(group => {
+    const first = group.chapters[0];
+    const last = group.chapters[group.chapters.length - 1];
+    return `${group.bookName} ${first === last ? first : `${first}-${last}`}장`;
+  }).join(', ');
+}
+
+function getPlanStats(plan: BibleReadingPlan | null | undefined) {
+  const items = plan?.days.flatMap(day => day.items) ?? [];
+  const completed = items.filter(item => item.completedAt).length;
+  const total = plan?.totalChapters ?? 0;
+  return {
+    completed,
+    total,
+    percent: total > 0 ? Math.min((completed / total) * 100, 100) : 0,
+  };
+}
+
+function getActivePlanDay(plan: BibleReadingPlan | null | undefined, today: string) {
+  if (!plan) return null;
+  return (
+    plan.days.find(day => day.scheduledDate === today) ??
+    plan.days.find(day => day.items.some(item => !item.completedAt)) ??
+    plan.days[0] ??
+    null
+  );
+}
+
 export default function BibleReading() {
   const { user } = useAuth();
   const { currentDistrictId } = useDistrict();
@@ -107,7 +164,11 @@ export default function BibleReading() {
   const [chapters, setChapters] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editChapters, setEditChapters] = useState('');
+  const [planTitle, setPlanTitle] = useState('말씀을 읽는 기쁨');
+  const [planScope, setPlanScope] = useState<BibleReadingPlanScope>('all');
+  const [planDailyChapters, setPlanDailyChapters] = useState('3');
   const target = 1189;
+  const today = getKSTDateString();
 
   const { data: books = [], isLoading: booksLoading } = useQuery({
     queryKey: ['bible_books'],
@@ -169,6 +230,12 @@ export default function BibleReading() {
   const { data: readings = [], isLoading: readingsLoading } = useQuery({
     queryKey: ['bible_reading_logs', user?.id],
     queryFn: () => getBibleReadingLogs(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: readingPlan = null, isLoading: planLoading } = useQuery({
+    queryKey: ['bible_reading_plan_primary', user?.id],
+    queryFn: () => getPrimaryBibleReadingPlan(user!.id),
     enabled: !!user,
   });
 
@@ -277,6 +344,63 @@ export default function BibleReading() {
     },
   });
 
+  const invalidatePlanQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['bible_reading_plan_primary', user?.id] });
+    invalidateReadingQueries();
+  };
+
+  const createPlanMutation = useMutation({
+    mutationFn: () => {
+      const dailyChapters = parseInt(planDailyChapters, 10);
+      if (!dailyChapters || dailyChapters <= 0) {
+        throw new Error('하루에 읽을 장수를 입력해주세요.');
+      }
+      return createBibleReadingPlan({
+        userId: user!.id,
+        title: planTitle,
+        scope: planScope,
+        startDate: today,
+        dailyChapterTarget: dailyChapters,
+      });
+    },
+    onSuccess: (plan) => {
+      queryClient.setQueryData(['bible_reading_plan_primary', user?.id], plan);
+      toast.success('읽기표가 만들어졌습니다.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '읽기표 생성에 실패했습니다.');
+    },
+  });
+
+  const completePlanDayMutation = useMutation({
+    mutationFn: (day: BibleReadingPlanDay) => completeBiblePlanDay({
+      planId: day.planId,
+      planDayId: day.id,
+    }),
+    onSuccess: () => {
+      invalidatePlanQueries();
+      toast.success('오늘 분량을 기록했습니다.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '읽기표 기록에 실패했습니다.');
+    },
+  });
+
+  const togglePlanItemMutation = useMutation({
+    mutationFn: (params: { item: BibleReadingPlanItem; completed: boolean }) => setBiblePlanItemCompleted({
+      planId: params.item.planId,
+      planDayId: params.item.planDayId,
+      itemId: params.item.id,
+      completed: params.completed,
+    }),
+    onSuccess: () => {
+      invalidatePlanQueries();
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '장 체크 변경에 실패했습니다.');
+    },
+  });
+
   const handleBookChange = (value: string) => {
     const book = books.find(item => item.id === Number(value));
     if (!book) return;
@@ -340,6 +464,19 @@ export default function BibleReading() {
     setPendingJumpVerse(bookmark.verse);
   };
 
+  const goToPlanItem = (item: BibleReadingPlanItem) => {
+    setSelectedBookId(item.bookId);
+    setSelectedChapter(item.chapter);
+    setSelectedVerse(1);
+    setActiveTab('reader');
+    setPendingJumpVerse(1);
+  };
+
+  const goToPlanDay = (day: BibleReadingPlanDay | null) => {
+    const firstOpenItem = day?.items.find(item => !item.completedAt) ?? day?.items[0];
+    if (firstOpenItem) goToPlanItem(firstOpenItem);
+  };
+
   const handleAddReading = () => {
     const num = parseInt(chapters, 10);
     if (!num || num <= 0) {
@@ -371,6 +508,10 @@ export default function BibleReading() {
 
   const chapterOptions = Array.from({ length: selectedBook?.chapterCount ?? 1 }, (_, index) => index + 1);
   const verseOptions = verses.map(item => item.verse);
+  const planStats = getPlanStats(readingPlan);
+  const activePlanDay = getActivePlanDay(readingPlan, today);
+  const activePlanItemsLabel = activePlanDay ? formatPlanItems(activePlanDay.items) : '';
+  const planDayCompleted = activePlanDay?.items.every(item => item.completedAt) ?? false;
 
   return (
     <AppLayout>
@@ -395,7 +536,7 @@ export default function BibleReading() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-          <TabsList className="grid w-full grid-cols-3 md:w-[480px]">
+          <TabsList className="grid w-full grid-cols-4 md:w-[640px]">
             <TabsTrigger value="reader" className="gap-1.5">
               <BookOpen className="h-4 w-4" />
               본문 읽기
@@ -403,6 +544,10 @@ export default function BibleReading() {
             <TabsTrigger value="bookmarks" className="gap-1.5">
               <Bookmark className="h-4 w-4" />
               북마크
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="gap-1.5">
+              <ClipboardList className="h-4 w-4" />
+              읽기표
             </TabsTrigger>
             <TabsTrigger value="log" className="gap-1.5">
               <TrendingUp className="h-4 w-4" />
@@ -543,6 +688,22 @@ export default function BibleReading() {
                     })
                   )}
                 </div>
+
+                {!chapterLoading && verses.length > 0 && (
+                  <div className="flex items-center justify-between border-t px-4 py-3">
+                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(-1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                      이전
+                    </Button>
+                    <div className="text-center text-xs font-medium text-muted-foreground">
+                      {selectedBook?.koreanName ?? '성경'} {selectedChapter}장 끝
+                    </div>
+                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(1)}>
+                      다음
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </section>
 
               <aside className="rounded-lg border bg-card p-4 lg:sticky lg:top-24 lg:self-start">
@@ -655,6 +816,204 @@ export default function BibleReading() {
             </section>
           </TabsContent>
 
+          <TabsContent value="plan" className="mt-0 space-y-5">
+            {planLoading ? (
+              <section className="rounded-lg border bg-card py-16">
+                <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </section>
+            ) : !readingPlan ? (
+              <section className="rounded-lg border bg-card p-5">
+                <div className="mx-auto max-w-2xl space-y-5">
+                  <div className="text-center">
+                    <CalendarDays className="mx-auto mb-3 h-10 w-10 text-primary" />
+                    <h2 className="font-display text-xl font-bold">읽기표 만들기</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      수기 기록은 그대로 두고, 읽기표로 읽은 장수는 자동으로 합산됩니다.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 rounded-lg bg-muted/40 p-4">
+                    <label className="space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">읽기표 이름</span>
+                      <Input
+                        value={planTitle}
+                        onChange={event => setPlanTitle(event.target.value)}
+                        maxLength={30}
+                      />
+                    </label>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="space-y-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">읽을 범위</span>
+                        <Select value={planScope} onValueChange={(value) => setPlanScope(value as BibleReadingPlanScope)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">성경 전체</SelectItem>
+                            <SelectItem value="old">구약</SelectItem>
+                            <SelectItem value="new">신약</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+
+                      <label className="space-y-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">하루 장수</span>
+                        <Select value={planDailyChapters} onValueChange={setPlanDailyChapters}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="3">3장씩</SelectItem>
+                            <SelectItem value="5">5장씩</SelectItem>
+                            <SelectItem value="7">7장씩</SelectItem>
+                            <SelectItem value="10">10장씩</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    </div>
+
+                    <div className="grid gap-2 rounded-md bg-card p-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">번역본</span>
+                        <span className="font-medium">개역개정</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">시작일</span>
+                        <span className="font-medium">{today}</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="h-11"
+                      onClick={() => createPlanMutation.mutate()}
+                      disabled={createPlanMutation.isPending}
+                    >
+                      {createPlanMutation.isPending ? '만드는 중...' : '읽기표 시작하기'}
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <>
+                <section className="rounded-lg border bg-card p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {readingPlan.startDate} ~ {readingPlan.endDate}
+                      </p>
+                      <h2 className="font-display mt-1 text-xl font-bold">{readingPlan.title}</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {PLAN_SCOPE_LABELS[readingPlan.scope as BibleReadingPlanScope] ?? '성경'} · {readingPlan.translation}
+                      </p>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p className="text-sm font-medium text-primary">진행률 {Math.round(planStats.percent)}%</p>
+                      <p className="text-sm text-muted-foreground">{planStats.completed} / {planStats.total}장</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${planStats.percent}%` }}
+                    />
+                  </div>
+                </section>
+
+                <section className="rounded-lg border bg-card p-5">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-primary">
+                        {activePlanDay ? `${activePlanDay.dayNumber}일차` : '오늘 읽기'}
+                        {activePlanDay?.scheduledDate === today ? ' TODAY' : ''}
+                      </p>
+                      <h3 className="font-display mt-1 text-lg font-semibold">
+                        {activePlanItemsLabel || '읽을 분량이 없습니다.'}
+                      </h3>
+                    </div>
+                    {planDayCompleted && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        완료
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      className="gap-1.5"
+                      onClick={() => goToPlanDay(activePlanDay)}
+                      disabled={!activePlanDay}
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      본문에서 읽기
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => activePlanDay && completePlanDayMutation.mutate(activePlanDay)}
+                      disabled={!activePlanDay || planDayCompleted || completePlanDayMutation.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                      오늘 분량 완료
+                    </Button>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border bg-card p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="font-display text-lg font-semibold">읽기 현황</h3>
+                    <span className="text-sm text-muted-foreground">{readingPlan.days.length}일 계획</span>
+                  </div>
+                  <div className="space-y-3">
+                    {readingPlan.days.map(day => {
+                      const doneCount = day.items.filter(item => item.completedAt).length;
+                      return (
+                        <div key={day.id} className="rounded-lg border p-3">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <button
+                              type="button"
+                              className="text-left"
+                              onClick={() => goToPlanDay(day)}
+                            >
+                              <span className="text-sm font-semibold">{day.dayNumber}일차</span>
+                              <span className="ml-2 text-xs text-muted-foreground">{day.scheduledDate}</span>
+                              <p className="mt-1 text-sm text-muted-foreground">{formatPlanItems(day.items)}</p>
+                            </button>
+                            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                              {doneCount}/{day.items.length}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {day.items.map(item => {
+                              const done = !!item.completedAt;
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  className={`h-9 min-w-9 rounded-full border px-2 text-xs font-semibold transition-colors ${
+                                    done
+                                      ? 'border-primary bg-primary text-primary-foreground'
+                                      : 'border-border bg-muted/40 text-foreground hover:border-primary'
+                                  }`}
+                                  onClick={() => togglePlanItemMutation.mutate({ item, completed: !done })}
+                                  disabled={togglePlanItemMutation.isPending}
+                                  title={`${item.bookName} ${item.chapter}장`}
+                                >
+                                  {done ? <Check className="mx-auto h-4 w-4" /> : item.chapter}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </>
+            )}
+          </TabsContent>
+
           <TabsContent value="log" className="mt-0">
             <div className="mx-auto max-w-2xl space-y-5">
               <div className="card-elevated p-5">
@@ -734,7 +1093,12 @@ export default function BibleReading() {
                   <div className="space-y-2">
                     {readings.map(reading => (
                       <div key={reading.id} className="flex items-center justify-between border-b py-2 last:border-0">
-                        <span className="text-sm text-muted-foreground">{reading.date}</span>
+                        <div className="min-w-0">
+                          <span className="text-sm text-muted-foreground">{reading.date}</span>
+                          {reading.sourceType === 'plan' && reading.sourceLabel && (
+                            <p className="truncate text-xs text-muted-foreground">{reading.sourceLabel}</p>
+                          )}
+                        </div>
                         {editingId === reading.id ? (
                           <div className="flex items-center gap-1">
                             <Input
@@ -756,7 +1120,9 @@ export default function BibleReading() {
                         ) : (
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold">{reading.chapters}장</span>
-                            {!isLocked && (
+                            {reading.sourceType === 'plan' ? (
+                              <CheckCircle2 className="h-4 w-4 text-primary" aria-label="읽기표 자동 기록" />
+                            ) : !isLocked && (
                               <>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEditStart(reading.id, reading.chapters)}>
                                   <Pencil className="h-3.5 w-3.5" />
