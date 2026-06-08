@@ -186,6 +186,11 @@ export interface BibleReadingPlan {
   days: BibleReadingPlanDay[];
 }
 
+interface BiblePlanChapterRef {
+  bookId: number;
+  chapter: number;
+}
+
 export interface Schedule {
   id: string;
   title: string;
@@ -959,6 +964,25 @@ function chunkRows<T>(rows: T[], size: number): T[][] {
   return chunks;
 }
 
+function buildBiblePlanChapters(books: BibleBook[], scope: BibleReadingPlanScope): BiblePlanChapterRef[] {
+  const selectedBooks = books.filter(book => {
+    if (scope === 'old') return book.testament === 'old';
+    if (scope === 'new') return book.testament === 'new';
+    return true;
+  });
+
+  return selectedBooks.flatMap(book =>
+    Array.from({ length: book.chapterCount }, (_, index) => ({
+      bookId: book.id,
+      chapter: index + 1,
+    }))
+  );
+}
+
+function buildChapterKey(bookId: number, chapter: number) {
+  return `${bookId}:${chapter}`;
+}
+
 function mapPlan(
   plan: Database['public']['Tables']['bible_reading_plans']['Row'],
   days: Database['public']['Tables']['bible_reading_plan_days']['Row'][],
@@ -1057,17 +1081,7 @@ export async function createBibleReadingPlan(params: {
   dailyChapterTarget: number;
 }): Promise<BibleReadingPlan> {
   const books = await getBibleBooks();
-  const selectedBooks = books.filter(book => {
-    if (params.scope === 'old') return book.testament === 'old';
-    if (params.scope === 'new') return book.testament === 'new';
-    return true;
-  });
-  const chapters = selectedBooks.flatMap(book =>
-    Array.from({ length: book.chapterCount }, (_, index) => ({
-      bookId: book.id,
-      chapter: index + 1,
-    }))
-  );
+  const chapters = buildBiblePlanChapters(books, params.scope);
   if (chapters.length === 0) {
     throw new Error('읽기표를 만들 성경 범위가 없습니다.');
   }
@@ -1144,6 +1158,191 @@ export async function createBibleReadingPlan(params: {
   const created = await getPrimaryBibleReadingPlan(params.userId);
   if (!created) throw new Error('생성된 읽기표를 불러오지 못했습니다.');
   return created;
+}
+
+export async function updateBibleReadingPlan(params: {
+  planId: string;
+  userId: string;
+  title: string;
+  scope: BibleReadingPlanScope;
+  startDate: string;
+  dailyChapterTarget: number;
+}): Promise<BibleReadingPlan> {
+  if (!params.dailyChapterTarget || params.dailyChapterTarget <= 0) {
+    throw new Error('하루에 읽을 장수를 입력해주세요.');
+  }
+
+  const [{ data: plan, error: planError }, { data: days, error: daysError }, { data: items, error: itemsError }, books] = await Promise.all([
+    withApiTimeout(
+      supabase
+        .from('bible_reading_plans')
+        .select('*')
+        .eq('id', params.planId)
+        .eq('owner_user_id', params.userId)
+        .single(),
+      '읽기표 수정 대상 조회'
+    ),
+    withApiTimeout(
+      supabase
+        .from('bible_reading_plan_days')
+        .select('*')
+        .eq('plan_id', params.planId)
+        .order('day_number', { ascending: true }),
+      '읽기표 수정 날짜 조회'
+    ),
+    withApiTimeout(
+      supabase
+        .from('bible_reading_plan_day_items')
+        .select('*')
+        .eq('plan_id', params.planId)
+        .order('sequence', { ascending: true }),
+      '읽기표 수정 장 조회'
+    ),
+    getBibleBooks(),
+  ]);
+  if (planError) throw planError;
+  if (daysError) throw daysError;
+  if (itemsError) throw itemsError;
+
+  const completedItems = (items ?? []).filter(item => item.completed_at);
+  const completedKeys = new Set(completedItems.map(item => buildChapterKey(item.book_id, item.chapter)));
+  const targetChapters = buildBiblePlanChapters(books, params.scope)
+    .filter(chapter => !completedKeys.has(buildChapterKey(chapter.bookId, chapter.chapter)));
+
+  const completedCountByDay = new Map<string, number>();
+  completedItems.forEach(item => {
+    completedCountByDay.set(item.plan_day_id, (completedCountByDay.get(item.plan_day_id) ?? 0) + 1);
+  });
+
+  const completedDayIds = new Set(completedItems.map(item => item.plan_day_id));
+  const daysToDelete = (days ?? []).filter(day => !completedDayIds.has(day.id));
+  const completedDays = (days ?? []).filter(day => completedDayIds.has(day.id));
+
+  const { error: deleteItemsError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_plan_day_items')
+      .delete()
+      .eq('plan_id', params.planId)
+      .is('completed_at', null),
+    '미완료 읽기표 장 재배치 삭제'
+  );
+  if (deleteItemsError) throw deleteItemsError;
+
+  if (daysToDelete.length > 0) {
+    const { error: deleteDaysError } = await withApiTimeout(
+      supabase
+        .from('bible_reading_plan_days')
+        .delete()
+        .in('id', daysToDelete.map(day => day.id)),
+      '미완료 읽기표 날짜 재배치 삭제'
+    );
+    if (deleteDaysError) throw deleteDaysError;
+  }
+
+  for (const day of completedDays) {
+    const completedCount = completedCountByDay.get(day.id) ?? 0;
+    const { error } = await withApiTimeout(
+      supabase
+        .from('bible_reading_plan_days')
+        .update({
+          chapter_count: completedCount,
+          completed_at: day.completed_at ?? new Date().toISOString(),
+        })
+        .eq('id', day.id),
+      '완료 읽기표 날짜 보존'
+    );
+    if (error) throw error;
+  }
+
+  const maxCompletedDayNumber = completedDays.reduce((max, day) => Math.max(max, day.day_number), 0);
+  const maxCompletedSequence = completedItems.reduce((max, item) => Math.max(max, item.sequence), 0);
+  const latestCompletedDate = completedDays.reduce(
+    (latest, day) => day.scheduled_date > latest ? day.scheduled_date : latest,
+    ''
+  );
+  const firstNewDate = latestCompletedDate
+    ? (addDaysToDateString(latestCompletedDate, 1) > params.startDate
+      ? addDaysToDateString(latestCompletedDate, 1)
+      : params.startDate)
+    : params.startDate;
+
+  const dayChunks = chunkRows(targetChapters, params.dailyChapterTarget);
+  let endDate = latestCompletedDate || params.startDate;
+
+  if (dayChunks.length > 0) {
+    const dayRows = dayChunks.map((chunk, index) => ({
+      plan_id: params.planId,
+      day_number: maxCompletedDayNumber + index + 1,
+      scheduled_date: addDaysToDateString(firstNewDate, index),
+      chapter_count: chunk.length,
+    }));
+    endDate = dayRows[dayRows.length - 1].scheduled_date;
+
+    const { data: insertedDays, error: insertDaysError } = await withApiTimeout(
+      supabase
+        .from('bible_reading_plan_days')
+        .insert(dayRows)
+        .select('*'),
+      '읽기표 수정 날짜 재생성'
+    );
+    if (insertDaysError) throw insertDaysError;
+
+    const dayIdMap = new Map((insertedDays ?? []).map(day => [day.day_number, day.id]));
+    const itemRows = dayChunks.flatMap((chunk, dayIndex) => {
+      const dayNumber = maxCompletedDayNumber + dayIndex + 1;
+      const planDayId = dayIdMap.get(dayNumber);
+      if (!planDayId) return [];
+      return chunk.map((chapter, chapterIndex) => ({
+        plan_id: params.planId,
+        plan_day_id: planDayId,
+        sequence: maxCompletedSequence + dayIndex * params.dailyChapterTarget + chapterIndex + 1,
+        book_id: chapter.bookId,
+        chapter: chapter.chapter,
+      }));
+    });
+
+    for (const batch of chunkRows(itemRows, 500)) {
+      const { error } = await withApiTimeout(
+        supabase.from('bible_reading_plan_day_items').insert(batch),
+        '읽기표 수정 장 재생성'
+      );
+      if (error) throw error;
+    }
+  }
+
+  const nextTitle = params.title.trim() || plan.title || '말씀을 읽는 기쁨';
+  const { error: updatePlanError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_plans')
+      .update({
+        title: nextTitle,
+        scope: params.scope,
+        start_date: completedItems.length > 0 ? plan.start_date : params.startDate,
+        end_date: endDate,
+        daily_chapter_target: params.dailyChapterTarget,
+        total_chapters: completedItems.length + targetChapters.length,
+        status: 'active',
+      })
+      .eq('id', params.planId),
+    '읽기표 수정 저장'
+  );
+  if (updatePlanError) throw updatePlanError;
+
+  for (const day of completedDays) {
+    const { error } = await withApiTimeout(
+      supabase
+        .from('bible_reading_logs')
+        .update({ source_label: `${nextTitle} ${day.day_number}일차` })
+        .eq('plan_day_id', day.id)
+        .eq('source_type', 'plan'),
+      '읽기표 자동 기록 이름 동기화'
+    );
+    if (error) throw error;
+  }
+
+  const updated = await getPrimaryBibleReadingPlan(params.userId);
+  if (!updated) throw new Error('수정된 읽기표를 불러오지 못했습니다.');
+  return updated;
 }
 
 async function syncBiblePlanDayLog(params: {
