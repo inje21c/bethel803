@@ -247,6 +247,10 @@ export interface Database {
           user_id: string;
           log_date: string;
           chapters: number;
+          source_type: 'manual' | 'plan';
+          source_label: string | null;
+          plan_id: string | null;
+          plan_day_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -255,9 +259,118 @@ export interface Database {
           user_id: string;
           log_date: string;
           chapters: number;
+          source_type?: 'manual' | 'plan';
+          source_label?: string | null;
+          plan_id?: string | null;
+          plan_day_id?: string | null;
         };
         Update: {
+          log_date?: string;
           chapters?: number;
+          source_type?: 'manual' | 'plan';
+          source_label?: string | null;
+          plan_id?: string | null;
+          plan_day_id?: string | null;
+        };
+      };
+      bible_reading_plans: {
+        Row: {
+          id: string;
+          church_id: string | null;
+          owner_user_id: string;
+          title: string;
+          translation: string;
+          scope: 'all' | 'old' | 'new' | 'custom';
+          mode: 'sequential';
+          start_date: string;
+          end_date: string;
+          daily_chapter_target: number | null;
+          total_chapters: number;
+          is_primary: boolean;
+          status: 'active' | 'completed' | 'archived';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          church_id?: string | null;
+          owner_user_id: string;
+          title: string;
+          translation?: string;
+          scope: 'all' | 'old' | 'new' | 'custom';
+          mode?: 'sequential';
+          start_date: string;
+          end_date: string;
+          daily_chapter_target?: number | null;
+          total_chapters: number;
+          is_primary?: boolean;
+          status?: 'active' | 'completed' | 'archived';
+        };
+        Update: {
+          church_id?: string | null;
+          title?: string;
+          translation?: string;
+          scope?: 'all' | 'old' | 'new' | 'custom';
+          mode?: 'sequential';
+          start_date?: string;
+          end_date?: string;
+          daily_chapter_target?: number | null;
+          total_chapters?: number;
+          is_primary?: boolean;
+          status?: 'active' | 'completed' | 'archived';
+        };
+      };
+      bible_reading_plan_days: {
+        Row: {
+          id: string;
+          plan_id: string;
+          day_number: number;
+          scheduled_date: string;
+          chapter_count: number;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plan_id: string;
+          day_number: number;
+          scheduled_date: string;
+          chapter_count: number;
+          completed_at?: string | null;
+        };
+        Update: {
+          day_number?: number;
+          scheduled_date?: string;
+          chapter_count?: number;
+          completed_at?: string | null;
+        };
+      };
+      bible_reading_plan_day_items: {
+        Row: {
+          id: string;
+          plan_day_id: string;
+          plan_id: string;
+          sequence: number;
+          book_id: number;
+          chapter: number;
+          completed_at: string | null;
+          reading_log_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plan_day_id: string;
+          plan_id: string;
+          sequence: number;
+          book_id: number;
+          chapter: number;
+          completed_at?: string | null;
+          reading_log_id?: string | null;
+        };
+        Update: {
+          sequence?: number;
+          completed_at?: string | null;
+          reading_log_id?: string | null;
         };
       };
       bible_books: {
