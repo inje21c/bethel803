@@ -42,9 +42,42 @@ import { toast } from 'sonner';
 
 const FONT_SIZE_CLASSES = ['text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl'];
 const FONT_SIZE_LABELS = ['작게', '기본', '크게', '더 크게', '아주 크게'];
+const LAST_LOCATION_KEY_PREFIX = 'bethel_bible_last_location';
+
+interface LastBibleLocation {
+  bookId: number;
+  chapter: number;
+  verse: number;
+}
 
 function buildVerseKey(bookId: number, chapter: number, verse: number) {
   return `${bookId}:${chapter}:${verse}`;
+}
+
+function getLastLocationKey(userId?: string | null) {
+  return `${LAST_LOCATION_KEY_PREFIX}:${userId ?? 'guest'}`;
+}
+
+function readLastLocation(userId?: string | null): LastBibleLocation | null {
+  try {
+    const raw = localStorage.getItem(getLastLocationKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LastBibleLocation>;
+    if (
+      Number.isInteger(parsed.bookId) &&
+      Number.isInteger(parsed.chapter) &&
+      Number.isInteger(parsed.verse)
+    ) {
+      return {
+        bookId: parsed.bookId!,
+        chapter: parsed.chapter!,
+        verse: parsed.verse!,
+      };
+    }
+  } catch {
+    localStorage.removeItem(getLastLocationKey(userId));
+  }
+  return null;
 }
 
 function findNextBook(books: BibleBook[], currentBookId: number, direction: -1 | 1) {
@@ -65,6 +98,7 @@ export default function BibleReading() {
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [selectedVerse, setSelectedVerse] = useState(1);
   const [pendingJumpVerse, setPendingJumpVerse] = useState<number | null>(null);
+  const [restoredLocationKey, setRestoredLocationKey] = useState<string | null>(null);
   const [fontSizeLevel, setFontSizeLevel] = useState(() => {
     const saved = Number(localStorage.getItem('bethel_bible_font_level'));
     return Number.isInteger(saved) && saved >= 0 && saved <= 4 ? saved : 1;
@@ -82,16 +116,43 @@ export default function BibleReading() {
 
   const selectedBook = books.find(book => book.id === selectedBookId) ?? books[0];
   const currentBookId = selectedBook?.id ?? 1;
+  const lastLocationKey = getLastLocationKey(user?.id);
 
   useEffect(() => {
-    if (!selectedBookId && books.length > 0) {
+    if (books.length === 0 || restoredLocationKey === lastLocationKey) return;
+
+    const savedLocation = readLastLocation(user?.id);
+    const savedBook = savedLocation ? books.find(book => book.id === savedLocation.bookId) : null;
+
+    if (savedLocation && savedBook) {
+      setSelectedBookId(savedBook.id);
+      setSelectedChapter(Math.min(Math.max(savedLocation.chapter, 1), savedBook.chapterCount));
+      setSelectedVerse(Math.max(savedLocation.verse, 1));
+    } else {
       setSelectedBookId(books[0].id);
+      setSelectedChapter(1);
+      setSelectedVerse(1);
     }
-  }, [books, selectedBookId]);
+
+    setRestoredLocationKey(lastLocationKey);
+  }, [books, lastLocationKey, restoredLocationKey, user?.id]);
 
   useEffect(() => {
     localStorage.setItem('bethel_bible_font_level', String(fontSizeLevel));
   }, [fontSizeLevel]);
+
+  useEffect(() => {
+    if (!selectedBook || restoredLocationKey !== lastLocationKey) return;
+
+    localStorage.setItem(
+      lastLocationKey,
+      JSON.stringify({
+        bookId: selectedBook.id,
+        chapter: selectedChapter,
+        verse: selectedVerse,
+      })
+    );
+  }, [lastLocationKey, restoredLocationKey, selectedBook, selectedChapter, selectedVerse]);
 
   const { data: verses = [], isLoading: chapterLoading } = useQuery({
     queryKey: ['bible_chapter', currentBookId, selectedChapter],
@@ -131,6 +192,14 @@ export default function BibleReading() {
       setPendingJumpVerse(null);
     });
   }, [chapterLoading, pendingJumpVerse, verses]);
+
+  useEffect(() => {
+    if (chapterLoading || verses.length === 0) return;
+    const maxVerse = verses[verses.length - 1]?.verse ?? 1;
+    if (selectedVerse > maxVerse) {
+      setSelectedVerse(maxVerse);
+    }
+  }, [chapterLoading, selectedVerse, verses]);
 
   const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
   const progress = Math.min((totalChapters / target) * 100, 100);
@@ -432,15 +501,21 @@ export default function BibleReading() {
                       const key = buildVerseKey(item.bookId, item.chapter, item.verse);
                       const bookmarked = bookmarkMap.has(key);
                       const active = selectedVerse === item.verse;
+                      const verseStateClass = bookmarked
+                        ? active
+                          ? 'bg-amber-100/80 ring-1 ring-inset ring-amber-300 dark:bg-amber-500/20 dark:ring-amber-400/40'
+                          : 'bg-amber-50/80 ring-1 ring-inset ring-amber-200/70 dark:bg-amber-500/10 dark:ring-amber-400/25'
+                        : active
+                          ? 'bg-primary/10'
+                          : 'bg-card';
+
                       return (
                         <div
                           key={key}
                           ref={node => {
                             verseRefs.current[item.verse] = node;
                           }}
-                          className={`grid grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] gap-2 px-4 py-3 transition-colors ${
-                            active ? 'bg-primary/10' : 'bg-card'
-                          }`}
+                          className={`grid grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] gap-2 px-4 py-3 transition-colors ${verseStateClass}`}
                         >
                           <button
                             type="button"
