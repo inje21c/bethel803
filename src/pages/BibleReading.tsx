@@ -36,6 +36,7 @@ import {
   getPrimaryBibleReadingPlan,
   setBiblePlanItemCompleted,
   updateBibleReadingLog,
+  updateBibleReadingPlan,
   type BibleBookmark,
   type BibleBook,
   type BibleReadingPlan,
@@ -167,6 +168,7 @@ export default function BibleReading() {
   const [planTitle, setPlanTitle] = useState('말씀을 읽는 기쁨');
   const [planScope, setPlanScope] = useState<BibleReadingPlanScope>('all');
   const [planDailyChapters, setPlanDailyChapters] = useState('3');
+  const [editingPlan, setEditingPlan] = useState(false);
   const target = 1189;
   const today = getKSTDateString();
 
@@ -238,6 +240,13 @@ export default function BibleReading() {
     queryFn: () => getPrimaryBibleReadingPlan(user!.id),
     enabled: !!user,
   });
+
+  useEffect(() => {
+    if (!readingPlan || editingPlan) return;
+    setPlanTitle(readingPlan.title);
+    setPlanScope((readingPlan.scope === 'custom' ? 'all' : readingPlan.scope) as BibleReadingPlanScope);
+    setPlanDailyChapters(String(readingPlan.dailyChapterTarget ?? 3));
+  }, [editingPlan, readingPlan]);
 
   const { data: isLocked = false } = useQuery({
     queryKey: ['lock_status', currentDistrictId],
@@ -372,6 +381,33 @@ export default function BibleReading() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : '읽기표 생성에 실패했습니다.');
+    },
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: () => {
+      if (!readingPlan) throw new Error('수정할 읽기표가 없습니다.');
+      const dailyChapters = parseInt(planDailyChapters, 10);
+      if (!dailyChapters || dailyChapters <= 0) {
+        throw new Error('하루에 읽을 장수를 입력해주세요.');
+      }
+      return updateBibleReadingPlan({
+        planId: readingPlan.id,
+        userId: user!.id,
+        title: planTitle,
+        scope: planScope,
+        startDate: today,
+        dailyChapterTarget: dailyChapters,
+      });
+    },
+    onSuccess: (plan) => {
+      queryClient.setQueryData(['bible_reading_plan_primary', user?.id], plan);
+      invalidateReadingQueries();
+      setEditingPlan(false);
+      toast.success('읽기표가 수정되었습니다.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '읽기표 수정에 실패했습니다.');
     },
   });
 
@@ -916,6 +952,15 @@ export default function BibleReading() {
                     <div className="text-left sm:text-right">
                       <p className="text-sm font-medium text-primary">진행률 {Math.round(planStats.percent)}%</p>
                       <p className="text-sm text-muted-foreground">{planStats.completed} / {planStats.total}장</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => setEditingPlan(value => !value)}
+                      >
+                        {editingPlan ? '수정 닫기' : '읽기표 수정'}
+                      </Button>
                     </div>
                   </div>
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
@@ -925,6 +970,85 @@ export default function BibleReading() {
                     />
                   </div>
                 </section>
+
+                {editingPlan && (
+                  <section className="rounded-lg border bg-card p-5">
+                    <div className="mb-4">
+                      <h3 className="font-display text-lg font-semibold">읽기표 수정</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        이미 완료한 장과 자동 기록은 유지하고, 남은 장만 새 조건으로 다시 배치합니다.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4">
+                      <label className="space-y-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">읽기표 이름</span>
+                        <Input
+                          value={planTitle}
+                          onChange={event => setPlanTitle(event.target.value)}
+                          maxLength={30}
+                        />
+                      </label>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="space-y-1.5">
+                          <span className="text-xs font-medium text-muted-foreground">앞으로 읽을 범위</span>
+                          <Select value={planScope} onValueChange={(value) => setPlanScope(value as BibleReadingPlanScope)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">성경 전체</SelectItem>
+                              <SelectItem value="old">구약</SelectItem>
+                              <SelectItem value="new">신약</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </label>
+
+                        <label className="space-y-1.5">
+                          <span className="text-xs font-medium text-muted-foreground">앞으로 하루 장수</span>
+                          <Select value={planDailyChapters} onValueChange={setPlanDailyChapters}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="3">3장씩</SelectItem>
+                              <SelectItem value="5">5장씩</SelectItem>
+                              <SelectItem value="7">7장씩</SelectItem>
+                              <SelectItem value="10">10장씩</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      </div>
+
+                      <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+                        완료한 {planStats.completed}장은 그대로 보존됩니다. 수정 후 남은 분량은 오늘 이후 일정으로 다시 배치됩니다.
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingPlan(false);
+                            setPlanTitle(readingPlan.title);
+                            setPlanScope((readingPlan.scope === 'custom' ? 'all' : readingPlan.scope) as BibleReadingPlanScope);
+                            setPlanDailyChapters(String(readingPlan.dailyChapterTarget ?? 3));
+                          }}
+                        >
+                          취소
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => updatePlanMutation.mutate()}
+                          disabled={updatePlanMutation.isPending}
+                        >
+                          {updatePlanMutation.isPending ? '수정 중...' : '수정 저장'}
+                        </Button>
+                      </div>
+                    </div>
+                  </section>
+                )}
 
                 <section className="rounded-lg border bg-card p-5">
                   <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
