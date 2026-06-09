@@ -1459,7 +1459,7 @@ async function getOrCreateTodayBiblePlanLog(params: {
       .insert({
         user_id: params.userId,
         log_date: today,
-        chapters: 0,
+        chapters: 1,
         source_type: 'plan',
         source_label: params.sourceLabel,
         plan_id: params.planId,
