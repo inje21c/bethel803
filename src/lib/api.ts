@@ -186,6 +186,14 @@ export interface BibleReadingPlan {
   days: BibleReadingPlanDay[];
 }
 
+export interface BiblePlanChapterCompletionResult {
+  planId: string;
+  planTitle: string;
+  planDayId: string;
+  itemId: string;
+  alreadyCompleted: boolean;
+}
+
 interface BiblePlanChapterRef {
   bookId: number;
   chapter: number;
@@ -1328,134 +1336,223 @@ export async function updateBibleReadingPlan(params: {
   );
   if (updatePlanError) throw updatePlanError;
 
-  for (const day of completedDays) {
-    const { error } = await withApiTimeout(
-      supabase
-        .from('bible_reading_logs')
-        .update({ source_label: `${nextTitle} ${day.day_number}일차` })
-        .eq('plan_day_id', day.id)
-        .eq('source_type', 'plan'),
-      '읽기표 자동 기록 이름 동기화'
-    );
-    if (error) throw error;
-  }
-
   const updated = await getPrimaryBibleReadingPlan(params.userId);
   if (!updated) throw new Error('수정된 읽기표를 불러오지 못했습니다.');
   return updated;
 }
 
-async function syncBiblePlanDayLog(params: {
-  planId: string;
-  planDayId: string;
-}): Promise<void> {
-  const { data: plan, error: planError } = await withApiTimeout(
-    supabase.from('bible_reading_plans').select('*').eq('id', params.planId).single(),
-    '읽기표 동기화 계획 조회'
-  );
-  if (planError) throw planError;
-
+async function syncBiblePlanDayStatus(planDayId: string): Promise<void> {
   const [{ data: day, error: dayError }, { data: items, error: itemsError }] = await Promise.all([
     withApiTimeout(
-      supabase.from('bible_reading_plan_days').select('*').eq('id', params.planDayId).single(),
-      '읽기표 동기화 날짜 조회'
+      supabase.from('bible_reading_plan_days').select('*').eq('id', planDayId).single(),
+      '읽기표 날짜 조회'
     ),
     withApiTimeout(
-      supabase.from('bible_reading_plan_day_items').select('*').eq('plan_day_id', params.planDayId),
-      '읽기표 동기화 장 조회'
+      supabase.from('bible_reading_plan_day_items').select('completed_at').eq('plan_day_id', planDayId),
+      '읽기표 날짜 장 조회'
     ),
   ]);
   if (dayError) throw dayError;
   if (itemsError) throw itemsError;
 
-  const completedItems = (items ?? []).filter(item => item.completed_at);
-  const completedCount = completedItems.length;
-
-  const { data: existingLog, error: logLookupError } = await withApiTimeout(
-    supabase
-      .from('bible_reading_logs')
-      .select('*')
-      .eq('user_id', plan.owner_user_id)
-      .eq('plan_day_id', params.planDayId)
-      .eq('source_type', 'plan')
-      .maybeSingle(),
-    '읽기표 자동 기록 조회'
+  const completedCount = (items ?? []).filter(item => item.completed_at).length;
+  const completedAt = completedCount === day.chapter_count ? new Date().toISOString() : null;
+  const { error } = await withApiTimeout(
+    supabase.from('bible_reading_plan_days').update({ completed_at: completedAt }).eq('id', planDayId),
+    '읽기표 날짜 완료 상태 저장'
   );
-  if (logLookupError) throw logLookupError;
+  if (error) throw error;
+}
 
+async function syncBiblePlanLogById(logId: string, planId?: string): Promise<void> {
+  let query = supabase
+    .from('bible_reading_plan_day_items')
+    .select('id')
+    .eq('reading_log_id', logId)
+    .not('completed_at', 'is', null);
+
+  if (planId) {
+    query = query.eq('plan_id', planId);
+  }
+
+  const { data: items, error: itemsError } = await withApiTimeout(
+    query,
+    '읽기표 자동 기록 장수 조회'
+  );
+  if (itemsError) throw itemsError;
+
+  const completedCount = items?.length ?? 0;
   if (completedCount === 0) {
-    if (existingLog) {
-      const { error } = await withApiTimeout(
-        supabase.from('bible_reading_logs').delete().eq('id', existingLog.id),
-        '읽기표 자동 기록 삭제'
-      );
-      if (error) throw error;
-    }
-    const { error: dayUpdateError } = await withApiTimeout(
-      supabase.from('bible_reading_plan_days').update({ completed_at: null }).eq('id', params.planDayId),
-      '읽기표 날짜 미완료 처리'
+    const { error } = await withApiTimeout(
+      supabase.from('bible_reading_logs').delete().eq('id', logId),
+      '빈 읽기표 자동 기록 삭제'
     );
-    if (dayUpdateError) throw dayUpdateError;
+    if (error) throw error;
     return;
   }
 
-  const sourceLabel = `${plan.title} ${day.day_number}일차`;
-  let readingLogId = existingLog?.id;
+  const { error } = await withApiTimeout(
+    supabase.from('bible_reading_logs').update({ chapters: completedCount }).eq('id', logId),
+    '읽기표 자동 기록 장수 갱신'
+  );
+  if (error) throw error;
+}
 
-  if (existingLog) {
+async function attachTodayCompletedItemsToLog(params: {
+  logId: string;
+  planId: string;
+  completedSince: string;
+}): Promise<void> {
+  const { data: items, error: itemsError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_plan_day_items')
+      .select('id')
+      .eq('plan_id', params.planId)
+      .not('completed_at', 'is', null)
+      .gte('completed_at', params.completedSince),
+    '오늘 완료한 읽기표 장 조회'
+  );
+  if (itemsError) throw itemsError;
+
+  const itemIds = (items ?? []).map(item => item.id);
+  if (itemIds.length > 0) {
     const { error } = await withApiTimeout(
       supabase
-        .from('bible_reading_logs')
-        .update({
-          chapters: completedCount,
-          log_date: day.scheduled_date,
-          source_label: sourceLabel,
-          plan_id: plan.id,
-          plan_day_id: day.id,
-        })
-        .eq('id', existingLog.id),
-      '읽기표 자동 기록 수정'
+        .from('bible_reading_plan_day_items')
+        .update({ reading_log_id: params.logId })
+        .in('id', itemIds),
+      '오늘 읽기표 장 자동 기록 연결'
     );
     if (error) throw error;
-  } else {
-    const { data: insertedLog, error } = await withApiTimeout(
-      supabase
-        .from('bible_reading_logs')
-        .insert({
-          user_id: plan.owner_user_id,
-          log_date: day.scheduled_date,
-          chapters: completedCount,
-          source_type: 'plan',
-          source_label: sourceLabel,
-          plan_id: plan.id,
-          plan_day_id: day.id,
-        })
-        .select('id')
-        .single(),
-      '읽기표 자동 기록 생성'
-    );
-    if (error) throw error;
-    readingLogId = insertedLog.id;
   }
 
-  const dayCompletedAt = completedCount === day.chapter_count ? new Date().toISOString() : null;
-  const { error: dayUpdateError } = await withApiTimeout(
-    supabase.from('bible_reading_plan_days').update({ completed_at: dayCompletedAt }).eq('id', day.id),
-    '읽기표 날짜 완료 처리'
-  );
-  if (dayUpdateError) throw dayUpdateError;
+  await syncBiblePlanLogById(params.logId, params.planId);
+}
 
-  if (readingLogId) {
-    const { error: itemUpdateError } = await withApiTimeout(
+async function getOrCreateTodayBiblePlanLog(params: {
+  userId: string;
+  planId: string;
+  sourceLabel: string;
+}): Promise<string> {
+  const today = getKSTDateString();
+  const { data: existingLogs, error: lookupError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('id')
+      .eq('user_id', params.userId)
+      .eq('source_type', 'plan')
+      .eq('plan_id', params.planId)
+      .eq('log_date', today)
+      .eq('source_label', params.sourceLabel)
+      .is('plan_day_id', null)
+      .order('created_at', { ascending: true })
+      .limit(1),
+    '오늘 읽기표 자동 기록 조회'
+  );
+  if (lookupError) throw lookupError;
+  const existingLog = existingLogs?.[0];
+  if (existingLog) return existingLog.id;
+
+  const { data: insertedLog, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .insert({
+        user_id: params.userId,
+        log_date: today,
+        chapters: 0,
+        source_type: 'plan',
+        source_label: params.sourceLabel,
+        plan_id: params.planId,
+        plan_day_id: null,
+      })
+      .select('id')
+      .single(),
+    '오늘 읽기표 자동 기록 생성'
+  );
+  if (error) throw error;
+  return insertedLog.id;
+}
+
+async function setBiblePlanItemCompletedWithLog(params: {
+  itemId: string;
+  completed: boolean;
+}): Promise<BiblePlanChapterCompletionResult> {
+  const { data: item, error: itemError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_plan_day_items')
+      .select('*, bible_reading_plans!inner(id, title, owner_user_id)')
+      .eq('id', params.itemId)
+      .single(),
+    '읽기표 장 조회'
+  );
+  if (itemError) throw itemError;
+
+  const plan = item.bible_reading_plans as {
+    id: string;
+    title: string;
+    owner_user_id: string;
+  };
+  const oldLogId = item.reading_log_id as string | null;
+  const alreadyCompleted = !!item.completed_at;
+
+  if (params.completed) {
+    if (alreadyCompleted) {
+      await syncBiblePlanDayStatus(item.plan_day_id);
+      return {
+        planId: plan.id,
+        planTitle: plan.title,
+        planDayId: item.plan_day_id,
+        itemId: item.id,
+        alreadyCompleted: true,
+      };
+    }
+
+    const completedAt = new Date().toISOString();
+    const { error } = await withApiTimeout(
       supabase
         .from('bible_reading_plan_day_items')
-        .update({ reading_log_id: readingLogId })
-        .eq('plan_day_id', day.id)
-        .not('completed_at', 'is', null),
-      '읽기표 장 자동 기록 연결'
+        .update({
+          completed_at: completedAt,
+          reading_log_id: null,
+        })
+        .eq('id', item.id),
+      '읽기표 장 완료 저장'
     );
-    if (itemUpdateError) throw itemUpdateError;
+    if (error) throw error;
+
+    const logId = await getOrCreateTodayBiblePlanLog({
+      userId: plan.owner_user_id,
+      planId: plan.id,
+      sourceLabel: plan.title,
+    });
+    await attachTodayCompletedItemsToLog({
+      logId,
+      planId: plan.id,
+      completedSince: `${getKSTDateString()}T00:00:00+09:00`,
+    });
+  } else {
+    const { error } = await withApiTimeout(
+      supabase
+        .from('bible_reading_plan_day_items')
+        .update({
+          completed_at: null,
+          reading_log_id: null,
+        })
+        .eq('id', item.id),
+      '읽기표 장 완료 해제'
+    );
+    if (error) throw error;
+    if (oldLogId) await syncBiblePlanLogById(oldLogId, plan.id);
   }
+
+  await syncBiblePlanDayStatus(item.plan_day_id);
+  return {
+    planId: plan.id,
+    planTitle: plan.title,
+    planDayId: item.plan_day_id,
+    itemId: item.id,
+    alreadyCompleted: false,
+  };
 }
 
 export async function setBiblePlanItemCompleted(params: {
@@ -1464,35 +1561,70 @@ export async function setBiblePlanItemCompleted(params: {
   itemId: string;
   completed: boolean;
 }): Promise<void> {
-  const { error } = await withApiTimeout(
-    supabase
-      .from('bible_reading_plan_day_items')
-      .update({
-        completed_at: params.completed ? new Date().toISOString() : null,
-        reading_log_id: null,
-      })
-      .eq('id', params.itemId),
-    '읽기표 장 완료 변경'
-  );
-  if (error) throw error;
-  await syncBiblePlanDayLog({ planId: params.planId, planDayId: params.planDayId });
+  await setBiblePlanItemCompletedWithLog({
+    itemId: params.itemId,
+    completed: params.completed,
+  });
 }
 
 export async function completeBiblePlanDay(params: {
   planId: string;
   planDayId: string;
 }): Promise<void> {
-  const now = new Date().toISOString();
-  const { error } = await withApiTimeout(
+  const { data: items, error } = await withApiTimeout(
     supabase
       .from('bible_reading_plan_day_items')
-      .update({ completed_at: now })
+      .select('id')
       .eq('plan_day_id', params.planDayId)
       .is('completed_at', null),
-    '읽기표 하루 분량 완료'
+    '읽기표 하루 미완료 장 조회'
   );
   if (error) throw error;
-  await syncBiblePlanDayLog(params);
+  for (const item of items ?? []) {
+    await setBiblePlanItemCompletedWithLog({
+      itemId: item.id,
+      completed: true,
+    });
+  }
+}
+
+export async function completeCurrentBiblePlanChapter(params: {
+  userId: string;
+  bookId: number;
+  chapter: number;
+}): Promise<BiblePlanChapterCompletionResult> {
+  const { data: plan, error: planError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_plans')
+      .select('id')
+      .eq('owner_user_id', params.userId)
+      .eq('status', 'active')
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    '대표 읽기표 조회'
+  );
+  if (planError) throw planError;
+  if (!plan) throw new Error('활성 읽기표가 없습니다.');
+
+  const { data: item, error: itemError } = await withApiTimeout(
+    supabase
+      .from('bible_reading_plan_day_items')
+      .select('id')
+      .eq('plan_id', plan.id)
+      .eq('book_id', params.bookId)
+      .eq('chapter', params.chapter)
+      .maybeSingle(),
+    '현재 장 읽기표 조회'
+  );
+  if (itemError) throw itemError;
+  if (!item) throw new Error('현재 장은 대표 읽기표에 포함되어 있지 않습니다.');
+
+  return setBiblePlanItemCompletedWithLog({
+    itemId: item.id,
+    completed: true,
+  });
 }
 
 export async function getBibleReadingLogs(userId: string): Promise<BibleReadingLog[]> {

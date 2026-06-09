@@ -23,6 +23,7 @@ import { useDistrict } from '@/lib/districtContext';
 import {
   addBibleBookmark,
   addBibleReadingLog,
+  completeCurrentBiblePlanChapter,
   completeBiblePlanDay,
   createBibleReadingPlan,
   deleteBibleBookmark,
@@ -284,8 +285,10 @@ export default function BibleReading() {
   const progress = Math.min((totalChapters / target) * 100, 100);
 
   const invalidateReadingQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['bible_reading_logs', user?.id] });
-    queryClient.invalidateQueries({ queryKey: ['total_chapters', user?.id] });
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['bible_reading_logs', user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['total_chapters', user?.id] }),
+    ]);
   };
 
   const invalidateBookmarkQueries = () => {
@@ -357,8 +360,10 @@ export default function BibleReading() {
   });
 
   const invalidatePlanQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['bible_reading_plan_primary', user?.id] });
-    invalidateReadingQueries();
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['bible_reading_plan_primary', user?.id] }),
+      invalidateReadingQueries(),
+    ]);
   };
 
   const createPlanMutation = useMutation({
@@ -416,8 +421,8 @@ export default function BibleReading() {
       planId: day.planId,
       planDayId: day.id,
     }),
-    onSuccess: () => {
-      invalidatePlanQueries();
+    onSuccess: async () => {
+      await invalidatePlanQueries();
       toast.success('오늘 분량을 기록했습니다.');
     },
     onError: (error) => {
@@ -432,11 +437,30 @@ export default function BibleReading() {
       itemId: params.item.id,
       completed: params.completed,
     }),
-    onSuccess: () => {
-      invalidatePlanQueries();
+    onSuccess: async () => {
+      await invalidatePlanQueries();
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : '장 체크 변경에 실패했습니다.');
+    },
+  });
+
+  const completeCurrentChapterMutation = useMutation({
+    mutationFn: () => completeCurrentBiblePlanChapter({
+      userId: user!.id,
+      bookId: currentBookId,
+      chapter: selectedChapter,
+    }),
+    onSuccess: async (result) => {
+      await invalidatePlanQueries();
+      const message = result.alreadyCompleted
+        ? '이미 기록된 장입니다. 다음 장으로 이동합니다.'
+        : '성경읽기 완료를 기록했습니다. 다음 장으로 이동합니다.';
+      toast.success(message);
+      moveChapter(1);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '성경읽기 완료 처리에 실패했습니다.');
     },
   });
 
@@ -554,6 +578,10 @@ export default function BibleReading() {
   const activePlanDay = getActivePlanDay(readingPlan, today);
   const activePlanItemsLabel = activePlanDay ? formatPlanItems(activePlanDay.items) : '';
   const planDayCompleted = activePlanDay?.items.every(item => item.completedAt) ?? false;
+  const currentPlanItem = readingPlan?.days
+    .flatMap(day => day.items)
+    .find(item => item.bookId === currentBookId && item.chapter === selectedChapter);
+  const currentChapterCompleted = !!currentPlanItem?.completedAt;
 
   return (
     <AppLayout>
@@ -732,18 +760,56 @@ export default function BibleReading() {
                 </div>
 
                 {!chapterLoading && verses.length > 0 && (
-                  <div className="flex items-center justify-between border-t px-4 py-3">
-                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(-1)}>
-                      <ChevronLeft className="h-4 w-4" />
-                      이전
-                    </Button>
-                    <div className="text-center text-xs font-medium text-muted-foreground">
-                      {selectedBook?.koreanName ?? '성경'} {selectedChapter}장 끝
+                  <div className="space-y-3 border-t px-4 py-4">
+                    {readingPlan && (
+                      <div className="rounded-lg bg-muted/40 p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {selectedBook?.koreanName ?? '성경'} {selectedChapter}장
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {currentPlanItem
+                                ? currentChapterCompleted
+                                  ? '이 장은 읽기표와 읽기 기록에 반영되어 있습니다.'
+                                  : `${readingPlan.title} 읽기표에 체크하고 오늘 기록에 누적합니다.`
+                                : '현재 장은 대표 읽기표에 포함되어 있지 않습니다.'}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            className="gap-1.5"
+                            onClick={() => completeCurrentChapterMutation.mutate()}
+                            disabled={!user || !currentPlanItem || completeCurrentChapterMutation.isPending}
+                          >
+                            {currentChapterCompleted ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
+                            {completeCurrentChapterMutation.isPending
+                              ? '기록 중...'
+                              : currentChapterCompleted
+                                ? '기록됨'
+                                : '성경읽기 완료'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(-1)}>
+                        <ChevronLeft className="h-4 w-4" />
+                        이전
+                      </Button>
+                      <div className="text-center text-xs font-medium text-muted-foreground">
+                        {selectedBook?.koreanName ?? '성경'} {selectedChapter}장 끝
+                      </div>
+                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(1)}>
+                        다음
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(1)}>
-                      다음
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
                   </div>
                 )}
               </section>
