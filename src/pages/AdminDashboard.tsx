@@ -5,7 +5,7 @@ import {
   CalendarDays, CheckCircle2, Clock, TrendingUp,
   RefreshCw, Edit, Trash2, MessageCircle, Lock, LockOpen,
   UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft,
-  BookHeart, Circle, AlertTriangle, Save, Flame
+  BookHeart, Circle, AlertTriangle, Save, Flame, KeyRound
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -34,6 +34,7 @@ import {
   getISOWeekNumber,
   parseBulletin,
   changeUserDistrict,
+  adminResetUserPassword,
   getDistricts,
   getQTDistrictSummary,
   getTodayQT,
@@ -242,6 +243,9 @@ export default function AdminDashboard() {
   const [bulletinUrl, setBulletinUrl] = useState('');
   const [parsingBulletin, setParsingBulletin] = useState(false);
   const [districtChangeTarget, setDistrictChangeTarget] = useState<FullUser | null>(null);
+  const [passwordResetTarget, setPasswordResetTarget] = useState<FullUser | null>(null);
+  const [resetCustomPassword, setResetCustomPassword] = useState('');
+  const [resetResultPassword, setResetResultPassword] = useState('');
   const [readingFrom, setReadingFrom] = useState('');
   const [readingTo, setReadingTo] = useState('');
   const today = getKSTDateString(new Date());
@@ -424,6 +428,19 @@ export default function AdminDashboard() {
       toast.success('소속 구역이 변경되었습니다.');
     },
     onError: () => toast.error('소속 구역 변경에 실패했습니다.'),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ userId, newPassword }: { userId: string; newPassword?: string }) =>
+      adminResetUserPassword(userId, newPassword),
+    onSuccess: (result) => {
+      setResetResultPassword(result.tempPassword);
+      toast.success('임시 비밀번호가 발급되었습니다.');
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : '비밀번호 초기화에 실패했습니다.';
+      toast.error(message);
+    },
   });
 
   const createStudyMutation = useMutation({
@@ -844,6 +861,21 @@ export default function AdminDashboard() {
                                 <ArrowRightLeft className="w-3.5 h-3.5" />
                                 구역이동
                               </Button>
+                              {u.role !== 'master' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-9 gap-1 text-xs"
+                                  onClick={() => {
+                                    setResetCustomPassword('');
+                                    setResetResultPassword('');
+                                    setPasswordResetTarget(u);
+                                  }}
+                                >
+                                  <KeyRound className="w-3.5 h-3.5" />
+                                  비밀번호 초기화
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -912,6 +944,20 @@ export default function AdminDashboard() {
                                       <ArrowRightLeft className="w-3 h-3" /> 구역이동
                                     </Button>
                                   )}
+                                  {isMaster && u.id !== user?.id && u.role !== 'master' && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs gap-1"
+                                      onClick={() => {
+                                        setResetCustomPassword('');
+                                        setResetResultPassword('');
+                                        setPasswordResetTarget(u);
+                                      }}
+                                    >
+                                      <KeyRound className="w-3 h-3" /> 비밀번호
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -963,6 +1009,96 @@ export default function AdminDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Password Reset Dialog */}
+            <Dialog
+              open={!!passwordResetTarget}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setPasswordResetTarget(null);
+                  setResetCustomPassword('');
+                  setResetResultPassword('');
+                }
+              }}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>비밀번호 초기화</DialogTitle>
+                  <DialogDescription>
+                    <span className="font-semibold">{passwordResetTarget?.name}</span>님의 비밀번호를
+                    임시 비밀번호로 초기화합니다.
+                  </DialogDescription>
+                </DialogHeader>
+                {resetResultPassword ? (
+                  <div className="space-y-3 pt-2">
+                    <p className="text-sm">임시 비밀번호가 발급되었습니다. 본인에게 안전하게 전달해주세요.</p>
+                    <div className="flex items-center gap-2">
+                      <Input readOnly value={resetResultPassword} className="font-mono text-base" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1"
+                        onClick={() => {
+                          navigator.clipboard.writeText(resetResultPassword)
+                            .then(() => toast.success('복사되었습니다.'))
+                            .catch(() => toast.error('복사에 실패했습니다.'));
+                        }}
+                      >
+                        <Copy className="w-3.5 h-3.5" /> 복사
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      로그인 후 프로필에서 비밀번호를 변경하도록 안내해주세요.
+                    </p>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        setPasswordResetTarget(null);
+                        setResetCustomPassword('');
+                        setResetResultPassword('');
+                      }}
+                    >
+                      닫기
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-password-input">임시 비밀번호 (선택)</Label>
+                      <Input
+                        id="reset-password-input"
+                        value={resetCustomPassword}
+                        onChange={e => setResetCustomPassword(e.target.value)}
+                        placeholder="비워두면 자동 생성됩니다"
+                        autoComplete="off"
+                      />
+                      {resetCustomPassword && resetCustomPassword.trim().length < 6 && (
+                        <p className="text-xs text-destructive">6자 이상 입력해주세요.</p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={
+                        resetPasswordMutation.isPending ||
+                        (!!resetCustomPassword && resetCustomPassword.trim().length < 6)
+                      }
+                      onClick={() => {
+                        if (!passwordResetTarget) return;
+                        resetPasswordMutation.mutate({
+                          userId: passwordResetTarget.id,
+                          newPassword: resetCustomPassword.trim() || undefined,
+                        });
+                      }}
+                    >
+                      {resetPasswordMutation.isPending ? '발급 중...' : '임시 비밀번호 발급'}
+                    </Button>
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           </TabsContent>

@@ -1953,6 +1953,34 @@ export async function changeUserRole(userId: string, role: 'master' | 'leader' |
   if (error) throw error;
 }
 
+/** 마스터가 구역원의 비밀번호를 임시 비밀번호로 초기화한다 (Edge Function 호출) */
+export async function adminResetUserPassword(
+  userId: string,
+  newPassword?: string
+): Promise<{ userName: string; tempPassword: string }> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (15초)')), 15000)
+  );
+  const request = supabase.functions.invoke('admin-reset-password', {
+    body: newPassword ? { userId, newPassword } : { userId },
+  });
+  const { data, error } = await Promise.race([request, timeout]);
+  if (error) {
+    try {
+      const ctx = (error as any).context;
+      if (ctx) {
+        const body = typeof ctx.json === 'function' ? await ctx.json() : ctx;
+        if (body?.error) throw new Error(body.error);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message !== error.message) throw e;
+    }
+    throw error;
+  }
+  if (!data?.ok) throw new Error(data?.error || '비밀번호 초기화에 실패했습니다.');
+  return { userName: data.userName, tempPassword: data.tempPassword };
+}
+
 export async function updateUserName(userId: string, name: string): Promise<void> {
   const { error } = await withApiTimeout(
     supabase.from('users').update({ name }).eq('id', userId),
