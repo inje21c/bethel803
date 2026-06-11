@@ -60,9 +60,46 @@ export default function PendingApproval() {
     navigate('/login', { replace: true });
   };
 
-  // 구글 가입 등으로 구역 선택 없이 가입한 경우 대기 중에 직접 변경 가능
+  // 소셜 가입(구글/카카오)은 구역 선택 없이 기본 구역에 임시 배정되므로
+  // 대기 화면에서 본인 구역을 직접 확정해야 한다
+  const [provider, setProvider] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [pickedDistrictId, setPickedDistrictId] = useState('');
   const [districtSaving, setDistrictSaving] = useState(false);
+
+  const confirmKey = user?.id ? `bethel.districtConfirmed.${user.id}` : '';
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setProvider((data.user?.app_metadata?.provider as string) ?? 'email');
+    });
+  }, []);
+
+  useEffect(() => {
+    if (confirmKey) setConfirmed(localStorage.getItem(confirmKey) === '1');
+  }, [confirmKey]);
+
+  // 이메일 가입은 가입 폼에서 이미 구역을 선택했으므로 확정 단계 생략
+  const needsConfirm = provider !== null && provider !== 'email' && !confirmed;
+
+  const handleDistrictConfirm = async () => {
+    if (!user?.id || !pickedDistrictId) return;
+    setDistrictSaving(true);
+    try {
+      if (pickedDistrictId !== user.districtId) {
+        await changeUserDistrict(user.id, pickedDistrictId);
+        await refreshRef.current();
+      }
+      if (confirmKey) localStorage.setItem(confirmKey, '1');
+      setConfirmed(true);
+      toast.success('소속 구역이 확정되었습니다.');
+      setPickedDistrictId('');
+    } catch {
+      toast.error('구역 설정에 실패했습니다. 구역장에게 문의해주세요.');
+    } finally {
+      setDistrictSaving(false);
+    }
+  };
 
   const handleDistrictSave = async () => {
     if (!user?.id || !pickedDistrictId || pickedDistrictId === user.districtId) return;
@@ -113,7 +150,28 @@ export default function PendingApproval() {
           </ul>
         </div>
 
-        {user?.districtName && (
+        {needsConfirm ? (
+          <div className="card-elevated border-primary/40 border p-4 text-left space-y-3">
+            <p className="font-medium text-foreground">소속 구역을 선택해주세요</p>
+            <p className="text-xs text-muted-foreground">
+              현재 <span className="font-medium text-foreground">{user?.districtName}</span> 구역에
+              임시 배정되어 있습니다. 본인의 구역을 선택해야 구역장이 승인할 수 있습니다.
+            </p>
+            <DistrictPicker value={pickedDistrictId} onChange={setPickedDistrictId} />
+            <Button
+              size="sm"
+              className="w-full"
+              disabled={districtSaving || !pickedDistrictId}
+              onClick={handleDistrictConfirm}
+            >
+              {districtSaving
+                ? '설정 중...'
+                : pickedDistrictId
+                  ? '이 구역으로 확정'
+                  : '구역을 먼저 선택해주세요'}
+            </Button>
+          </div>
+        ) : user?.districtName ? (
           <div className="card-elevated p-4 text-left space-y-3">
             <div className="text-sm">
               <span className="text-muted-foreground">신청 구역: </span>
@@ -134,7 +192,7 @@ export default function PendingApproval() {
               소속 구역이 다르면 위에서 올바른 구역으로 변경해주세요.
             </p>
           </div>
-        )}
+        ) : null}
 
         <p className="text-xs text-muted-foreground animate-pulse">
           승인 상태를 실시간으로 확인하고 있습니다…

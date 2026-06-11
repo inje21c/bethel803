@@ -104,9 +104,13 @@ export default function Login() {
       toast.error('비밀번호는 6자 이상이어야 합니다.');
       return;
     }
+    if (!regDistrictId) {
+      toast.error('소속 구역을 선택해주세요.');
+      return;
+    }
     setRegLoading(true);
     try {
-      await register(regEmail.trim(), regPassword, regName.trim(), regDistrictId || undefined);
+      await register(regEmail.trim(), regPassword, regName.trim(), regDistrictId);
       if (mounted.current) setRegDone(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '회원가입에 실패했습니다.';
