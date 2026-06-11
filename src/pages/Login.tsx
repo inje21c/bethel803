@@ -25,9 +25,20 @@ function GoogleIcon() {
   );
 }
 
+function KakaoIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.5c-.08.31.27.56.54.38l4.18-2.77c.51.05 1.04.08 1.57.08 5.52 0 10-3.54 10-7.84S17.52 3 12 3z"
+      />
+    </svg>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, register, resetPassword, user, loading } = useAuth();
+  const { login, loginWithGoogle, loginWithKakao, register, resetPassword, user, loading } = useAuth();
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -108,6 +119,7 @@ export default function Login() {
   };
 
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [kakaoLoading, setKakaoLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
     if (isKakaoInAppBrowser()) {
@@ -125,6 +137,20 @@ export default function Login() {
       if (mounted.current) {
         toast.error(message);
         setGoogleLoading(false);
+      }
+    }
+  };
+
+  const handleKakaoLogin = async () => {
+    setKakaoLoading(true);
+    try {
+      await loginWithKakao();
+      // 성공 시 카카오 페이지로 리다이렉트되므로 이후 코드는 실행되지 않음
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '카카오 로그인에 실패했습니다.';
+      if (mounted.current) {
+        toast.error(message);
+        setKakaoLoading(false);
       }
     }
   };
@@ -222,16 +248,27 @@ export default function Login() {
                 <span className="bg-card px-2 text-muted-foreground">또는</span>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              disabled={googleLoading}
-              onClick={handleGoogleLogin}
-            >
-              <GoogleIcon />
-              {googleLoading ? '이동 중...' : '구글로 계속하기'}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                disabled={googleLoading}
+                onClick={handleGoogleLogin}
+              >
+                <GoogleIcon />
+                {googleLoading ? '이동 중...' : '구글로 계속하기'}
+              </Button>
+              <Button
+                type="button"
+                className="w-full gap-2 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90"
+                disabled={kakaoLoading}
+                onClick={handleKakaoLogin}
+              >
+                <KakaoIcon />
+                {kakaoLoading ? '이동 중...' : '카카오로 계속하기'}
+              </Button>
+            </div>
           </TabsContent>
 
           {/* 회원가입 탭 */}
@@ -313,16 +350,27 @@ export default function Login() {
                     <span className="bg-card px-2 text-muted-foreground">또는</span>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={googleLoading}
-                  onClick={handleGoogleLogin}
-                >
-                  <GoogleIcon />
-                  {googleLoading ? '이동 중...' : '구글 계정으로 가입하기'}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={googleLoading}
+                    onClick={handleGoogleLogin}
+                  >
+                    <GoogleIcon />
+                    {googleLoading ? '이동 중...' : '구글 계정으로 가입하기'}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="w-full gap-2 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90"
+                    disabled={kakaoLoading}
+                    onClick={handleKakaoLogin}
+                  >
+                    <KakaoIcon />
+                    {kakaoLoading ? '이동 중...' : '카카오 계정으로 가입하기'}
+                  </Button>
+                </div>
               </form>
             )}
           </TabsContent>
