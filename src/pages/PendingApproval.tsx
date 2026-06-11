@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Clock, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
+import { changeUserDistrict } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import DistrictPicker from '@/components/DistrictPicker';
 
 export default function PendingApproval() {
   const navigate = useNavigate();
@@ -57,6 +60,25 @@ export default function PendingApproval() {
     navigate('/login', { replace: true });
   };
 
+  // 구글 가입 등으로 구역 선택 없이 가입한 경우 대기 중에 직접 변경 가능
+  const [pickedDistrictId, setPickedDistrictId] = useState('');
+  const [districtSaving, setDistrictSaving] = useState(false);
+
+  const handleDistrictSave = async () => {
+    if (!user?.id || !pickedDistrictId || pickedDistrictId === user.districtId) return;
+    setDistrictSaving(true);
+    try {
+      await changeUserDistrict(user.id, pickedDistrictId);
+      await refreshRef.current();
+      toast.success('소속 구역이 변경되었습니다.');
+      setPickedDistrictId('');
+    } catch {
+      toast.error('구역 변경에 실패했습니다. 구역장에게 문의해주세요.');
+    } finally {
+      setDistrictSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <motion.div
@@ -90,6 +112,29 @@ export default function PendingApproval() {
             <li>문의 사항은 구역장에게 연락해주세요.</li>
           </ul>
         </div>
+
+        {user?.districtName && (
+          <div className="card-elevated p-4 text-left space-y-3">
+            <div className="text-sm">
+              <span className="text-muted-foreground">신청 구역: </span>
+              <span className="font-medium">{user.districtName}</span>
+            </div>
+            <DistrictPicker value={pickedDistrictId} onChange={setPickedDistrictId} />
+            {pickedDistrictId && pickedDistrictId !== user.districtId && (
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={districtSaving}
+                onClick={handleDistrictSave}
+              >
+                {districtSaving ? '변경 중...' : '이 구역으로 변경'}
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              소속 구역이 다르면 위에서 올바른 구역으로 변경해주세요.
+            </p>
+          </div>
+        )}
 
         <p className="text-xs text-muted-foreground animate-pulse">
           승인 상태를 실시간으로 확인하고 있습니다…

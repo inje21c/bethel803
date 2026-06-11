@@ -9,9 +9,25 @@ import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import DistrictPicker from '@/components/DistrictPicker';
 
+// 카톡 인앱 브라우저는 구글 OAuth를 차단(disallowed_useragent)하므로 외부 브라우저로 우회
+function isKakaoInAppBrowser() {
+  return /KAKAOTALK/i.test(navigator.userAgent);
+}
+
+function GoogleIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.1V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A11 11 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
+    </svg>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
-  const { login, register, resetPassword, user, loading } = useAuth();
+  const { login, loginWithGoogle, register, resetPassword, user, loading } = useAuth();
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -88,6 +104,28 @@ export default function Login() {
       }
     } finally {
       if (mounted.current) setRegLoading(false);
+    }
+  };
+
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    if (isKakaoInAppBrowser()) {
+      // 카톡 브라우저에서는 외부 브라우저로 현재 페이지를 다시 연다
+      toast.info('카카오톡 브라우저에서는 구글 로그인이 제한되어 외부 브라우저로 엽니다.');
+      window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+      // 성공 시 구글 페이지로 리다이렉트되므로 이후 코드는 실행되지 않음
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '구글 로그인에 실패했습니다.';
+      if (mounted.current) {
+        toast.error(message);
+        setGoogleLoading(false);
+      }
     }
   };
 
@@ -176,6 +214,24 @@ export default function Login() {
                 {resetLoading ? '메일 발송 중...' : '비밀번호를 잊으셨나요?'}
               </Button>
             </form>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-card px-2 text-muted-foreground">또는</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              disabled={googleLoading}
+              onClick={handleGoogleLogin}
+            >
+              <GoogleIcon />
+              {googleLoading ? '이동 중...' : '구글로 계속하기'}
+            </Button>
           </TabsContent>
 
           {/* 회원가입 탭 */}
@@ -249,6 +305,24 @@ export default function Login() {
                 <p className="text-xs text-muted-foreground text-center">
                   가입 후 구역장 승인이 필요합니다.
                 </p>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-card px-2 text-muted-foreground">또는</span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={googleLoading}
+                  onClick={handleGoogleLogin}
+                >
+                  <GoogleIcon />
+                  {googleLoading ? '이동 중...' : '구글 계정으로 가입하기'}
+                </Button>
               </form>
             )}
           </TabsContent>
