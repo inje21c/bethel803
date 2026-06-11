@@ -66,7 +66,9 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithKakao: () => Promise<void>;
   linkGoogleAccount: () => Promise<void>;
+  linkKakaoAccount: () => Promise<void>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string, districtId?: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -319,26 +321,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, []);
 
-  const loginWithGoogle = useCallback(async () => {
-    debugLog('Auth', 'loginWithGoogle requested');
+  const loginWithProvider = useCallback(async (provider: 'google' | 'kakao') => {
+    debugLog('Auth', 'loginWithProvider requested', { provider });
     const redirectTo = import.meta.env.VITE_APP_URL || window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider,
       options: { redirectTo },
     });
     if (error) throw error;
-    // 이후 흐름은 구글 페이지로 리다이렉트 → 복귀 시 onAuthStateChange(SIGNED_IN)에서 처리
+    // 이후 흐름은 provider 페이지로 리다이렉트 → 복귀 시 onAuthStateChange(SIGNED_IN)에서 처리
   }, []);
 
-  const linkGoogleAccount = useCallback(async () => {
-    debugLog('Auth', 'linkGoogleAccount requested');
+  const linkProviderAccount = useCallback(async (provider: 'google' | 'kakao') => {
+    debugLog('Auth', 'linkProviderAccount requested', { provider });
     const redirectTo = `${import.meta.env.VITE_APP_URL || window.location.origin}/profile`;
     const { error } = await supabase.auth.linkIdentity({
-      provider: 'google',
+      provider,
       options: { redirectTo },
     });
     if (error) throw error;
   }, []);
+
+  const loginWithGoogle = useCallback(() => loginWithProvider('google'), [loginWithProvider]);
+  const loginWithKakao = useCallback(() => loginWithProvider('kakao'), [loginWithProvider]);
+  const linkGoogleAccount = useCallback(() => linkProviderAccount('google'), [linkProviderAccount]);
+  const linkKakaoAccount = useCallback(() => linkProviderAccount('kakao'), [linkProviderAccount]);
 
   const logout = useCallback(async () => {
     debugLog('Auth', 'logout requested');
@@ -418,7 +425,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       loginWithGoogle,
+      loginWithKakao,
       linkGoogleAccount,
+      linkKakaoAccount,
       logout,
       register,
       resetPassword,

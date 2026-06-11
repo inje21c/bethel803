@@ -32,10 +32,11 @@ import {
 import { toast } from 'sonner';
 
 export default function Profile() {
-  const { user, updatePassword, refreshProfile, linkGoogleAccount } = useAuth();
+  const { user, updatePassword, refreshProfile, linkGoogleAccount, linkKakaoAccount } = useAuth();
   const queryClient = useQueryClient();
 
   const [googleLinking, setGoogleLinking] = useState(false);
+  const [kakaoLinking, setKakaoLinking] = useState(false);
   const { data: identities = [] } = useQuery({
     queryKey: ['auth_identities', user?.id],
     queryFn: async () => {
@@ -46,6 +47,14 @@ export default function Profile() {
     enabled: !!user,
   });
   const googleIdentity = identities.find(i => i.provider === 'google');
+  const kakaoIdentity = identities.find(i => i.provider === 'kakao');
+
+  const linkErrorMessage = (err: unknown, providerLabel: string) => {
+    const message = err instanceof Error ? err.message : '';
+    return message.toLowerCase().includes('manual linking')
+      ? '계정 연결 기능이 아직 활성화되지 않았습니다. 관리자에게 문의해주세요.'
+      : `${providerLabel} 계정 연결에 실패했습니다.`;
+  };
 
   const handleGoogleLink = async () => {
     setGoogleLinking(true);
@@ -53,13 +62,19 @@ export default function Profile() {
       await linkGoogleAccount();
       // 성공 시 구글 페이지로 리다이렉트됨
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '';
-      toast.error(
-        message.toLowerCase().includes('manual linking')
-          ? '계정 연결 기능이 아직 활성화되지 않았습니다. 관리자에게 문의해주세요.'
-          : '구글 계정 연결에 실패했습니다.'
-      );
+      toast.error(linkErrorMessage(err, '구글'));
       setGoogleLinking(false);
+    }
+  };
+
+  const handleKakaoLink = async () => {
+    setKakaoLinking(true);
+    try {
+      await linkKakaoAccount();
+      // 성공 시 카카오 페이지로 리다이렉트됨
+    } catch (err: unknown) {
+      toast.error(linkErrorMessage(err, '카카오'));
+      setKakaoLinking(false);
     }
   };
 
@@ -294,7 +309,7 @@ export default function Profile() {
               <Separator />
 
               <div className="space-y-2">
-                <Label>구글 계정 연결</Label>
+                <Label>소셜 계정 연결</Label>
                 {googleIdentity ? (
                   <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
                     <div className="min-w-0">
@@ -306,21 +321,39 @@ export default function Profile() {
                     <Badge variant="secondary" className="shrink-0 text-xs">Google</Badge>
                   </div>
                 ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      disabled={googleLinking}
-                      onClick={handleGoogleLink}
-                    >
-                      <Link2 className="w-4 h-4" />
-                      {googleLinking ? '이동 중...' : '구글 계정 연결하기'}
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      연결해두면 비밀번호 없이 구글로 로그인할 수 있습니다.
-                    </p>
-                  </>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={googleLinking}
+                    onClick={handleGoogleLink}
+                  >
+                    <Link2 className="w-4 h-4" />
+                    {googleLinking ? '이동 중...' : '구글 계정 연결하기'}
+                  </Button>
                 )}
+                {kakaoIdentity ? (
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">연결됨</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {(kakaoIdentity.identity_data?.email as string) ?? '카카오 계정'}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 text-xs">Kakao</Badge>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full gap-2 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90"
+                    disabled={kakaoLinking}
+                    onClick={handleKakaoLink}
+                  >
+                    <Link2 className="w-4 h-4" />
+                    {kakaoLinking ? '이동 중...' : '카카오 계정 연결하기'}
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  연결해두면 비밀번호 없이 소셜 계정으로 로그인할 수 있습니다.
+                </p>
               </div>
             </CardContent>
           </Card>
