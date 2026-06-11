@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { BookOpen, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import DistrictPicker from '@/components/DistrictPicker';
 
@@ -159,21 +160,47 @@ export default function Login() {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!loginEmail.trim()) {
-      toast.error('비밀번호 재설정을 위해 이메일을 먼저 입력해주세요.');
+  // 비밀번호 재설정 다이얼로그
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const t = setTimeout(() => setResetCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resetCooldown]);
+
+  const openResetDialog = () => {
+    setResetEmail(loginEmail.trim());
+    setResetSent(false);
+    setResetOpen(true);
+  };
+
+  const handleResetSend = async () => {
+    const email = resetEmail.trim();
+    if (!email || !email.includes('@')) {
+      toast.error('가입할 때 사용한 이메일을 입력해주세요.');
       return;
     }
-
     setResetLoading(true);
     try {
-      await resetPassword(loginEmail.trim());
+      await resetPassword(email);
       if (mounted.current) {
-        toast.success('비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해주세요.');
+        setResetSent(true);
+        setResetCooldown(60);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '재설정 메일 발송에 실패했습니다.';
-      if (mounted.current) toast.error(message);
+      const message = err instanceof Error ? err.message : '';
+      if (mounted.current) {
+        if (message.includes('once every') || message.toLowerCase().includes('rate limit')) {
+          toast.error('요청이 너무 잦습니다. 1분 후 다시 시도해주세요.');
+          setResetCooldown(60);
+        } else {
+          toast.error('재설정 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        }
+      }
     } finally {
       if (mounted.current) setResetLoading(false);
     }
@@ -238,10 +265,9 @@ export default function Login() {
                 type="button"
                 variant="ghost"
                 className="w-full text-xs"
-                disabled={resetLoading}
-                onClick={handleResetPassword}
+                onClick={openResetDialog}
               >
-                {resetLoading ? '메일 발송 중...' : '비밀번호를 잊으셨나요?'}
+                비밀번호를 잊으셨나요?
               </Button>
             </form>
             <div className="relative my-4">
@@ -379,6 +405,116 @@ export default function Login() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* 비밀번호 재설정 다이얼로그 */}
+        <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>비밀번호를 잊으셨나요?</DialogTitle>
+              <DialogDescription>
+                아래 방법 중 편한 것을 선택하세요.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* 1. 비밀번호 없이 로그인 */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">가장 빠른 방법: 비밀번호 없이 로그인</p>
+                <p className="text-xs text-muted-foreground">
+                  가입 이메일과 같은 구글 계정이거나, 카카오를 연결해둔 적이 있다면
+                  비밀번호 없이 바로 로그인됩니다.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={googleLoading}
+                    onClick={handleGoogleLogin}
+                  >
+                    <GoogleIcon /> 구글
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-1.5 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90"
+                    disabled={kakaoLoading}
+                    onClick={handleKakaoLogin}
+                  >
+                    <KakaoIcon /> 카카오
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-background px-2 text-muted-foreground">또는 이메일로 재설정</span>
+                </div>
+              </div>
+
+              {/* 2. 이메일 재설정 */}
+              {resetSent ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3">
+                    <MailCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <div className="text-sm">
+                      <p className="font-medium">재설정 메일을 보냈습니다</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{resetEmail}</span>의 메일함을
+                        확인하고 링크를 눌러 새 비밀번호를 설정하세요.
+                        메일이 없으면 <span className="font-medium text-foreground">스팸함</span>도 확인해주세요.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={resetLoading || resetCooldown > 0}
+                    onClick={handleResetSend}
+                  >
+                    {resetCooldown > 0 ? `재발송 (${resetCooldown}초 후 가능)` : '메일 다시 보내기'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">가입한 이메일</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    placeholder="이메일을 입력하세요"
+                    autoComplete="email"
+                  />
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={resetLoading || resetCooldown > 0}
+                    onClick={handleResetSend}
+                  >
+                    {resetLoading
+                      ? '발송 중...'
+                      : resetCooldown > 0
+                        ? `잠시 후 다시 시도 (${resetCooldown}초)`
+                        : '재설정 메일 보내기'}
+                  </Button>
+                </div>
+              )}
+
+              {/* 3. 최후 안내 */}
+              <p className="text-xs text-muted-foreground">
+                이메일 확인이 어려우시면 구역장(관리자)에게 요청하세요.
+                관리자가 임시 비밀번호를 발급해드릴 수 있습니다.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
