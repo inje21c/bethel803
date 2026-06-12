@@ -389,7 +389,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     debugLog('Auth', 'resetPassword requested', { email });
-    const redirectTo = `${import.meta.env.VITE_APP_URL}/reset-password`;
+    const redirectTo = `${import.meta.env.VITE_APP_URL || window.location.origin}/reset-password`;
     const { error } = await withAuthTimeout(
       supabase.auth.resetPasswordForEmail(email, { redirectTo }),
       '비밀번호 재설정 메일 요청이 지연되고 있습니다. 다시 시도해주세요.'
