@@ -606,7 +606,7 @@ export default function BibleReading() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-          <TabsList className="grid w-full grid-cols-4 md:w-[640px]">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="reader" className="gap-1.5">
               <BookOpen className="h-4 w-4" />
               본문 읽기
