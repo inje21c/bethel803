@@ -1,0 +1,26 @@
+# Edge Function 배포 설정 (supabase functions deploy가 참조)
+# verify_jwt 값은 대시보드에서 운영 중인 설정과 일치해야 한다.
+# - false: 자체 시크릿 헤더 또는 외부 트리거로 보호되는 함수
+# - true:  앱에서 사용자 JWT로 호출하는 함수
+project_id = "bethel803"
+
+[functions.fetch-devotional]
+verify_jwt = false
+
+[functions.parse-bulletin]
+verify_jwt = true
+
+[functions.push-dispatch]
+verify_jwt = false
+
+[functions.scheduled-notifications]
+verify_jwt = false
+
+[functions.event-notifications]
+verify_jwt = false
+
+[functions.admin-reset-password]
+verify_jwt = true
+
+[functions.deep-meditation-ai]
+verify_jwt = true

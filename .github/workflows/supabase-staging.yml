@@ -1,0 +1,39 @@
+name: Supabase Staging (auto)
+
+# main에 supabase/ 변경이 머지되면 staging에 자동 반영한다.
+# 필요한 GitHub Secrets:
+#   STAGING_DB_URL                — staging Postgres 연결 문자열 (Settings→Database→URI)
+#   SUPABASE_ACCESS_TOKEN_STAGING — staging 계정의 access token
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-staging
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply new migrations to staging
+        env:
+          DB_URL: ${{ secrets.STAGING_DB_URL }}
+        run: bash scripts/apply_migrations.sh
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy edge functions to staging
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
+        run: supabase functions deploy --project-ref czcdtlkrqjtzhlplugca
