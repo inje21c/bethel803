@@ -11,7 +11,9 @@ declare let self: ServiceWorkerGlobalScope & {
   }>;
 };
 
-self.skipWaiting();
+// 주의: skipWaiting()을 호출하지 않는다.
+// 새 버전 SW는 대기 상태로 설치만 되고, 사용자가 앱을 완전히 닫았다가
+// 다시 열 때 활성화된다. (세션 중 강제 새로고침으로 입력이 끊기는 문제 방지)
 clientsClaim();
 
 cleanupOutdatedCaches();
