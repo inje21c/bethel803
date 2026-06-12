@@ -125,7 +125,7 @@ export default function Dashboard() {
     if (todayQt) {
       return {
         verse: todayQt.scripture ?? '',
-        summary: todayQt.summary ?? '',
+        summary: todayQt.summary ?? todayQt.question ?? '',
         isLoaded: true,
       };
     }
