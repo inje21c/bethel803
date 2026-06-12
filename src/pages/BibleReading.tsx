@@ -930,8 +930,8 @@ export default function BibleReading() {
                 <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </section>
             ) : !readingPlan ? (
-              <section className="rounded-lg border bg-card p-5">
-                <div className="mx-auto max-w-2xl space-y-5">
+              <section className="mx-auto max-w-2xl rounded-lg border bg-card p-5">
+                <div className="space-y-5">
                   <div className="text-center">
                     <CalendarDays className="mx-auto mb-3 h-10 w-10 text-primary" />
                     <h2 className="font-display text-xl font-bold">읽기표 만들기</h2>
