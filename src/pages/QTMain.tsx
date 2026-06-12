@@ -149,7 +149,9 @@ export default function QTMain() {
         <div className="card-elevated p-5 space-y-1">
           <p className="text-xs text-primary font-semibold uppercase tracking-wide">본문</p>
           {qt.title && <h2 className="font-display text-xl font-bold">{qt.title}</h2>}
-          <p className="text-muted-foreground font-medium">{qt.scripture}</p>
+          {qt.scripture && qt.scripture !== qt.title && (
+            <p className="text-muted-foreground font-medium">{qt.scripture}</p>
+          )}
         </div>
 
         {/* 해설 듣기 */}
