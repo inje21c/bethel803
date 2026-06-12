@@ -1967,7 +1967,7 @@ export async function adminResetUserPassword(
   const { data, error } = await Promise.race([request, timeout]);
   if (error) {
     try {
-      const ctx = (error as any).context;
+      const ctx = (error as { context?: { json?: () => Promise<{ error?: string }>; error?: string } }).context;
       if (ctx) {
         const body = typeof ctx.json === 'function' ? await ctx.json() : ctx;
         if (body?.error) throw new Error(body.error);
@@ -2162,7 +2162,7 @@ export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResu
   if (error) {
     // FunctionsHttpError에서 실제 에러 메시지 추출 시도
     try {
-      const ctx = (error as any).context;
+      const ctx = (error as { context?: { json?: () => Promise<{ error?: string }>; error?: string } }).context;
       if (ctx) {
         const body = typeof ctx.json === 'function' ? await ctx.json() : ctx;
         if (body?.error) throw new Error(body.error);
@@ -2801,4 +2801,162 @@ export function getISOWeekNumber(dateStr: string): number {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+// ============================================================
+// 깊은 묵상 (4단계 묵상)
+// ============================================================
+
+export type DeepMeditationState =
+  | 'OBSERVING'
+  | 'ADDING_QUESTIONS'
+  | 'ANSWERING'
+  | 'FEELING'
+  | 'DECIDING'
+  | 'DONE';
+
+export interface DeepMeditationQuestion {
+  text: string;
+  source: 'ai' | 'user';
+}
+
+export interface DeepMeditation {
+  id: string;
+  userId: string;
+  date: string;
+  state: DeepMeditationState;
+  aiSummary: string | null;
+  observation: string | null;
+  questions: DeepMeditationQuestion[];
+  answers: string[];
+  currentQIndex: number;
+  feelings: string | null;
+  decision: string | null;
+}
+
+function mapDeepMeditation(row: Record<string, unknown>): DeepMeditation {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    date: row.date as string,
+    state: row.state as DeepMeditationState,
+    aiSummary: (row.ai_summary as string) ?? null,
+    observation: (row.observation as string) ?? null,
+    questions: Array.isArray(row.questions) ? (row.questions as DeepMeditationQuestion[]) : [],
+    answers: Array.isArray(row.answers) ? (row.answers as string[]) : [],
+    currentQIndex: (row.current_q_index as number) ?? 0,
+    feelings: (row.feelings as string) ?? null,
+    decision: (row.decision as string) ?? null,
+  };
+}
+
+export async function getDeepMeditation(userId: string, date: string): Promise<DeepMeditation | null> {
+  const { data, error } = await withApiTimeout(
+    supabase.from('deep_meditations').select('*').eq('user_id', userId).eq('date', date).maybeSingle(),
+    '깊은 묵상 조회'
+  );
+  if (error) throw error;
+  return data ? mapDeepMeditation(data as Record<string, unknown>) : null;
+}
+
+const DEEP_MEDITATION_DEFAULT_QUESTIONS = [
+  '이 말씀에서 가장 인상 깊은 구절은 무엇인가요? 그 이유는?',
+  '이 말씀에 등장하는 인물이나 사건에서 하나님의 성품을 어떻게 발견할 수 있나요?',
+  '이 말씀이 오늘 나의 삶과 어떻게 연결되나요?',
+  '이 말씀을 통해 오늘 하루 어떻게 살아야 할지 구체적으로 적어보세요.',
+];
+
+/**
+ * 깊은 묵상 시작용 AI 요약+질문 생성.
+ * Edge Function 실패 시에도 QT 콘텐츠 기반 폴백으로 항상 결과를 반환한다.
+ */
+export async function generateDeepMeditationAI(
+  date: string,
+  qtFallback: { summary: string | null; scriptureText: string | null }
+): Promise<{ summary: string; questions: string[] }> {
+  const fallback = {
+    summary:
+      qtFallback.summary?.trim()
+      || qtFallback.scriptureText?.slice(0, 300)
+      || '오늘의 말씀을 천천히 읽으며 묵상해보세요.',
+    questions: DEEP_MEDITATION_DEFAULT_QUESTIONS,
+  };
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('AI 생성 시간 초과')), 30000)
+    );
+    const request = supabase.functions.invoke('deep-meditation-ai', { body: { date } });
+    const { data, error } = await Promise.race([request, timeout]);
+    if (error || !data?.ok) return fallback;
+    return {
+      summary: (data.summary as string) || fallback.summary,
+      questions: Array.isArray(data.questions) && data.questions.length > 0
+        ? (data.questions as string[])
+        : fallback.questions,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export async function createDeepMeditation(params: {
+  userId: string;
+  date: string;
+  aiSummary: string;
+  questions: DeepMeditationQuestion[];
+}): Promise<DeepMeditation> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('deep_meditations')
+      .insert({
+        user_id: params.userId,
+        date: params.date,
+        state: 'OBSERVING',
+        ai_summary: params.aiSummary,
+        questions: params.questions,
+        answers: [],
+      })
+      .select('*')
+      .single(),
+    '깊은 묵상 시작'
+  );
+  if (error) throw error;
+  return mapDeepMeditation(data as Record<string, unknown>);
+}
+
+export async function updateDeepMeditation(
+  id: string,
+  patch: Partial<{
+    state: DeepMeditationState;
+    observation: string | null;
+    questions: DeepMeditationQuestion[];
+    answers: string[];
+    currentQIndex: number;
+    feelings: string | null;
+    decision: string | null;
+  }>
+): Promise<DeepMeditation> {
+  const row: Record<string, unknown> = {};
+  if (patch.state !== undefined) row.state = patch.state;
+  if (patch.observation !== undefined) row.observation = patch.observation;
+  if (patch.questions !== undefined) row.questions = patch.questions;
+  if (patch.answers !== undefined) row.answers = patch.answers;
+  if (patch.currentQIndex !== undefined) row.current_q_index = patch.currentQIndex;
+  if (patch.feelings !== undefined) row.feelings = patch.feelings;
+  if (patch.decision !== undefined) row.decision = patch.decision;
+
+  const { data, error } = await withApiTimeout(
+    supabase.from('deep_meditations').update(row).eq('id', id).select('*').single(),
+    '깊은 묵상 저장'
+  );
+  if (error) throw error;
+  return mapDeepMeditation(data as Record<string, unknown>);
+}
+
+export async function deleteDeepMeditation(id: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.from('deep_meditations').delete().eq('id', id),
+    '깊은 묵상 취소'
+  );
+  if (error) throw error;
 }

@@ -42,6 +42,7 @@ const QTMain = lazy(() => import("./pages/QTMain"));
 const QTPray = lazy(() => import("./pages/QTPray"));
 const QTComplete = lazy(() => import("./pages/QTComplete"));
 const QTDate = lazy(() => import("./pages/QTDate"));
+const QTDeepMeditation = lazy(() => import("./pages/QTDeepMeditation"));
 const QTLeaderDashboard = lazy(() => import("./pages/QTLeaderDashboard"));
 
 const Spinner = () => (
@@ -99,6 +100,7 @@ function AppRoutes() {
         <Route path="/qt" element={<ProtectedRoute><QTMain /></ProtectedRoute>} />
         <Route path="/qt/pray" element={<ProtectedRoute><QTPray /></ProtectedRoute>} />
         <Route path="/qt/complete" element={<ProtectedRoute><QTComplete /></ProtectedRoute>} />
+        <Route path="/qt/deep" element={<ProtectedRoute><QTDeepMeditation /></ProtectedRoute>} />
         <Route path="/qt/:date" element={<ProtectedRoute><QTDate /></ProtectedRoute>} />
         <Route path="/leader/qt-dashboard" element={<ProtectedRoute><LeaderRoute><QTLeaderDashboard /></LeaderRoute></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock } from 'lucide-react';
+import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
-import { getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, getKSTDateString } from '@/lib/api';
+import { getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, getDeepMeditation, getKSTDateString } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,6 +38,12 @@ export default function QTMain() {
   useEffect(() => {
     if (myResponse?.answer) setAnswer(myResponse.answer);
   }, [myResponse?.answer]);
+
+  const { data: deepSession } = useQuery({
+    queryKey: ['deep_meditation', user?.id, today],
+    queryFn: () => getDeepMeditation(user!.id, today),
+    enabled: !!user?.id,
+  });
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -149,6 +155,27 @@ export default function QTMain() {
           />
           <p className="text-xs text-muted-foreground">작성하지 않아도 완료할 수 있습니다</p>
         </div>
+
+        {/* 깊은 묵상 진입 */}
+        <button
+          onClick={() => navigate('/qt/deep')}
+          className="w-full flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
+        >
+          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Search className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">깊은 묵상</p>
+            <p className="text-xs text-muted-foreground">
+              {deepSession?.state === 'DONE'
+                ? '오늘 완료 — 기록 보기'
+                : deepSession
+                  ? '진행 중 — 이어서 하기'
+                  : 'AI 질문과 함께 4단계로 더 깊이 묵상해보세요'}
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
 
         {/* 버튼 */}
         {alreadyCompleted ? (
