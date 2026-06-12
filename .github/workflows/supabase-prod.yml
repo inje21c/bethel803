@@ -25,12 +25,15 @@ concurrency:
   group: supabase-prod
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ inputs.confirm == 'deploy-prod' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Apply new migrations to production
         if: ${{ inputs.target != 'functions-only' }}
