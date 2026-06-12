@@ -2974,3 +2974,108 @@ export async function deleteDeepMeditation(id: string): Promise<void> {
   );
   if (error) throw error;
 }
+
+// ============================================================
+// 교회 설정 (SaaS) — RLS가 자기 교회 행만 반환하므로 프론트는 교회를 모른다
+// ============================================================
+
+export type QTMode = 'scraped' | 'admin' | 'simple';
+
+export interface ChurchSettings {
+  qtMode: QTMode;
+  modules: Record<string, boolean>;
+  bulletinUrlPattern: string | null;
+  terms: Record<string, string>;
+}
+
+/**
+ * 내 교회 설정 조회.
+ * 테이블이 없거나(021/027 미적용 prod) 행이 없으면 null → 호출측은 현행(scraped) 동작 유지.
+ */
+export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
+  try {
+    const { data, error } = await withApiTimeout(
+      supabase.from('church_settings').select('*').limit(1).maybeSingle(),
+      '교회 설정 조회'
+    );
+    if (error || !data) return null;
+    const row = data as Record<string, unknown>;
+    return {
+      qtMode: (row.qt_mode as QTMode) ?? 'simple',
+      modules: (row.modules as Record<string, boolean>) ?? {},
+      bulletinUrlPattern: (row.bulletin_url_pattern as string) ?? null,
+      terms: (row.terms as Record<string, string>) ?? {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
+// QT simple 모드: 시편 1일 1편 (자체 성경 DB, 외부 의존/저작권 없음)
+// ============================================================
+
+/** KST 날짜 기준 day-of-year → 시편 장 (1~150 순환) */
+export function getSimplePsalmChapter(dateStr: string): number {
+  const date = new Date(dateStr + 'T00:00:00');
+  const start = new Date(date.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
+  return ((dayOfYear - 1) % 150) + 1;
+}
+
+/**
+ * simple 모드용 오늘 QT 콘텐츠를 lazy 생성한다.
+ * 이미 있으면 그대로 반환. 동시 생성 race는 UNIQUE 충돌 후 재조회로 해소.
+ * (church_id는 DB 트리거가 호출자 교회로 자동 설정)
+ */
+export async function getOrCreateSimpleQT(date: string): Promise<QTContent | null> {
+  const existing = await getQTByDate(date);
+  if (existing) return existing;
+
+  const chapter = getSimplePsalmChapter(date);
+
+  const { data: book, error: bookError } = await withApiTimeout(
+    supabase.from('bible_books').select('id').eq('korean_name', '시편').single(),
+    '성경 책 조회'
+  );
+  if (bookError || !book) return null;
+
+  const { data: verses, error: versesError } = await withApiTimeout(
+    supabase
+      .from('bible_verses')
+      .select('verse, text')
+      .eq('book_id', (book as { id: number }).id)
+      .eq('chapter', chapter)
+      .order('verse'),
+    '성경 본문 조회'
+  );
+  if (versesError || !verses || verses.length === 0) return null;
+
+  const scriptureText = (verses as { verse: number; text: string }[])
+    .map(v => `${v.verse} ${v.text}`)
+    .join('\n');
+
+  const { data: created, error: insertError } = await withApiTimeout(
+    supabase
+      .from('qt_contents')
+      .insert({
+        date,
+        title: `시편 ${chapter}편`,
+        scripture: `시편 ${chapter}편`,
+        scripture_text: scriptureText,
+        question: '오늘 말씀에서 마음에 와닿은 구절은 무엇인가요? 그 이유도 함께 묵상해보세요.',
+      })
+      .select('*')
+      .single(),
+    'QT 생성'
+  );
+
+  if (insertError) {
+    // 동시 생성으로 인한 UNIQUE 충돌 → 다른 사용자가 만든 행 재조회
+    if ((insertError as { code?: string }).code === '23505') {
+      return getQTByDate(date);
+    }
+    throw insertError;
+  }
+  return mapQTContent(created as Record<string, unknown>);
+}
