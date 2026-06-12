@@ -1211,7 +1211,8 @@ export default function BibleReading() {
           </TabsContent>
 
           <TabsContent value="log" className="mt-0">
-            <div className="mx-auto max-w-2xl space-y-5">
+            <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+              <div className="space-y-5">
               <div className="card-elevated p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
@@ -1272,6 +1273,7 @@ export default function BibleReading() {
                     </Button>
                   </div>
                 )}
+              </div>
               </div>
 
               <div className="card-elevated p-4">
