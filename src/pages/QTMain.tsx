@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
-import { getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, getDeepMeditation, getKSTDateString } from '@/lib/api';
+import {
+  getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
+  getDeepMeditation, getMyChurchSettings, getOrCreateSimpleQT, getKSTDateString,
+} from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,9 +17,18 @@ export default function QTMain() {
   const queryClient = useQueryClient();
   const today = getKSTDateString(new Date());
 
+  // 교회 설정: 설정 없음(null) = 현행 scraped 동작 유지 (prod 호환)
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: ['church_settings'],
+    queryFn: getMyChurchSettings,
+    staleTime: 1000 * 60 * 30,
+  });
+  const qtMode = settings?.qtMode ?? 'scraped';
+
   const { data: qt, isLoading: qtLoading } = useQuery({
     queryKey: ['qt_content', today],
-    queryFn: getTodayQT,
+    queryFn: () => (qtMode === 'simple' ? getOrCreateSimpleQT(today) : getTodayQT()),
+    enabled: !settingsLoading,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: true,
     refetchInterval: (query) => (query.state.data ? false : 60_000),
@@ -60,11 +72,30 @@ export default function QTMain() {
     },
   });
 
+  // simple 모드: 기도 단계 없이 바로 묵상 완료 처리
+  const completeSimpleMutation = useMutation({
+    mutationFn: async () => {
+      await upsertQTResponse({
+        contentId: qt!.id,
+        userId: user!.id,
+        answer: answer || null,
+        isCompleted: true,
+        isPastDay: false,
+      });
+      await updateQTStreak(user!.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qt_response', qt?.id] });
+      queryClient.invalidateQueries({ queryKey: ['streak', user?.id] });
+      navigate('/qt/complete');
+    },
+  });
+
   const formattedDate = new Date(today + 'T00:00:00').toLocaleDateString('ko-KR', {
     month: 'long', day: 'numeric', weekday: 'short',
   });
 
-  if (qtLoading) {
+  if (settingsLoading || qtLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -83,7 +114,11 @@ export default function QTMain() {
         <div className="max-w-2xl mx-auto py-10 text-center space-y-3">
           <Clock className="w-10 h-10 text-muted-foreground mx-auto" />
           <p className="font-semibold">오늘의 QT이 아직 준비되지 않았습니다.</p>
-          <p className="text-sm text-muted-foreground">매일 오전 6시에 업데이트됩니다.</p>
+          <p className="text-sm text-muted-foreground">
+            {qtMode === 'simple'
+              ? '잠시 후 다시 시도해주세요.'
+              : '매일 오전 6시에 업데이트됩니다.'}
+          </p>
         </div>
       </AppLayout>
     );
@@ -183,6 +218,22 @@ export default function QTMain() {
             <span className="text-success font-semibold text-sm">오늘 QT 완료</span>
             <Button variant="ghost" size="sm" className="ml-auto" onClick={() => navigate('/qt/complete')}>
               완료 화면 보기 <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        ) : qtMode === 'simple' ? (
+          <div className="flex gap-3">
+            <Button
+              className="flex-1"
+              onClick={() => completeSimpleMutation.mutate()}
+              disabled={completeSimpleMutation.isPending}
+            >
+              오늘 묵상 완료 <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/dashboard')}
+            >
+              나중에
             </Button>
           </div>
         ) : (

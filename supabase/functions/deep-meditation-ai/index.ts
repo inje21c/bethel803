@@ -151,15 +151,28 @@ Deno.serve(async (req) => {
     date = kst.toISOString().slice(0, 10);
   }
 
-  const { data: qt, error: qtError } = await supabase
+  // 호출자의 교회 식별 (021 미적용 DB에서는 church_id 컬럼이 없으므로 select * 후 선택적으로 읽음)
+  const { data: profile } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+  const myChurchId = (profile?.church_id as string | undefined) ?? null;
+
+  const { data: qtRows, error: qtError } = await supabase
     .from('qt_contents')
     .select('*')
-    .eq('date', date)
-    .maybeSingle();
+    .eq('date', date);
 
-  if (qtError || !qt) {
+  if (qtError || !qtRows || qtRows.length === 0) {
     return jsonResponse(404, { ok: false, error: '해당 날짜의 QT 콘텐츠가 없습니다.' });
   }
+
+  // 멀티교회: 같은 날짜에 교회별 행이 존재 → 호출자 교회의 행 선택
+  const qt =
+    qtRows.find(r => myChurchId && (r.church_id as string | undefined) === myChurchId)
+    ?? qtRows.find(r => !('church_id' in r))
+    ?? qtRows[0];
 
   // 날짜별 캐시: 이미 생성된 요약/질문이 있으면 AI 호출 없이 반환
   const cachedSummary = (qt.deep_summary as string | null) ?? null;
@@ -197,7 +210,7 @@ Deno.serve(async (req) => {
     const { error: cacheError } = await supabase
       .from('qt_contents')
       .update({ deep_summary: summary, deep_questions: questions })
-      .eq('date', date);
+      .eq('id', qt.id as string);
     if (cacheError) {
       // 026 마이그레이션 미적용 등 — 캐시 실패해도 응답은 정상 반환
       console.error('deep cache write failed:', cacheError.message);
