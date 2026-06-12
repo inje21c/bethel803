@@ -2570,6 +2570,8 @@ export interface QTContent {
   audioUrl: string | null;
   hymnSuggestions: HymnSuggestion[];
   leaderComment: string | null;
+  deepSummary: string | null;
+  deepQuestions: string[] | null;
   createdAt: string;
 }
 
@@ -2618,6 +2620,8 @@ function mapQTContent(row: Record<string, unknown>): QTContent {
     audioUrl: (row.audio_url as string) ?? null,
     hymnSuggestions: Array.isArray(row.hymn_suggestions) ? (row.hymn_suggestions as HymnSuggestion[]) : [],
     leaderComment: (row.leader_comment as string) ?? null,
+    deepSummary: (row.deep_summary as string) ?? null,
+    deepQuestions: Array.isArray(row.deep_questions) ? (row.deep_questions as string[]) : null,
     createdAt: row.created_at as string,
   };
 }
@@ -2868,12 +2872,22 @@ const DEEP_MEDITATION_DEFAULT_QUESTIONS = [
 
 /**
  * 깊은 묵상 시작용 AI 요약+질문 생성.
+ * qt_contents에 일별 캐시가 있으면 호출 없이 즉시 반환하고,
  * Edge Function 실패 시에도 QT 콘텐츠 기반 폴백으로 항상 결과를 반환한다.
  */
 export async function generateDeepMeditationAI(
   date: string,
-  qtFallback: { summary: string | null; scriptureText: string | null }
+  qtFallback: {
+    summary: string | null;
+    scriptureText: string | null;
+    deepSummary?: string | null;
+    deepQuestions?: string[] | null;
+  }
 ): Promise<{ summary: string; questions: string[] }> {
+  // 일별 캐시 히트: 같은 날 다른 사용자가 이미 생성한 결과 재사용 (AI 호출 0회)
+  if (qtFallback.deepSummary && qtFallback.deepQuestions && qtFallback.deepQuestions.length > 0) {
+    return { summary: qtFallback.deepSummary, questions: qtFallback.deepQuestions };
+  }
   const fallback = {
     summary:
       qtFallback.summary?.trim()

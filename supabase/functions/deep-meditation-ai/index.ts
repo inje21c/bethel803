@@ -153,12 +153,25 @@ Deno.serve(async (req) => {
 
   const { data: qt, error: qtError } = await supabase
     .from('qt_contents')
-    .select('title, scripture, scripture_text, summary')
+    .select('*')
     .eq('date', date)
     .maybeSingle();
 
   if (qtError || !qt) {
     return jsonResponse(404, { ok: false, error: '해당 날짜의 QT 콘텐츠가 없습니다.' });
+  }
+
+  // 날짜별 캐시: 이미 생성된 요약/질문이 있으면 AI 호출 없이 반환
+  const cachedSummary = (qt.deep_summary as string | null) ?? null;
+  const cachedQuestions = Array.isArray(qt.deep_questions) ? (qt.deep_questions as string[]) : null;
+  if (cachedSummary && cachedQuestions && cachedQuestions.length > 0) {
+    return jsonResponse(200, {
+      ok: true,
+      date,
+      summary: cachedSummary,
+      questions: cachedQuestions,
+      cached: true,
+    });
   }
 
   const title = (qt.title as string) ?? '';
@@ -178,6 +191,18 @@ Deno.serve(async (req) => {
     || scriptureText.slice(0, 300)
     || '오늘의 말씀을 천천히 읽으며 묵상해보세요.';
   const questions = aiQuestions && aiQuestions.length > 0 ? aiQuestions : DEFAULT_QUESTIONS;
+
+  // AI가 실제 생성한 경우에만 캐시 (폴백 결과는 캐시하지 않아 다음 호출에서 재시도)
+  if (aiSummary && aiQuestions) {
+    const { error: cacheError } = await supabase
+      .from('qt_contents')
+      .update({ deep_summary: summary, deep_questions: questions })
+      .eq('date', date);
+    if (cacheError) {
+      // 026 마이그레이션 미적용 등 — 캐시 실패해도 응답은 정상 반환
+      console.error('deep cache write failed:', cacheError.message);
+    }
+  }
 
   return jsonResponse(200, {
     ok: true,
