@@ -591,18 +591,20 @@ export default function BibleReading() {
             <p className="text-sm text-muted-foreground">성경 본문과 개인 북마크</p>
             <h1 className="font-display text-2xl font-bold">성경</h1>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">
-            <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">글자</span>
-            <Slider
-              min={0}
-              max={4}
-              step={1}
-              value={[fontSizeLevel]}
-              onValueChange={([value]) => setFontSizeLevel(value)}
-              className="w-32"
-            />
-            <span className="w-16 text-right text-xs font-medium">{FONT_SIZE_LABELS[fontSizeLevel]}</span>
-          </div>
+          {activeTab === 'reader' && (
+            <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">
+              <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">글자</span>
+              <Slider
+                min={0}
+                max={4}
+                step={1}
+                value={[fontSizeLevel]}
+                onValueChange={([value]) => setFontSizeLevel(value)}
+                className="w-32"
+              />
+              <span className="w-16 text-right text-xs font-medium">{FONT_SIZE_LABELS[fontSizeLevel]}</span>
+            </div>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
@@ -930,10 +932,10 @@ export default function BibleReading() {
                 <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </section>
             ) : !readingPlan ? (
-              <section className="mx-auto max-w-2xl rounded-lg border bg-card p-5">
-                <div className="space-y-5">
-                  <div className="text-center">
-                    <CalendarDays className="mx-auto mb-3 h-10 w-10 text-primary" />
+              <section className="rounded-lg border bg-card p-5">
+                <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
+                  <div className="text-center lg:text-left">
+                    <CalendarDays className="mx-auto mb-3 h-10 w-10 text-primary lg:mx-0" />
                     <h2 className="font-display text-xl font-bold">읽기표 만들기</h2>
                     <p className="mt-2 text-sm text-muted-foreground">
                       수기 기록은 그대로 두고, 읽기표로 읽은 장수는 자동으로 합산됩니다.
