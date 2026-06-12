@@ -28,10 +28,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Generate seed SQL from bible_kr.json
+        run: node scripts/generate_bible_seed_sql.mjs docs/bible_kr.json /tmp/bible_kr_seed.sql
+
       - name: Seed bible data
         env:
           DB_URL: ${{ inputs.target == 'prod' && secrets.PROD_DB_URL || secrets.STAGING_DB_URL }}
         run: |
           echo "Seeding bible data to ${{ inputs.target }}"
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -f docs/bible_kr_seed.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f /tmp/bible_kr_seed.sql
           psql "$DB_URL" -tAc "SELECT 'books='||count(*) FROM public.bible_books; SELECT 'verses='||count(*) FROM public.bible_verses;"
