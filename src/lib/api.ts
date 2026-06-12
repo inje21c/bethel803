@@ -964,6 +964,34 @@ function addDaysToDateString(date: string, days: number): string {
   return next.toISOString().slice(0, 10);
 }
 
+/**
+ * 읽기표 장 항목 전체 조회.
+ * PostgREST는 쿼리당 최대 1,000행만 반환하므로(성경 전체 플랜은 1,189장)
+ * range 페이지네이션으로 전부 가져온다. (1,000행 절단 시 334일차부터 데이터 누락)
+ */
+async function fetchAllPlanItems(
+  planId: string,
+  label: string
+): Promise<Database['public']['Tables']['bible_reading_plan_day_items']['Row'][]> {
+  const pageSize = 1000;
+  const rows: Database['public']['Tables']['bible_reading_plan_day_items']['Row'][] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await withApiTimeout(
+      supabase
+        .from('bible_reading_plan_day_items')
+        .select('*')
+        .eq('plan_id', planId)
+        .order('sequence', { ascending: true })
+        .range(from, from + pageSize - 1),
+      label
+    );
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 function chunkRows<T>(rows: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let index = 0; index < rows.length; index += size) {
@@ -1056,7 +1084,7 @@ export async function getPrimaryBibleReadingPlan(userId: string): Promise<BibleR
   if (planError) throw planError;
   if (!plan) return null;
 
-  const [{ data: days, error: daysError }, { data: items, error: itemsError }, books] = await Promise.all([
+  const [{ data: days, error: daysError }, items, books] = await Promise.all([
     withApiTimeout(
       supabase
         .from('bible_reading_plan_days')
@@ -1065,20 +1093,12 @@ export async function getPrimaryBibleReadingPlan(userId: string): Promise<BibleR
         .order('day_number', { ascending: true }),
       '읽기표 날짜 조회'
     ),
-    withApiTimeout(
-      supabase
-        .from('bible_reading_plan_day_items')
-        .select('*')
-        .eq('plan_id', plan.id)
-        .order('sequence', { ascending: true }),
-      '읽기표 장 목록 조회'
-    ),
+    fetchAllPlanItems(plan.id, '읽기표 장 목록 조회'),
     getBibleBooks(),
   ]);
   if (daysError) throw daysError;
-  if (itemsError) throw itemsError;
 
-  return mapPlan(plan, days ?? [], items ?? [], books);
+  return mapPlan(plan, days ?? [], items, books);
 }
 
 export async function createBibleReadingPlan(params: {
@@ -1180,7 +1200,7 @@ export async function updateBibleReadingPlan(params: {
     throw new Error('하루에 읽을 장수를 입력해주세요.');
   }
 
-  const [{ data: plan, error: planError }, { data: days, error: daysError }, { data: items, error: itemsError }, books] = await Promise.all([
+  const [{ data: plan, error: planError }, { data: days, error: daysError }, items, books] = await Promise.all([
     withApiTimeout(
       supabase
         .from('bible_reading_plans')
@@ -1198,19 +1218,11 @@ export async function updateBibleReadingPlan(params: {
         .order('day_number', { ascending: true }),
       '읽기표 수정 날짜 조회'
     ),
-    withApiTimeout(
-      supabase
-        .from('bible_reading_plan_day_items')
-        .select('*')
-        .eq('plan_id', params.planId)
-        .order('sequence', { ascending: true }),
-      '읽기표 수정 장 조회'
-    ),
+    fetchAllPlanItems(params.planId, '읽기표 수정 장 조회'),
     getBibleBooks(),
   ]);
   if (planError) throw planError;
   if (daysError) throw daysError;
-  if (itemsError) throw itemsError;
 
   const completedItems = (items ?? []).filter(item => item.completed_at);
   const completedKeys = new Set(completedItems.map(item => buildChapterKey(item.book_id, item.chapter)));

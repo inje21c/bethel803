@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -578,6 +579,26 @@ export default function BibleReading() {
   const activePlanDay = getActivePlanDay(readingPlan, today);
   const activePlanItemsLabel = activePlanDay ? formatPlanItems(activePlanDay.items) : '';
   const planDayCompleted = activePlanDay?.items.every(item => item.completedAt) ?? false;
+
+  // 읽기 현황: 연간 계획(약 400일)을 한 번에 펼치지 않고 월별로 접어서 표시
+  const [openPlanMonth, setOpenPlanMonth] = useState<string | null>(null);
+  const planMonthGroups = useMemo(() => {
+    if (!readingPlan) return [];
+    const groups = new Map<string, typeof readingPlan.days>();
+    readingPlan.days.forEach(day => {
+      const month = day.scheduledDate.slice(0, 7);
+      const list = groups.get(month) ?? [];
+      list.push(day);
+      groups.set(month, list);
+    });
+    return Array.from(groups.entries());
+  }, [readingPlan]);
+  // 기본 펼침: 진행 중인 날이 속한 달
+  const currentPlanMonth =
+    openPlanMonth
+    ?? activePlanDay?.scheduledDate.slice(0, 7)
+    ?? planMonthGroups[0]?.[0]
+    ?? null;
   const currentPlanItem = readingPlan?.days
     .flatMap(day => day.items)
     .find(item => item.bookId === currentBookId && item.chapter === selectedChapter);
@@ -1163,8 +1184,38 @@ export default function BibleReading() {
                     <h3 className="font-display text-lg font-semibold">읽기 현황</h3>
                     <span className="text-sm text-muted-foreground">{readingPlan.days.length}일 계획</span>
                   </div>
-                  <div className="space-y-3">
-                    {readingPlan.days.map(day => {
+                  <div className="space-y-2">
+                    {planMonthGroups.map(([month, days]) => {
+                      const [yyyy, mm] = month.split('-');
+                      const monthDone = days.reduce((sum, d) => sum + d.items.filter(i => i.completedAt).length, 0);
+                      const monthTotal = days.reduce((sum, d) => sum + d.items.length, 0);
+                      const isOpen = month === currentPlanMonth;
+                      const isActiveMonth = activePlanDay?.scheduledDate.slice(0, 7) === month;
+                      return (
+                        <div key={month} className="rounded-lg border">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 p-3 text-left"
+                            onClick={() => setOpenPlanMonth(isOpen ? '' : month)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold">{yyyy}년 {Number(mm)}월</span>
+                              {isActiveMonth && (
+                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">진행 중</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {days.length}일 · {monthDone}/{monthTotal}장
+                              </span>
+                              <ChevronDown
+                                className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                              />
+                            </div>
+                          </button>
+                          {isOpen && (
+                            <div className="space-y-3 border-t p-3">
+                    {days.map(day => {
                       const doneCount = day.items.filter(item => item.completedAt).length;
                       return (
                         <div key={day.id} className="rounded-lg border p-3">
@@ -1203,6 +1254,11 @@ export default function BibleReading() {
                               );
                             })}
                           </div>
+                        </div>
+                      );
+                    })}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
