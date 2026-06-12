@@ -1,0 +1,50 @@
+name: Supabase Production (manual)
+
+# 운영 DB/함수 반영은 수동 트리거 + 확인 문자열 입력으로만 실행한다.
+# 필요한 GitHub Secrets:
+#   PROD_DB_URL                — prod Postgres 연결 문자열
+#   SUPABASE_ACCESS_TOKEN_PROD — prod 계정의 access token
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '확인을 위해 "deploy-prod"를 입력하세요'
+        required: true
+      target:
+        description: '배포 대상'
+        required: true
+        type: choice
+        options:
+          - all
+          - migrations-only
+          - functions-only
+        default: all
+
+concurrency:
+  group: supabase-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.confirm == 'deploy-prod' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply new migrations to production
+        if: ${{ inputs.target != 'functions-only' }}
+        env:
+          DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: bash scripts/apply_migrations.sh
+
+      - uses: supabase/setup-cli@v1
+        if: ${{ inputs.target != 'migrations-only' }}
+        with:
+          version: latest
+
+      - name: Deploy edge functions to production
+        if: ${{ inputs.target != 'migrations-only' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PROD }}
+        run: supabase functions deploy --project-ref ljozrpecvlqqmwykxjfk
