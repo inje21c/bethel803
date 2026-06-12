@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Music, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, Music, ChevronDown, ChevronUp, CheckCircle2, CalendarDays, Home } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
 import {
@@ -137,19 +137,34 @@ export default function QTPray() {
           </div>
         )}
 
-        {/* 완료 버튼 */}
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={() => completeMutation.mutate()}
-          disabled={completeMutation.isPending || myResponse?.isCompleted}
-        >
-          {myResponse?.isCompleted ? (
-            <><CheckCircle2 className="w-4 h-4 mr-2" />오늘 QT 완료됨</>
-          ) : (
-            <><CheckCircle2 className="w-4 h-4 mr-2" />오늘 QT 완료하기</>
-          )}
-        </Button>
+        {/* 완료 버튼 / 완료 후 이동 */}
+        {myResponse?.isCompleted ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-success/10 border border-success/20 p-4">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <p className="text-sm font-semibold text-success">오늘 QT를 이미 완료했습니다</p>
+            </div>
+            <div className="flex gap-3">
+              <Button size="lg" className="flex-1" onClick={() => navigate('/qt/complete')}>
+                <CalendarDays className="w-4 h-4 mr-2" />
+                완료 기록 보기
+              </Button>
+              <Button size="lg" variant="outline" className="flex-1" onClick={() => navigate('/dashboard')}>
+                <Home className="w-4 h-4 mr-2" />
+                홈으로
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={() => completeMutation.mutate()}
+            disabled={completeMutation.isPending}
+          >
+            <CheckCircle2 className="w-4 h-4 mr-2" />오늘 QT 완료하기
+          </Button>
+        )}
       </div>
     </AppLayout>
   );
