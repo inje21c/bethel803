@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Home, Flame } from 'lucide-react';
+import { Home, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { getMyStreak, getQTCalendar, getKSTDateString } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
@@ -10,7 +11,19 @@ export default function QTComplete() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const today = getKSTDateString(new Date());
-  const [year, month] = today.split('-').map(Number);
+  const [todayYear, todayMonth] = today.split('-').map(Number);
+
+  // 표시 중인 달 (과거 달 탐색 가능, 미래 달 불가)
+  const [viewYM, setViewYM] = useState({ year: todayYear, month: todayMonth });
+  const { year, month } = viewYM;
+  const isCurrentMonth = year === todayYear && month === todayMonth;
+
+  const moveMonth = (delta: number) => {
+    setViewYM(({ year, month }) => {
+      const d = new Date(year, month - 1 + delta, 1);
+      return { year: d.getFullYear(), month: d.getMonth() + 1 };
+    });
+  };
 
   const { data: streak } = useQuery({
     queryKey: ['streak', user?.id],
@@ -44,15 +57,30 @@ export default function QTComplete() {
                 {streak!.currentStreak}일 연속
               </span>
             )}
-            <span>이번 달 {completedCount}/{lastDay}일</span>
+            <span>{isCurrentMonth ? '이번 달' : `${year}년 ${month}월`} {completedCount}/{lastDay}일</span>
           </div>
         </div>
 
         {/* 월별 캘린더 */}
         <div className="card-elevated p-5">
-          <p className="text-sm font-semibold mb-4">
-            {year}년 {month}월
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold">{year}년 {month}월</p>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveMonth(-1)} aria-label="이전 달">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={isCurrentMonth}
+                onClick={() => moveMonth(1)}
+                aria-label="다음 달"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
               <div key={d} className="text-[11px] text-muted-foreground font-medium py-1">{d}</div>

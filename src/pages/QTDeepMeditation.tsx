@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, MessageCircleQuestion, Heart, Flag, ChevronRight, Plus, CheckCircle2, X } from 'lucide-react';
+import { Search, MessageCircleQuestion, Heart, Flag, ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/authContext';
 import {
@@ -57,6 +57,16 @@ export default function QTDeepMeditation() {
   const [decision, setDecision] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
 
+  // 단계 이동(앞/뒤) 시 저장된 값을 입력칸에 복원
+  useEffect(() => {
+    if (!session) return;
+    setObservation(session.observation ?? '');
+    setFeelings(session.feelings ?? '');
+    setDecision(session.decision ?? '');
+    setAnswer(session.answers[session.currentQIndex] ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.state, session?.currentQIndex]);
+
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['deep_meditation', user?.id, today] });
 
@@ -65,6 +75,8 @@ export default function QTDeepMeditation() {
       const ai = await generateDeepMeditationAI(today, {
         summary: qt?.summary ?? null,
         scriptureText: qt?.scriptureText ?? null,
+        deepSummary: qt?.deepSummary ?? null,
+        deepQuestions: qt?.deepQuestions ?? null,
       });
       return createDeepMeditation({
         userId: user!.id,
@@ -95,6 +107,40 @@ export default function QTDeepMeditation() {
   });
 
   const busy = startMutation.isPending || updateMutation.isPending;
+
+  // 이전 단계로 (입력값은 useEffect가 저장본으로 복원)
+  const goBack = () => {
+    if (!session || busy) return;
+    switch (session.state) {
+      case 'ADDING_QUESTIONS':
+        updateMutation.mutate({ state: 'OBSERVING' });
+        break;
+      case 'ANSWERING':
+        if (session.currentQIndex > 0) {
+          updateMutation.mutate({ currentQIndex: session.currentQIndex - 1 });
+        } else {
+          updateMutation.mutate({ state: 'ADDING_QUESTIONS' });
+        }
+        break;
+      case 'FEELING':
+        if (session.questions.length > 0 && session.currentQIndex >= session.questions.length) {
+          updateMutation.mutate({ state: 'ANSWERING', currentQIndex: session.questions.length - 1 });
+        } else {
+          updateMutation.mutate({ state: 'ADDING_QUESTIONS' });
+        }
+        break;
+      case 'DECIDING':
+        updateMutation.mutate({ state: 'FEELING' });
+        break;
+    }
+  };
+
+  const BackButton = () =>
+    session && session.state !== 'OBSERVING' ? (
+      <Button variant="ghost" size="icon" className="shrink-0" disabled={busy} onClick={goBack} aria-label="이전 단계">
+        <ChevronLeft className="w-4 h-4" />
+      </Button>
+    ) : null;
 
   if (qtLoading || sessionLoading) {
     return (
@@ -240,6 +286,7 @@ export default function QTDeepMeditation() {
               </Button>
             </div>
             <div className="flex gap-3">
+              <BackButton />
               <Button
                 className="flex-1"
                 disabled={busy || session.questions.length === 0}
@@ -276,6 +323,7 @@ export default function QTDeepMeditation() {
               className="min-h-[120px] resize-none"
             />
             <div className="flex gap-3">
+              <BackButton />
               <Button
                 className="flex-1"
                 disabled={busy}
@@ -325,6 +373,7 @@ export default function QTDeepMeditation() {
               className="min-h-[140px] resize-none"
             />
             <div className="flex gap-3">
+              <BackButton />
               <Button
                 className="flex-1"
                 disabled={busy}
@@ -354,6 +403,7 @@ export default function QTDeepMeditation() {
               className="min-h-[140px] resize-none"
             />
             <div className="flex gap-3">
+              <BackButton />
               <Button
                 className="flex-1"
                 disabled={busy}
@@ -435,6 +485,15 @@ export default function QTDeepMeditation() {
                 QT로 돌아가기
               </Button>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground"
+              disabled={busy}
+              onClick={() => updateMutation.mutate({ state: 'OBSERVING' })}
+            >
+              <Pencil className="w-3 h-3 mr-1" /> 기록 수정하기 (작성한 내용은 유지됩니다)
+            </Button>
           </div>
         )}
 
