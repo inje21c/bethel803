@@ -25,8 +25,8 @@ export default function QTMain() {
   });
   const qtMode = settings?.qtMode ?? 'scraped';
 
-  const { data: qt, isLoading: qtLoading } = useQuery({
-    queryKey: ['qt_content', today],
+  const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
+    queryKey: ['qt_content', today, qtMode],
     queryFn: () => (qtMode === 'simple' ? getOrCreateSimpleQT(today) : getTodayQT()),
     enabled: !settingsLoading,
     staleTime: 1000 * 60 * 30,
@@ -119,6 +119,11 @@ export default function QTMain() {
               ? '잠시 후 다시 시도해주세요.'
               : '매일 오전 6시에 업데이트됩니다.'}
           </p>
+          {qtError && (
+            <p className="text-xs text-destructive bg-destructive/10 rounded p-2 text-left break-all">
+              {String(qtError)}
+            </p>
+          )}
         </div>
       </AppLayout>
     );
