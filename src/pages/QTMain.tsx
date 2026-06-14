@@ -24,10 +24,11 @@ export default function QTMain() {
     staleTime: 1000 * 60 * 30,
   });
   const qtMode = settings?.qtMode ?? 'scraped';
+  const qtSimpleBook = settings?.qtSimpleBook ?? '시편';
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
-    queryKey: ['qt_content', today, qtMode],
-    queryFn: () => (qtMode === 'simple' ? getOrCreateSimpleQT(today) : getTodayQT()),
+    queryKey: ['qt_content', today, qtMode, qtSimpleBook],
+    queryFn: () => (qtMode === 'simple' ? getOrCreateSimpleQT(today, qtSimpleBook) : getTodayQT()),
     enabled: !settingsLoading,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: true,
