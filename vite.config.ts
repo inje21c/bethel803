@@ -65,9 +65,12 @@ export default defineConfig(({ mode }) => ({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,svg,png,woff2}"],
-        // 150 kB 초과 청크(recharts, framer-motion, supabase 등)는 SW 프리캐시 제외
-        // → Vercel이 Cache-Control: max-age=31536000 설정하므로 브라우저 캐시로 충분
-        maximumFileSizeToCacheInBytes: 150_000,
+        // 대형 vendor 청크는 SW 프리캐시에서 제외 → Vercel HTTP 캐시(1년)에 위임
+        globIgnores: [
+          '**/vendor-react-*.js',
+          '**/vendor-supabase-*.js',
+          '**/vendor-charts-*.js',
+        ],
       },
     }),
     mode === "development" && componentTagger(),
