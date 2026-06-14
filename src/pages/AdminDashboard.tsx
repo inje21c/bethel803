@@ -40,6 +40,9 @@ import {
   getTodayQT,
   updateQTLeaderComment,
   getKSTDateString,
+  getMyChurchSettings,
+  getBibleBooks,
+  updateChurchQTSimpleBook,
 } from '@/lib/api';
 import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport, StudySource } from '@/lib/api';
 import type { BibleStudy } from '@/lib/api';
@@ -340,6 +343,29 @@ export default function AdminDashboard() {
     enabled: activeTab === 'qt',
     refetchOnWindowFocus: true,
     refetchInterval: (query) => (query.state.data ? false : 60_000),
+  });
+
+  const { data: churchSettings, refetch: refetchChurchSettings } = useQuery({
+    queryKey: ['church_settings'],
+    queryFn: getMyChurchSettings,
+    staleTime: 1000 * 60 * 30,
+    enabled: activeTab === 'qt' && isMaster,
+  });
+
+  const { data: bibleBooks = [] } = useQuery({
+    queryKey: ['bible_books'],
+    queryFn: getBibleBooks,
+    staleTime: Infinity,
+    enabled: activeTab === 'qt' && isMaster,
+  });
+
+  const updateQTBookMutation = useMutation({
+    mutationFn: updateChurchQTSimpleBook,
+    onSuccess: () => {
+      refetchChurchSettings();
+      toast.success('QT 말씀 책이 변경됐습니다.');
+    },
+    onError: () => toast.error('변경에 실패했습니다.'),
   });
 
   const { data: qtMembers = [], isLoading: qtMembersLoading } = useQuery({
@@ -1723,6 +1749,41 @@ export default function AdminDashboard() {
               });
               return (
                 <>
+                  {/* church master: simple 모드 말씀 책 설정 */}
+                  {isMaster && churchSettings?.qtMode === 'simple' && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">QT 말씀 설정</CardTitle>
+                        <CardDescription className="text-xs">
+                          매일 묵상할 성경 책을 선택합니다. day-of-year 순서로 1장씩 순환합니다.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex gap-2 items-center">
+                          <Select
+                            value={churchSettings.qtSimpleBook}
+                            onValueChange={(val) => updateQTBookMutation.mutate(val)}
+                            disabled={updateQTBookMutation.isPending}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {bibleBooks.map((b) => (
+                                <SelectItem key={b.id} value={b.koreanName}>
+                                  {b.koreanName} ({b.chapterCount}장)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs text-muted-foreground">
+                            현재: {churchSettings.qtSimpleBook}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   <div className="grid grid-cols-3 gap-3">
                     <Card>
                       <CardContent className="pt-4 text-center">
