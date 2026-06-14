@@ -3050,7 +3050,8 @@ export async function getOrCreateSimpleQT(date: string): Promise<QTContent | nul
     supabase.from('bible_books').select('id').eq('korean_name', '시편').single(),
     '성경 책 조회'
   );
-  if (bookError || !book) return null;
+  if (bookError) throw new Error(`bible_books 조회 실패: ${bookError.message}`);
+  if (!book) throw new Error('bible_books에 시편 행이 없습니다. 성경 시드를 확인하세요.');
 
   const { data: verses, error: versesError } = await withApiTimeout(
     supabase
@@ -3061,7 +3062,8 @@ export async function getOrCreateSimpleQT(date: string): Promise<QTContent | nul
       .order('verse'),
     '성경 본문 조회'
   );
-  if (versesError || !verses || verses.length === 0) return null;
+  if (versesError) throw new Error(`bible_verses 조회 실패 (시편 ${chapter}편): ${versesError.message}`);
+  if (!verses || verses.length === 0) throw new Error(`bible_verses에 시편 ${chapter}편 데이터 없음. 성경 시드를 확인하세요.`);
 
   const scriptureText = (verses as { verse: number; text: string }[])
     .map(v => `${v.verse} ${v.text}`)
