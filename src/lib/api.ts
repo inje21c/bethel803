@@ -3025,6 +3025,46 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   }
 }
 
+export interface ChurchInfo {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  billingStatus: string;
+  trialEndsAt: string | null;
+  isTrialing: boolean;
+  trialDaysLeft: number;
+}
+
+export async function getMyChurchInfo(): Promise<ChurchInfo | null> {
+  try {
+    const { data, error } = await withApiTimeout(
+      supabase.rpc('get_my_church_info'),
+      '교회 정보 조회'
+    );
+    if (error || !data || (data as unknown[]).length === 0) return null;
+    const row = (data as Record<string, unknown>[])[0];
+    const trialEndsAt = (row.trial_ends_at as string) ?? null;
+    const now = Date.now();
+    const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - now : 0;
+    const trialDaysLeft = trialEndsAt ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0;
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      slug: row.slug as string,
+      status: row.status as string,
+      plan: row.plan as string,
+      billingStatus: row.billing_status as string,
+      trialEndsAt,
+      isTrialing: row.status === 'trialing' && trialMs > 0,
+      trialDaysLeft,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ============================================================
 // QT simple 모드: 시편 1일 1편 (자체 성경 DB, 외부 의존/저작권 없음)
 // ============================================================
