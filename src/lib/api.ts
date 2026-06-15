@@ -3001,14 +3001,17 @@ export interface ChurchSettings {
   qtSimpleBook: string;
   isTrialing: boolean;
   trialDaysLeft: number;
+  plan: string;
 }
 
 /**
+ * legacy 플랜은 모든 모듈 허용 (기존 교회).
  * bible_text를 제외한 모든 모듈은 trialing 중에 열림.
  * bible_text는 라이센스 계약이 필요하므로 trial에서도 modules 값만 따름.
  */
 export function hasModule(settings: ChurchSettings | null | undefined, module: string): boolean {
   if (!settings) return false;
+  if (settings.plan === 'legacy') return true;
   if (module !== 'bible_text' && settings.isTrialing) return true;
   return settings.modules[module] ?? false;
 }
@@ -3032,7 +3035,8 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
     const info = infoRows[0] ?? null;
     const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
     const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
-    const isTrialing = info?.status === 'trialing' && trialMs > 0;
+    const isTrialing = info?.billing_status === 'trialing' && trialMs > 0;
+    const plan = info ? (info.plan as string) : 'free';
     return {
       qtMode: (row.qt_mode as QTMode) ?? 'simple',
       modules: (row.modules as Record<string, boolean>) ?? {},
@@ -3041,6 +3045,7 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
       qtSimpleBook: (row.qt_simple_book as string) ?? '시편',
       isTrialing: isTrialing as boolean,
       trialDaysLeft: isTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0,
+      plan,
     };
   } catch {
     return null;
