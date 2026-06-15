@@ -85,8 +85,7 @@ BEGIN
     )
     RETURNING id INTO user_church_id;
 
-    INSERT INTO public.church_settings (church_id, qt_mode, modules, terms)
-    VALUES (user_church_id, 'simple', '{}', '{}');
+    -- church_settings는 churches_default_settings 트리거가 자동 생성
 
     INSERT INTO public.districts (name, church_id, is_active)
     VALUES (new_district_name, user_church_id, true)
