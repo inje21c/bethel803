@@ -303,6 +303,10 @@ export default function Login() {
 
           {/* 회원가입 탭 */}
           <TabsContent value="register">
+            {/* 초대 링크 안내 */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 px-3 py-2.5 mb-4 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+              초대 링크를 받으셨나요? <span className="font-medium">링크를 직접 클릭</span>하면 구역이 자동으로 연결됩니다. 여기서 가입하면 구역장 승인이 필요합니다.
+            </div>
             {regDone ? (
               <div className="text-center py-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">

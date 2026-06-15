@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { ChevronRight, ChevronLeft, Check, Building2, User, Mail } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Building2, User, Mail, AlertCircle } from 'lucide-react';
 
 type Step = 1 | 2 | 3;
 
@@ -86,6 +86,18 @@ export default function ChurchSignup() {
           </div>
           <h1 className="font-display text-2xl font-bold">교회 등록하기</h1>
           <p className="text-sm text-muted-foreground">30일 무료 체험 · 신용카드 불필요</p>
+        </div>
+
+        {/* 오진입 방지 안내 */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 flex gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-800 dark:text-amber-300 space-y-1">
+            <p className="font-semibold">이미 다른 구역장이 교회를 등록했나요?</p>
+            <p className="text-xs leading-relaxed">
+              같은 교회의 다른 구역·소모임이라면 <span className="font-medium">교회를 새로 등록하지 마세요</span>.
+              구역장에게 <span className="font-medium">초대 링크</span>를 요청하면 기존 교회에 합류할 수 있습니다.
+            </p>
+          </div>
         </div>
 
         {/* 스텝 인디케이터 */}
