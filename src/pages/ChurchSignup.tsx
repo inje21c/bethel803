@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,13 @@ type Step = 1 | 2 | 3;
 export default function ChurchSignup() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
+
+  // 이미 로그인된 경우 대시보드로
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate('/dashboard', { replace: true });
+    });
+  }, [navigate]);
   const [loading, setLoading] = useState(false);
 
   // Step 1: 교회 정보
@@ -49,9 +56,13 @@ export default function ChurchSignup() {
         },
       });
       if (error) throw error;
-      // 이메일 확인이 필요 없으면 세션이 바로 생성됨
-      const needsConfirm = !data.session;
-      setEmailConfirmRequired(needsConfirm);
+      // 세션이 바로 생성되면 onboarding으로 직행
+      if (data.session) {
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+      // 이메일 확인 필요 시에만 step 3 표시
+      setEmailConfirmRequired(true);
       setStep(3);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '가입 중 오류가 발생했습니다.');
