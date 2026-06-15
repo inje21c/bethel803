@@ -46,6 +46,7 @@ const QTDeepMeditation = lazy(() => import("./pages/QTDeepMeditation"));
 const QTLeaderDashboard = lazy(() => import("./pages/QTLeaderDashboard"));
 const ChurchSignup = lazy(() => import("./pages/ChurchSignup"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Join = lazy(() => import("./pages/Join"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -89,6 +90,7 @@ function AppRoutes() {
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup/church" element={<ChurchSignup />} />
+        <Route path="/join" element={<Join />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/pending" element={<PendingApproval />} />

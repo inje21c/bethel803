@@ -736,6 +736,41 @@ export default function AdminDashboard() {
 
           {/* Members Management Tab */}
           <TabsContent value="members" className="space-y-4 md:col-start-2 md:mt-0">
+            {/* 초대 링크 */}
+            {isMaster && allDistricts.filter(d => d.isActive).length > 0 && (
+              <Card>
+                <CardHeader className="px-4 py-4 md:px-6 md:py-6">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Link className="w-4 h-4 text-primary" />
+                    구성원 초대 링크
+                  </CardTitle>
+                  <CardDescription className="text-xs">링크를 공유하면 해당 구역으로 바로 가입할 수 있습니다.</CardDescription>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 md:px-6 md:pb-6 space-y-2">
+                  {allDistricts.filter(d => d.isActive).map(district => {
+                    const inviteUrl = `${window.location.origin}/join?d=${district.id}`;
+                    return (
+                      <div key={district.id} className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+                        <span className="text-sm font-medium min-w-[60px] shrink-0">{district.name}</span>
+                        <span className="flex-1 text-xs text-muted-foreground truncate font-mono">{inviteUrl}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 shrink-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(inviteUrl);
+                            toast.success(`${district.name} 초대 링크 복사됨`);
+                          }}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Pending Approval */}
             {pendingUsers.length > 0 && (
               <Card>
