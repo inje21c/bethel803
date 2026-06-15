@@ -223,8 +223,8 @@ export default function Login() {
           <div className="w-16 h-16 rounded-2xl bg-primary mx-auto mb-4 flex items-center justify-center shadow-lg">
             <BookOpen className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground">벧엘교회</h1>
-          <p className="text-muted-foreground text-sm mt-1">구역 관리</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">벧엘구역</h1>
+          <p className="text-muted-foreground text-sm mt-1">소모임 커뮤니티</p>
         </div>
 
         <Tabs defaultValue="login" className="card-elevated p-6">

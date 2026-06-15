@@ -17,7 +17,7 @@ const sections: Section[] = [
     icon: Home,
     content: [
       {
-        subtitle: '벧엘교회 구역 앱이란?',
+        subtitle: '벧엘구역 앱이란?',
         text: '구역 모임을 위한 올인원 앱입니다. 매일의 QT(오늘의 QT), 구역성경공부, 기도제목 나눔, 성경읽기 기록, 주요 일정을 한곳에서 관리할 수 있습니다. 매일 들어와 말씀을 묵상하고 구역 식구와 함께 신앙생활을 이어갈 수 있도록 설계되었습니다.',
       },
       {
@@ -278,7 +278,7 @@ export default function UserManual() {
               <HelpCircle className="w-6 h-6 text-primary" /> 사용자 매뉴얼
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              벧엘교회 구역 앱 사용 안내
+              벧엘구역 앱 사용 안내
             </p>
           </div>
           <div className="flex gap-2">
