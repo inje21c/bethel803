@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { withApiTimeout } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -33,15 +32,13 @@ export default function Join() {
       setInfoError(true);
       return;
     }
-    withApiTimeout(
-      supabase
-        .from('districts')
-        .select('id, name, churches(name)')
-        .eq('id', districtId)
-        .eq('is_active', true)
-        .maybeSingle(),
-      '구역 정보 조회'
-    ).then(({ data, error }) => {
+    supabase
+      .from('districts')
+      .select('id, name, churches(name)')
+      .eq('id', districtId)
+      .eq('is_active', true)
+      .maybeSingle()
+      .then(({ data, error }) => {
       if (error || !data) {
         setInfoError(true);
       } else {
