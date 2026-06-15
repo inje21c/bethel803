@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { getMyChurchInfo } from '@/lib/api';
+import { useChurch } from '@/lib/churchContext';
 import { Button } from '@/components/ui/button';
 import {
   Users, BookOpen, MessageSquare, BookMarked, ChevronRight, Clock,
@@ -18,11 +17,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { data: church } = useQuery({
-    queryKey: ['my_church_info'],
-    queryFn: getMyChurchInfo,
-    staleTime: 1000 * 60 * 5,
-  });
+  const { settings: church } = useChurch();
 
   function handleStart() {
     localStorage.setItem('bethel_onboarded', '1');

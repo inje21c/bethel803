@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getMyChurchInfo } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -91,11 +92,7 @@ export default function Dashboard() {
     enabled: groupPrayerIds.length > 0,
   });
 
-  const { data: churchInfo } = useQuery({
-    queryKey: ['my_church_info'],
-    queryFn: getMyChurchInfo,
-    staleTime: 1000 * 60 * 30,
-  });
+  const { settings: churchInfo } = useChurch();
 
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({

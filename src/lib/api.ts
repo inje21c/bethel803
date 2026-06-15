@@ -2999,6 +2999,10 @@ export interface ChurchSettings {
   bulletinUrlPattern: string | null;
   terms: Record<string, string>;
   qtSimpleBook: string;
+  name: string;
+  slug: string;
+  status: string;
+  billingStatus: string;
   isTrialing: boolean;
   trialDaysLeft: number;
   plan: string;
@@ -3021,41 +3025,54 @@ export function hasModule(settings: ChurchSettings | null | undefined, module: s
  * 테이블이 없거나(021/027 미적용 prod) 행이 없으면 null → 호출측은 현행(scraped) 동작 유지.
  */
 export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
-  try {
-    // allSettled: 한 쪽 타임아웃이 다른 쪽을 죽이지 않음
-    const [settingsResult, infoResult] = await Promise.allSettled([
-      withApiTimeout(
-        supabase.from('church_settings').select('*').limit(1).maybeSingle(),
-        '교회 설정 조회'
-      ),
-      withApiTimeout(supabase.rpc('get_my_church_info'), '교회 정보 조회'),
-    ]);
-    if (settingsResult.status === 'rejected') return null;
-    const settingsRes = settingsResult.value;
-    if (settingsRes.error || !settingsRes.data) return null;
-    const row = settingsRes.data as Record<string, unknown>;
+  // allSettled: 한 쪽 타임아웃이 다른 쪽을 죽이지 않음
+  const [settingsResult, infoResult] = await Promise.allSettled([
+    withApiTimeout(
+      supabase.from('church_settings').select('*').limit(1).maybeSingle(),
+      '교회 설정 조회'
+    ),
+    withApiTimeout(supabase.rpc('get_my_church_info'), '교회 정보 조회'),
+  ]);
 
-    const infoRows = infoResult.status === 'fulfilled' && !infoResult.value.error
-      ? ((infoResult.value.data as Record<string, unknown>[] | null) ?? [])
-      : [];
-    const info = infoRows[0] ?? null;
-    const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
-    const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
-    const isTrialing = info?.billing_status === 'trialing' && trialMs > 0;
-    const plan = info ? (info.plan as string) : 'unknown';
-    return {
-      qtMode: (row.qt_mode as QTMode) ?? 'simple',
-      modules: (row.modules as Record<string, boolean>) ?? {},
-      bulletinUrlPattern: (row.bulletin_url_pattern as string) ?? null,
-      terms: (row.terms as Record<string, string>) ?? {},
-      qtSimpleBook: (row.qt_simple_book as string) ?? '시편',
-      isTrialing: isTrialing as boolean,
-      trialDaysLeft: isTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0,
-      plan,
-    };
-  } catch {
-    return null;
+  // 설정 조회가 '일시 실패(타임아웃/네트워크)'면 throw → React Query가 직전 캐시를 유지.
+  // null을 반환하면 hasModule이 fail-closed로 떨어져 본문 접근이 깜빡이는 문제 방지.
+  if (settingsResult.status === 'rejected') {
+    throw settingsResult.reason ?? new Error('교회 설정 조회 지연');
   }
+
+  const settingsRes = settingsResult.value;
+  // 테이블 미존재(027 미적용 prod)·행 없음 등 '확정적 무설정'은 null → 호출측 scraped 폴백
+  const row = !settingsRes.error && settingsRes.data
+    ? (settingsRes.data as Record<string, unknown>)
+    : null;
+
+  const infoRows = infoResult.status === 'fulfilled' && !infoResult.value.error
+    ? ((infoResult.value.data as Record<string, unknown>[] | null) ?? [])
+    : [];
+  const info = infoRows[0] ?? null;
+
+  // 설정 행도 없고 교회 정보도 없으면 설정 없음으로 간주 (현행 동작 유지)
+  if (!row && !info) return null;
+
+  const settingsRow = row ?? {};
+  const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
+  const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
+  const isTrialing = info?.billing_status === 'trialing' && trialMs > 0;
+
+  return {
+    qtMode: (settingsRow.qt_mode as QTMode) ?? 'simple',
+    modules: (settingsRow.modules as Record<string, boolean>) ?? {},
+    bulletinUrlPattern: (settingsRow.bulletin_url_pattern as string) ?? null,
+    terms: (settingsRow.terms as Record<string, string>) ?? {},
+    qtSimpleBook: (settingsRow.qt_simple_book as string) ?? '시편',
+    name: info ? (info.name as string) : '',
+    slug: info ? (info.slug as string) : '',
+    status: info ? (info.status as string) : 'unknown',
+    billingStatus: info ? (info.billing_status as string) : 'unknown',
+    isTrialing: isTrialing as boolean,
+    trialDaysLeft: isTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0,
+    plan: info ? (info.plan as string) : 'unknown',
+  };
 }
 
 export async function assignMyDistrict(districtId: string): Promise<void> {
@@ -3083,45 +3100,6 @@ export async function deleteMyAccount(): Promise<{ error?: string; message?: str
   return {};
 }
 
-export interface ChurchInfo {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-  plan: string;
-  billingStatus: string;
-  trialEndsAt: string | null;
-  isTrialing: boolean;
-  trialDaysLeft: number;
-}
-
-export async function getMyChurchInfo(): Promise<ChurchInfo | null> {
-  try {
-    const { data, error } = await withApiTimeout(
-      supabase.rpc('get_my_church_info'),
-      '교회 정보 조회'
-    );
-    if (error || !data || (data as unknown[]).length === 0) return null;
-    const row = (data as Record<string, unknown>[])[0];
-    const trialEndsAt = (row.trial_ends_at as string) ?? null;
-    const now = Date.now();
-    const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - now : 0;
-    const trialDaysLeft = trialEndsAt ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0;
-    return {
-      id: row.id as string,
-      name: row.name as string,
-      slug: row.slug as string,
-      status: row.status as string,
-      plan: row.plan as string,
-      billingStatus: row.billing_status as string,
-      trialEndsAt,
-      isTrialing: row.status === 'trialing' && trialMs > 0,
-      trialDaysLeft,
-    };
-  } catch {
-    return null;
-  }
-}
 
 // ============================================================
 // QT simple 모드: 시편 1일 1편 (자체 성경 DB, 외부 의존/저작권 없음)

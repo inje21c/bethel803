@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
+import { useChurch } from '@/lib/churchContext';
 import {
   getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
-  getDeepMeditation, getMyChurchSettings, hasModule, getOrCreateSimpleQT, getKSTDateString,
+  getDeepMeditation, getOrCreateSimpleQT, getKSTDateString,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -18,14 +19,9 @@ export default function QTMain() {
   const today = getKSTDateString(new Date());
 
   // 교회 설정: 설정 없음(null) = 현행 scraped 동작 유지 (prod 호환)
-  const { data: settings, isLoading: settingsLoading } = useQuery({
-    queryKey: ['church_settings'],
-    queryFn: getMyChurchSettings,
-    staleTime: 1000 * 60 * 30,
-  });
-  const qtMode = settings?.qtMode ?? 'scraped';
+  const { settings, isLoading: settingsLoading, qtMode, hasModule } = useChurch();
   const qtSimpleBook = settings?.qtSimpleBook ?? '시편';
-  const hasBibleText = hasModule(settings, 'bible_text');
+  const hasBibleText = hasModule('bible_text');
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
     queryKey: ['qt_content', today, qtMode, qtSimpleBook],

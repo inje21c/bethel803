@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
 import {
   getSharedPrayerRequests,
@@ -40,8 +41,6 @@ import {
   getTodayQT,
   updateQTLeaderComment,
   getKSTDateString,
-  getMyChurchSettings,
-  hasModule,
   getBibleBooks,
   updateChurchQTSimpleBook,
 } from '@/lib/api';
@@ -346,12 +345,7 @@ export default function AdminDashboard() {
     refetchInterval: (query) => (query.state.data ? false : 60_000),
   });
 
-  const { data: churchSettings, refetch: refetchChurchSettings } = useQuery({
-    queryKey: ['church_settings'],
-    queryFn: getMyChurchSettings,
-    staleTime: 1000 * 60 * 30,
-    enabled: activeTab === 'qt' && isMaster,
-  });
+  const { settings: churchSettings, hasModule, refresh: refetchChurchSettings } = useChurch();
 
   const { data: bibleBooks = [] } = useQuery({
     queryKey: ['bible_books'],
@@ -1282,7 +1276,7 @@ export default function AdminDashboard() {
                 </Dialog>
               </CardHeader>
               <CardContent className="space-y-4">
-                {hasModule(churchSettings, 'bulletin_parsing') ? (
+                {hasModule('bulletin_parsing') ? (
                   <>
                     {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
                     <div className="flex items-center justify-between p-3 bg-muted rounded-lg">

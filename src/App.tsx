@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/authContext";
+import { ChurchProvider } from "./lib/churchContext";
 import { DistrictProvider } from "./lib/districtContext";
 import { queryClient } from "./lib/queryClient";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -139,9 +140,11 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
-              <DistrictProvider>
-                <AppRoutes />
-              </DistrictProvider>
+              <ChurchProvider>
+                <DistrictProvider>
+                  <AppRoutes />
+                </DistrictProvider>
+              </ChurchProvider>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

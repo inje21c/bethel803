@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
 import {
   addBibleBookmark,
@@ -35,8 +36,6 @@ import {
   getBibleReadingLogs,
   getCurrentLockStatus,
   getKSTDateString,
-  getMyChurchSettings,
-  hasModule,
   getPrimaryBibleReadingPlan,
   setBiblePlanItemCompleted,
   updateBibleReadingLog,
@@ -258,12 +257,8 @@ export default function BibleReading() {
     enabled: !!currentDistrictId,
   });
 
-  const { data: churchSettings } = useQuery({
-    queryKey: ['church_settings'],
-    queryFn: getMyChurchSettings,
-    staleTime: 1000 * 60 * 30,
-  });
-  const hasBibleText = hasModule(churchSettings, 'bible_text');
+  const { hasModule, isLoading: churchLoading } = useChurch();
+  const hasBibleText = hasModule('bible_text');
 
   const bookmarkMap = useMemo(() => {
     return new Map(bookmarks.map(bookmark => [
@@ -658,7 +653,7 @@ export default function BibleReading() {
           </TabsList>
 
           <TabsContent value="reader" className="mt-0 space-y-5">
-            {!hasBibleText && (
+            {!hasBibleText && !churchLoading && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-5 text-center space-y-2">
                 <p className="font-semibold text-amber-800 dark:text-amber-300">성경 본문은 제공되지 않습니다</p>
                 <p className="text-sm text-amber-700 dark:text-amber-400">
