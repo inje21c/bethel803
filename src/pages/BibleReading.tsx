@@ -35,6 +35,8 @@ import {
   getBibleReadingLogs,
   getCurrentLockStatus,
   getKSTDateString,
+  getMyChurchSettings,
+  hasModule,
   getPrimaryBibleReadingPlan,
   setBiblePlanItemCompleted,
   updateBibleReadingLog,
@@ -255,6 +257,13 @@ export default function BibleReading() {
     queryFn: () => getCurrentLockStatus(currentDistrictId),
     enabled: !!currentDistrictId,
   });
+
+  const { data: churchSettings } = useQuery({
+    queryKey: ['church_settings'],
+    queryFn: getMyChurchSettings,
+    staleTime: 1000 * 60 * 30,
+  });
+  const hasBibleText = hasModule(churchSettings, 'bible_text');
 
   const bookmarkMap = useMemo(() => {
     return new Map(bookmarks.map(bookmark => [
@@ -649,6 +658,23 @@ export default function BibleReading() {
           </TabsList>
 
           <TabsContent value="reader" className="mt-0 space-y-5">
+            {!hasBibleText && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-5 text-center space-y-2">
+                <p className="font-semibold text-amber-800 dark:text-amber-300">성경 본문은 제공되지 않습니다</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  라이센스 제한으로 이 교회에는 성경 본문 서비스가 제공되지 않습니다.
+                </p>
+                <a
+                  href="https://www.bskorea.or.kr/bible/korbibReadpage.php"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-1 text-sm font-medium text-primary underline underline-offset-2"
+                >
+                  대한성서공회 온라인 성경 바로가기
+                </a>
+              </div>
+            )}
+            {hasBibleText && <>
             <section className="rounded-lg border bg-card p-4">
               <div className="grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto] md:items-end">
                 <label className="space-y-1.5">
@@ -890,6 +916,7 @@ export default function BibleReading() {
                 )}
               </aside>
             </div>
+            </>}
           </TabsContent>
 
           <TabsContent value="bookmarks" className="mt-0">

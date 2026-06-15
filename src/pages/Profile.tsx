@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BellRing, Link2, Lock, Save, Smartphone, User } from 'lucide-react';
+import { BellRing, Link2, Lock, Save, Smartphone, Trash2, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import {
   deactivatePushSubscription,
+  deleteMyAccount,
   getNotificationPreferences,
   getPushSubscriptions,
   saveNotificationPreferences,
@@ -32,6 +34,7 @@ import {
 import { toast } from 'sonner';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const { user, updatePassword, refreshProfile, linkGoogleAccount, linkKakaoAccount } = useAuth();
   const queryClient = useQueryClient();
 
@@ -85,6 +88,28 @@ export default function Profile() {
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== '탈퇴') return;
+    setDeleteLoading(true);
+    try {
+      const result = await deleteMyAccount();
+      if (result.error === 'master_has_members') {
+        toast.error(result.message ?? '다른 구성원이 있습니다. 먼저 권한을 이전해주세요.');
+        return;
+      }
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      await supabase.auth.signOut();
+      navigate('/login', { replace: true });
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
   const [permissionState, setPermissionState] = useState<NotificationPermission | 'unsupported'>(getPushPermissionState());
   const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
   const pushSupported = isPushSupported();
@@ -524,6 +549,47 @@ export default function Profile() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* 회원탈퇴 */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="border-destructive/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base text-destructive">
+                <Trash2 className="w-4 h-4" /> 회원탈퇴
+              </CardTitle>
+              <CardDescription className="text-xs">
+                탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
+                {user?.role === 'master' && ' 교회의 모든 데이터가 함께 삭제됩니다.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="deleteConfirm" className="text-sm">
+                  확인을 위해 <span className="font-bold text-destructive">탈퇴</span>를 입력하세요
+                </Label>
+                <Input
+                  id="deleteConfirm"
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder="탈퇴"
+                  className="border-destructive/30 focus-visible:ring-destructive/30"
+                />
+              </div>
+              <Button
+                variant="destructive"
+                className="w-full"
+                disabled={deleteConfirm !== '탈퇴' || deleteLoading}
+                onClick={handleDeleteAccount}
+              >
+                {deleteLoading
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  : null}
+                계정 영구 삭제
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+
       </div>
     </AppLayout>
   );

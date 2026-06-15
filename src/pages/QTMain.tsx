@@ -5,7 +5,7 @@ import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lu
 import { useAuth } from '@/lib/authContext';
 import {
   getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
-  getDeepMeditation, getMyChurchSettings, getOrCreateSimpleQT, getKSTDateString,
+  getDeepMeditation, getMyChurchSettings, hasModule, getOrCreateSimpleQT, getKSTDateString,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -24,10 +24,12 @@ export default function QTMain() {
     staleTime: 1000 * 60 * 30,
   });
   const qtMode = settings?.qtMode ?? 'scraped';
+  const qtSimpleBook = settings?.qtSimpleBook ?? '시편';
+  const hasBibleText = hasModule(settings, 'bible_text');
 
-  const { data: qt, isLoading: qtLoading } = useQuery({
-    queryKey: ['qt_content', today],
-    queryFn: () => (qtMode === 'simple' ? getOrCreateSimpleQT(today) : getTodayQT()),
+  const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
+    queryKey: ['qt_content', today, qtMode, qtSimpleBook],
+    queryFn: () => (qtMode === 'simple' ? getOrCreateSimpleQT(today, qtSimpleBook) : getTodayQT()),
     enabled: !settingsLoading,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: true,
@@ -119,6 +121,11 @@ export default function QTMain() {
               ? '잠시 후 다시 시도해주세요.'
               : '매일 오전 6시에 업데이트됩니다.'}
           </p>
+          {qtError && (
+            <p className="text-xs text-destructive bg-destructive/10 rounded p-2 text-left break-all">
+              {String(qtError)}
+            </p>
+          )}
         </div>
       </AppLayout>
     );
@@ -166,11 +173,21 @@ export default function QTMain() {
         )}
 
         {/* 성경 본문 */}
-        {qt.scriptureText && (
+        {hasBibleText && qt.scriptureText && (
           <div className="card-elevated p-5">
             <p className="text-xs text-muted-foreground font-semibold mb-3">성경 본문 (개역개정)</p>
             <p className="text-sm leading-loose whitespace-pre-line text-foreground/90">{qt.scriptureText}</p>
           </div>
+        )}
+        {!hasBibleText && qt.scripture && (
+          <a
+            href="https://www.bskorea.or.kr/bible/korbibReadpage.php"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+          >
+            {qt.scripture} 본문 읽기 (대한성서공회)
+          </a>
         )}
 
         {/* QT 질문 */}

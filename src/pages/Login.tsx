@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -223,8 +223,8 @@ export default function Login() {
           <div className="w-16 h-16 rounded-2xl bg-primary mx-auto mb-4 flex items-center justify-center shadow-lg">
             <BookOpen className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground">벧엘교회</h1>
-          <p className="text-muted-foreground text-sm mt-1">구역 관리</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">벧엘구역</h1>
+          <p className="text-muted-foreground text-sm mt-1">소모임 커뮤니티</p>
         </div>
 
         <Tabs defaultValue="login" className="card-elevated p-6">
@@ -303,6 +303,10 @@ export default function Login() {
 
           {/* 회원가입 탭 */}
           <TabsContent value="register">
+            {/* 초대 링크 안내 */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 px-3 py-2.5 mb-4 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+              초대 링크를 받으셨나요? <span className="font-medium">링크를 직접 클릭</span>하면 구역이 자동으로 연결됩니다. 여기서 가입하면 구역장 승인이 필요합니다.
+            </div>
             {regDone ? (
               <div className="text-center py-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
@@ -405,6 +409,14 @@ export default function Login() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* 교회 등록 링크 */}
+        <p className="text-center text-xs text-muted-foreground pt-2">
+          새 교회를 등록하시겠어요?{' '}
+          <Link to="/signup/church" className="text-primary underline underline-offset-2 font-medium">
+            교회 무료 등록
+          </Link>
+        </p>
 
         {/* 비밀번호 재설정 다이얼로그 */}
         <Dialog open={resetOpen} onOpenChange={setResetOpen}>

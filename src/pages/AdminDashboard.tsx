@@ -40,6 +40,10 @@ import {
   getTodayQT,
   updateQTLeaderComment,
   getKSTDateString,
+  getMyChurchSettings,
+  hasModule,
+  getBibleBooks,
+  updateChurchQTSimpleBook,
 } from '@/lib/api';
 import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport, StudySource } from '@/lib/api';
 import type { BibleStudy } from '@/lib/api';
@@ -340,6 +344,29 @@ export default function AdminDashboard() {
     enabled: activeTab === 'qt',
     refetchOnWindowFocus: true,
     refetchInterval: (query) => (query.state.data ? false : 60_000),
+  });
+
+  const { data: churchSettings, refetch: refetchChurchSettings } = useQuery({
+    queryKey: ['church_settings'],
+    queryFn: getMyChurchSettings,
+    staleTime: 1000 * 60 * 30,
+    enabled: activeTab === 'qt' && isMaster,
+  });
+
+  const { data: bibleBooks = [] } = useQuery({
+    queryKey: ['bible_books'],
+    queryFn: getBibleBooks,
+    staleTime: Infinity,
+    enabled: activeTab === 'qt' && isMaster,
+  });
+
+  const updateQTBookMutation = useMutation({
+    mutationFn: updateChurchQTSimpleBook,
+    onSuccess: () => {
+      refetchChurchSettings();
+      toast.success('QT 말씀 책이 변경됐습니다.');
+    },
+    onError: () => toast.error('변경에 실패했습니다.'),
   });
 
   const { data: qtMembers = [], isLoading: qtMembersLoading } = useQuery({
@@ -710,6 +737,41 @@ export default function AdminDashboard() {
 
           {/* Members Management Tab */}
           <TabsContent value="members" className="space-y-4 md:col-start-2 md:mt-0">
+            {/* 초대 링크 */}
+            {isMaster && allDistricts.filter(d => d.isActive).length > 0 && (
+              <Card>
+                <CardHeader className="px-4 py-4 md:px-6 md:py-6">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Link className="w-4 h-4 text-primary" />
+                    구성원 초대 링크
+                  </CardTitle>
+                  <CardDescription className="text-xs">링크를 공유하면 해당 구역으로 바로 가입할 수 있습니다.</CardDescription>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 md:px-6 md:pb-6 space-y-2">
+                  {allDistricts.filter(d => d.isActive).map(district => {
+                    const inviteUrl = `${window.location.origin}/join?d=${district.id}`;
+                    return (
+                      <div key={district.id} className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+                        <span className="text-sm font-medium min-w-[60px] shrink-0">{district.name}</span>
+                        <span className="flex-1 text-xs text-muted-foreground truncate font-mono">{inviteUrl}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 shrink-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(inviteUrl);
+                            toast.success(`${district.name} 초대 링크 복사됨`);
+                          }}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Pending Approval */}
             {pendingUsers.length > 0 && (
               <Card>
@@ -1220,51 +1282,59 @@ export default function AdminDashboard() {
                 </Dialog>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">이번 주 주보 자동 파싱</p>
-                    <p className="text-xs text-muted-foreground">bethel.or.kr 주보 PDF 자동 다운로드 → GPT-4o 파싱</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleParseBulletin()}
-                    disabled={parsingBulletin}
-                  >
-                    {parsingBulletin ? (
-                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                    ) : (
-                      <Download className="w-3 h-3 mr-1" />
-                    )}
-                    자동 파싱
-                  </Button>
-                </div>
+                {hasModule(churchSettings, 'bulletin_parsing') ? (
+                  <>
+                    {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium">이번 주 주보 자동 파싱</p>
+                        <p className="text-xs text-muted-foreground">bethel.or.kr 주보 PDF 자동 다운로드 → GPT-4o 파싱</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleParseBulletin()}
+                        disabled={parsingBulletin}
+                      >
+                        {parsingBulletin ? (
+                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Download className="w-3 h-3 mr-1" />
+                        )}
+                        자동 파싱
+                      </Button>
+                    </div>
 
-                {/* 수동 URL 입력 */}
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">PDF URL 직접 입력</p>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="http://bethel.or.kr/wp-content/uploads/2026/03/weekly260308.pdf"
-                      value={bulletinUrl}
-                      onChange={(e) => setBulletinUrl(e.target.value)}
-                      className="text-xs"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleParseBulletin(bulletinUrl)}
-                      disabled={parsingBulletin || !bulletinUrl.trim()}
-                    >
-                      <Link className="w-3 h-3 mr-1" />
-                      파싱
-                    </Button>
-                  </div>
-                </div>
+                    {/* 수동 URL 입력 */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">PDF URL 직접 입력</p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="http://bethel.or.kr/wp-content/uploads/2026/03/weekly260308.pdf"
+                          value={bulletinUrl}
+                          onChange={(e) => setBulletinUrl(e.target.value)}
+                          className="text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleParseBulletin(bulletinUrl)}
+                          disabled={parsingBulletin || !bulletinUrl.trim()}
+                        >
+                          <Link className="w-3 h-3 mr-1" />
+                          파싱
+                        </Button>
+                      </div>
+                    </div>
 
-                <p className="text-xs text-muted-foreground">
-                  CRON: 매주 일요일 20:00 KST 자동 실행 | 등록된 공부: {bibleStudies.length}개 (발행: {bibleStudies.filter(s => s.published).length}개)
-                </p>
+                    <p className="text-xs text-muted-foreground">
+                      CRON: 매주 일요일 20:00 KST 자동 실행 | 등록된 공부: {bibleStudies.length}개 (발행: {bibleStudies.filter(s => s.published).length}개)
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-2">
+                    주보 자동 파싱은 이 교회에 활성화되지 않았습니다.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -1723,6 +1793,41 @@ export default function AdminDashboard() {
               });
               return (
                 <>
+                  {/* church master: simple 모드 말씀 책 설정 */}
+                  {isMaster && churchSettings?.qtMode === 'simple' && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">QT 말씀 설정</CardTitle>
+                        <CardDescription className="text-xs">
+                          매일 묵상할 성경 책을 선택합니다. day-of-year 순서로 1장씩 순환합니다.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex gap-2 items-center">
+                          <Select
+                            value={churchSettings.qtSimpleBook}
+                            onValueChange={(val) => updateQTBookMutation.mutate(val)}
+                            disabled={updateQTBookMutation.isPending}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {bibleBooks.map((b) => (
+                                <SelectItem key={b.id} value={b.koreanName}>
+                                  {b.koreanName} ({b.chapterCount}장)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs text-muted-foreground">
+                            현재: {churchSettings.qtSimpleBook}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   <div className="grid grid-cols-3 gap-3">
                     <Card>
                       <CardContent className="pt-4 text-center">
@@ -1861,26 +1966,29 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">완료 {studyAnswers.filter(a => a.completed).length}명 / 전체 {studyAnswers.length}명 제출</p>
-                {studyAnswers.map((answer) => (
-                  <div key={answer.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{answer.userName}</span>
-                      {answer.completed
-                        ? <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">완료</span>
-                        : <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">임시저장</span>
-                      }
-                      <span className="text-xs text-muted-foreground ml-auto">{answer.updatedAt.slice(0, 10)}</span>
-                    </div>
-                    {viewAnswersStudy && (viewAnswersStudy.questions as string[]).map((q, i) => (
-                      <div key={i} className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">{i + 1}. {q}</p>
-                        <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">
-                          {answer.answers[i] || <span className="text-muted-foreground italic">미작성</span>}
-                        </p>
+                {studyAnswers.map((answer) => {
+                  const isMe = answer.userId === user?.id;
+                  return (
+                    <div key={answer.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{answer.userName}</span>
+                        {answer.completed
+                          ? <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">완료</span>
+                          : <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">임시저장</span>
+                        }
+                        <span className="text-xs text-muted-foreground ml-auto">{answer.updatedAt.slice(0, 10)}</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {isMe && viewAnswersStudy && (viewAnswersStudy.questions as string[]).map((q, i) => (
+                        <div key={i} className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">{i + 1}. {q}</p>
+                          <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">
+                            {answer.answers[i] || <span className="text-muted-foreground italic">미작성</span>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </DialogContent>

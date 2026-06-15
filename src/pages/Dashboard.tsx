@@ -5,7 +5,7 @@ import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, Calenda
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getMyChurchInfo } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -91,6 +91,12 @@ export default function Dashboard() {
     enabled: groupPrayerIds.length > 0,
   });
 
+  const { data: churchInfo } = useQuery({
+    queryKey: ['my_church_info'],
+    queryFn: getMyChurchInfo,
+    staleTime: 1000 * 60 * 30,
+  });
+
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({
     mutationFn: (prayerRequestId: string) => toggleIntercession(prayerRequestId, user!.id),
@@ -145,6 +151,30 @@ export default function Dashboard() {
           <h1 className="font-display text-2xl font-bold">안녕하세요, {user?.name}님</h1>
           <p className="text-muted-foreground text-sm mt-1">이번 주도 은혜로운 한 주 보내세요!</p>
         </div>
+
+        {/* Trial 배너 */}
+        {churchInfo?.isTrialing && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-sm font-bold text-primary">{churchInfo.trialDaysLeft}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">무료 체험 {churchInfo.trialDaysLeft}일 남음</p>
+              <p className="text-xs text-muted-foreground">체험 기간 중 모든 기능을 제한 없이 사용하세요</p>
+            </div>
+          </div>
+        )}
+        {churchInfo && !churchInfo.isTrialing && churchInfo.status === 'trialing' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">무료 체험이 종료되었습니다</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400">일부 기능이 제한됩니다. 계속 사용하려면 플랜을 선택하세요.</p>
+            </div>
+            <Link to="/pricing" className="text-xs font-semibold text-primary underline underline-offset-2 shrink-0">
+              플랜 보기
+            </Link>
+          </div>
+        )}
 
         {/* QT 히어로 카드 */}
         <motion.div variants={item} initial="hidden" animate="show">

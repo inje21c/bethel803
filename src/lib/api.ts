@@ -2998,25 +2998,114 @@ export interface ChurchSettings {
   modules: Record<string, boolean>;
   bulletinUrlPattern: string | null;
   terms: Record<string, string>;
+  qtSimpleBook: string;
+  isTrialing: boolean;
+  trialDaysLeft: number;
 }
 
 /**
- * 내 교회 설정 조회.
+ * bible_text를 제외한 모든 모듈은 trialing 중에 열림.
+ * bible_text는 라이센스 계약이 필요하므로 trial에서도 modules 값만 따름.
+ */
+export function hasModule(settings: ChurchSettings | null | undefined, module: string): boolean {
+  if (!settings) return false;
+  if (module !== 'bible_text' && settings.isTrialing) return true;
+  return settings.modules[module] ?? false;
+}
+
+/**
+ * 내 교회 설정 조회 (church_settings + churches trial 상태 병합).
  * 테이블이 없거나(021/027 미적용 prod) 행이 없으면 null → 호출측은 현행(scraped) 동작 유지.
  */
 export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   try {
-    const { data, error } = await withApiTimeout(
-      supabase.from('church_settings').select('*').limit(1).maybeSingle(),
-      '교회 설정 조회'
-    );
-    if (error || !data) return null;
-    const row = data as Record<string, unknown>;
+    const [settingsRes, infoRes] = await Promise.all([
+      withApiTimeout(
+        supabase.from('church_settings').select('*').limit(1).maybeSingle(),
+        '교회 설정 조회'
+      ),
+      withApiTimeout(supabase.rpc('get_my_church_info'), '교회 정보 조회'),
+    ]);
+    if (settingsRes.error || !settingsRes.data) return null;
+    const row = settingsRes.data as Record<string, unknown>;
+    const infoRows = (infoRes.data as Record<string, unknown>[] | null) ?? [];
+    const info = infoRows[0] ?? null;
+    const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
+    const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
+    const isTrialing = info?.status === 'trialing' && trialMs > 0;
     return {
       qtMode: (row.qt_mode as QTMode) ?? 'simple',
       modules: (row.modules as Record<string, boolean>) ?? {},
       bulletinUrlPattern: (row.bulletin_url_pattern as string) ?? null,
       terms: (row.terms as Record<string, string>) ?? {},
+      qtSimpleBook: (row.qt_simple_book as string) ?? '시편',
+      isTrialing: isTrialing as boolean,
+      trialDaysLeft: isTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function assignMyDistrict(districtId: string): Promise<void> {
+  const { error } = await supabase.rpc('assign_my_district', { p_district_id: districtId });
+  if (error) throw error;
+}
+
+export async function deleteMyAccount(): Promise<{ error?: string; message?: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: '로그인 필요' };
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+    {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'content-type': 'application/json',
+      },
+    }
+  );
+  const json = await res.json() as { success?: boolean; error?: string; message?: string };
+  if (!res.ok) return { error: json.error, message: json.message };
+  return {};
+}
+
+export interface ChurchInfo {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  billingStatus: string;
+  trialEndsAt: string | null;
+  isTrialing: boolean;
+  trialDaysLeft: number;
+}
+
+export async function getMyChurchInfo(): Promise<ChurchInfo | null> {
+  try {
+    const { data, error } = await withApiTimeout(
+      supabase.rpc('get_my_church_info'),
+      '교회 정보 조회'
+    );
+    if (error || !data || (data as unknown[]).length === 0) return null;
+    const row = (data as Record<string, unknown>[])[0];
+    const trialEndsAt = (row.trial_ends_at as string) ?? null;
+    const now = Date.now();
+    const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - now : 0;
+    const trialDaysLeft = trialEndsAt ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0;
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      slug: row.slug as string,
+      status: row.status as string,
+      plan: row.plan as string,
+      billingStatus: row.billing_status as string,
+      trialEndsAt,
+      isTrialing: row.status === 'trialing' && trialMs > 0,
+      trialDaysLeft,
     };
   } catch {
     return null;
@@ -3027,53 +3116,66 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
 // QT simple 모드: 시편 1일 1편 (자체 성경 DB, 외부 의존/저작권 없음)
 // ============================================================
 
-/** KST 날짜 기준 day-of-year → 시편 장 (1~150 순환) */
-export function getSimplePsalmChapter(dateStr: string): number {
+/** KST 날짜 기준 day-of-year → 해당 책 장 번호 (1~chapterCount 순환) */
+export function getSimpleQTChapter(dateStr: string, chapterCount: number): number {
   const date = new Date(dateStr + 'T00:00:00');
   const start = new Date(date.getFullYear(), 0, 1);
   const dayOfYear = Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
-  return ((dayOfYear - 1) % 150) + 1;
+  return ((dayOfYear - 1) % chapterCount) + 1;
+}
+
+/** @deprecated getSimpleQTChapter 사용 */
+export function getSimplePsalmChapter(dateStr: string): number {
+  return getSimpleQTChapter(dateStr, 150);
 }
 
 /**
  * simple 모드용 오늘 QT 콘텐츠를 lazy 생성한다.
  * 이미 있으면 그대로 반환. 동시 생성 race는 UNIQUE 충돌 후 재조회로 해소.
  * (church_id는 DB 트리거가 호출자 교회로 자동 설정)
+ * @param bookName bible_books.korean_name 기준 책 이름 (기본: '시편')
  */
-export async function getOrCreateSimpleQT(date: string): Promise<QTContent | null> {
+export async function getOrCreateSimpleQT(date: string, bookName = '시편'): Promise<QTContent | null> {
   const existing = await getQTByDate(date);
   if (existing) return existing;
 
-  const chapter = getSimplePsalmChapter(date);
-
   const { data: book, error: bookError } = await withApiTimeout(
-    supabase.from('bible_books').select('id').eq('korean_name', '시편').single(),
+    supabase.from('bible_books').select('id, chapter_count').eq('korean_name', bookName).single(),
     '성경 책 조회'
   );
-  if (bookError || !book) return null;
+  if (bookError) throw new Error(`bible_books 조회 실패 (${bookName}): ${bookError.message}`);
+  if (!book) throw new Error(`bible_books에 '${bookName}' 행이 없습니다. 성경 시드를 확인하세요.`);
+
+  const { id: bookId, chapter_count: chapterCount } = book as { id: number; chapter_count: number };
+  const chapter = getSimpleQTChapter(date, chapterCount);
 
   const { data: verses, error: versesError } = await withApiTimeout(
     supabase
       .from('bible_verses')
       .select('verse, text')
-      .eq('book_id', (book as { id: number }).id)
+      .eq('book_id', bookId)
       .eq('chapter', chapter)
       .order('verse'),
     '성경 본문 조회'
   );
-  if (versesError || !verses || verses.length === 0) return null;
+  if (versesError) throw new Error(`bible_verses 조회 실패 (${bookName} ${chapter}장): ${versesError.message}`);
+  if (!verses || verses.length === 0) throw new Error(`bible_verses에 ${bookName} ${chapter}장 데이터 없음.`);
 
   const scriptureText = (verses as { verse: number; text: string }[])
     .map(v => `${v.verse} ${v.text}`)
     .join('\n');
+
+  // 시편은 '편', 그 외 책은 '장'
+  const chapterLabel = bookName === '시편' ? `${chapter}편` : `${chapter}장`;
+  const title = `${bookName} ${chapterLabel}`;
 
   const { data: created, error: insertError } = await withApiTimeout(
     supabase
       .from('qt_contents')
       .insert({
         date,
-        title: `시편 ${chapter}편`,
-        scripture: `시편 ${chapter}편`,
+        title,
+        scripture: title,
         scripture_text: scriptureText,
         question: '오늘 말씀에서 마음에 와닿은 구절은 무엇인가요? 그 이유도 함께 묵상해보세요.',
       })
@@ -3083,11 +3185,27 @@ export async function getOrCreateSimpleQT(date: string): Promise<QTContent | nul
   );
 
   if (insertError) {
-    // 동시 생성으로 인한 UNIQUE 충돌 → 다른 사용자가 만든 행 재조회
     if ((insertError as { code?: string }).code === '23505') {
       return getQTByDate(date);
     }
     throw insertError;
   }
   return mapQTContent(created as Record<string, unknown>);
+}
+
+// ============================================================
+// 교회 설정 관리 (church master 전용)
+// ============================================================
+
+export async function updateChurchQTSimpleBook(bookName: string): Promise<void> {
+  // church_settings는 RLS(church_settings_update_master)로 자기 교회 행만 UPDATE 가능
+  // not('church_id', 'is', null)은 전체 행 대상 필터로 RLS가 교회 범위를 제한
+  const { error } = await withApiTimeout(
+    supabase
+      .from('church_settings')
+      .update({ qt_simple_book: bookName })
+      .not('church_id', 'is', null),
+    'QT 책 설정 변경'
+  );
+  if (error) throw error;
 }
