@@ -1966,26 +1966,29 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">완료 {studyAnswers.filter(a => a.completed).length}명 / 전체 {studyAnswers.length}명 제출</p>
-                {studyAnswers.map((answer) => (
-                  <div key={answer.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{answer.userName}</span>
-                      {answer.completed
-                        ? <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">완료</span>
-                        : <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">임시저장</span>
-                      }
-                      <span className="text-xs text-muted-foreground ml-auto">{answer.updatedAt.slice(0, 10)}</span>
-                    </div>
-                    {viewAnswersStudy && (viewAnswersStudy.questions as string[]).map((q, i) => (
-                      <div key={i} className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">{i + 1}. {q}</p>
-                        <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">
-                          {answer.answers[i] || <span className="text-muted-foreground italic">미작성</span>}
-                        </p>
+                {studyAnswers.map((answer) => {
+                  const isMe = answer.userId === user?.id;
+                  return (
+                    <div key={answer.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{answer.userName}</span>
+                        {answer.completed
+                          ? <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">완료</span>
+                          : <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">임시저장</span>
+                        }
+                        <span className="text-xs text-muted-foreground ml-auto">{answer.updatedAt.slice(0, 10)}</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {isMe && viewAnswersStudy && (viewAnswersStudy.questions as string[]).map((q, i) => (
+                        <div key={i} className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">{i + 1}. {q}</p>
+                          <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">
+                            {answer.answers[i] || <span className="text-muted-foreground italic">미작성</span>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </DialogContent>
