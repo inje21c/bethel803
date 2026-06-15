@@ -55,7 +55,7 @@ export default function Landing() {
       {/* 히어로 */}
       <section className="max-w-4xl mx-auto px-4 py-20 text-center space-y-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-          30일 무료 체험 · 신용카드 불필요
+          30일 무료 체험
         </div>
         <h1 className="font-display text-4xl sm:text-5xl font-bold leading-tight">
           구역 모임을<br />더 풍성하게
