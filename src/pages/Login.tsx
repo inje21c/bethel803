@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -405,6 +405,14 @@ export default function Login() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* 교회 등록 링크 */}
+        <p className="text-center text-xs text-muted-foreground pt-2">
+          새 교회를 등록하시겠어요?{' '}
+          <Link to="/signup/church" className="text-primary underline underline-offset-2 font-medium">
+            교회 무료 등록
+          </Link>
+        </p>
 
         {/* 비밀번호 재설정 다이얼로그 */}
         <Dialog open={resetOpen} onOpenChange={setResetOpen}>
