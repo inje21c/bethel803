@@ -41,6 +41,7 @@ import {
   updateQTLeaderComment,
   getKSTDateString,
   getMyChurchSettings,
+  hasModule,
   getBibleBooks,
   updateChurchQTSimpleBook,
 } from '@/lib/api';
@@ -1281,7 +1282,7 @@ export default function AdminDashboard() {
                 </Dialog>
               </CardHeader>
               <CardContent className="space-y-4">
-                {churchSettings?.modules?.bulletin_parsing ? (
+                {hasModule(churchSettings, 'bulletin_parsing') ? (
                   <>
                     {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
                     <div className="flex items-center justify-between p-3 bg-muted rounded-lg">

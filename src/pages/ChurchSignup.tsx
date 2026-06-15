@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { ChevronRight, ChevronLeft, Check, Building2, User, Mail } from 'lucide-react';
 
@@ -29,6 +30,8 @@ export default function ChurchSignup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   // Step 3: 완료 (이메일 확인 필요 여부)
   const [emailConfirmRequired, setEmailConfirmRequired] = useState(false);
@@ -194,12 +197,26 @@ export default function ChurchSignup() {
                   onChange={(e) => setPasswordConfirm(e.target.value)}
                   placeholder="비밀번호 재입력"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && name && email && password && passwordConfirm) {
+                    if (e.key === 'Enter' && name && email && password && passwordConfirm && termsAgreed) {
                       handleSubmit();
                     }
                   }}
                 />
               </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <Checkbox
+                id="terms"
+                checked={termsAgreed}
+                onCheckedChange={(v) => setTermsAgreed(!!v)}
+              />
+              <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                <Link to="/terms" target="_blank" className="text-primary underline underline-offset-2">이용약관</Link>
+                {' '}및{' '}
+                <Link to="/privacy" target="_blank" className="text-primary underline underline-offset-2">개인정보처리방침</Link>
+                에 동의합니다.
+              </label>
             </div>
 
             <div className="flex gap-3">
@@ -208,7 +225,7 @@ export default function ChurchSignup() {
               </Button>
               <Button
                 className="flex-1"
-                disabled={!name.trim() || !email.trim() || !password || !passwordConfirm || loading}
+                disabled={!name.trim() || !email.trim() || !password || !passwordConfirm || !termsAgreed || loading}
                 onClick={handleSubmit}
               >
                 {loading ? (

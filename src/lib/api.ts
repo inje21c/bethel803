@@ -2999,26 +2999,48 @@ export interface ChurchSettings {
   bulletinUrlPattern: string | null;
   terms: Record<string, string>;
   qtSimpleBook: string;
+  isTrialing: boolean;
+  trialDaysLeft: number;
 }
 
 /**
- * 내 교회 설정 조회.
+ * bible_text를 제외한 모든 모듈은 trialing 중에 열림.
+ * bible_text는 라이센스 계약이 필요하므로 trial에서도 modules 값만 따름.
+ */
+export function hasModule(settings: ChurchSettings | null | undefined, module: string): boolean {
+  if (!settings) return false;
+  if (module !== 'bible_text' && settings.isTrialing) return true;
+  return settings.modules[module] ?? false;
+}
+
+/**
+ * 내 교회 설정 조회 (church_settings + churches trial 상태 병합).
  * 테이블이 없거나(021/027 미적용 prod) 행이 없으면 null → 호출측은 현행(scraped) 동작 유지.
  */
 export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   try {
-    const { data, error } = await withApiTimeout(
-      supabase.from('church_settings').select('*').limit(1).maybeSingle(),
-      '교회 설정 조회'
-    );
-    if (error || !data) return null;
-    const row = data as Record<string, unknown>;
+    const [settingsRes, infoRes] = await Promise.all([
+      withApiTimeout(
+        supabase.from('church_settings').select('*').limit(1).maybeSingle(),
+        '교회 설정 조회'
+      ),
+      withApiTimeout(supabase.rpc('get_my_church_info'), '교회 정보 조회'),
+    ]);
+    if (settingsRes.error || !settingsRes.data) return null;
+    const row = settingsRes.data as Record<string, unknown>;
+    const infoRows = (infoRes.data as Record<string, unknown>[] | null) ?? [];
+    const info = infoRows[0] ?? null;
+    const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
+    const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
+    const isTrialing = info?.status === 'trialing' && trialMs > 0;
     return {
       qtMode: (row.qt_mode as QTMode) ?? 'simple',
       modules: (row.modules as Record<string, boolean>) ?? {},
       bulletinUrlPattern: (row.bulletin_url_pattern as string) ?? null,
       terms: (row.terms as Record<string, string>) ?? {},
       qtSimpleBook: (row.qt_simple_book as string) ?? '시편',
+      isTrialing: isTrialing as boolean,
+      trialDaysLeft: isTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0,
     };
   } catch {
     return null;

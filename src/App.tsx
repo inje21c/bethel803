@@ -47,6 +47,9 @@ const QTLeaderDashboard = lazy(() => import("./pages/QTLeaderDashboard"));
 const ChurchSignup = lazy(() => import("./pages/ChurchSignup"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Join = lazy(() => import("./pages/Join"));
+const Landing = lazy(() => import("./pages/Landing"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -74,11 +77,11 @@ function MasterRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// 로그인 상태에 따라 루트 경로 분기
+// 로그인 상태에 따라 루트 경로 분기 (비로그인 → 랜딩)
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Landing />;
   if (user.status === 'pending') return <Navigate to="/pending" replace />;
   return <Navigate to="/dashboard" replace />;
 }
@@ -111,6 +114,8 @@ function AppRoutes() {
         <Route path="/leader/qt-dashboard" element={<ProtectedRoute><LeaderRoute><QTLeaderDashboard /></LeaderRoute></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

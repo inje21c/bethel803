@@ -36,6 +36,7 @@ import {
   getCurrentLockStatus,
   getKSTDateString,
   getMyChurchSettings,
+  hasModule,
   getPrimaryBibleReadingPlan,
   setBiblePlanItemCompleted,
   updateBibleReadingLog,
@@ -262,7 +263,7 @@ export default function BibleReading() {
     queryFn: getMyChurchSettings,
     staleTime: 1000 * 60 * 30,
   });
-  const hasBibleText = churchSettings?.modules?.bible_text ?? false;
+  const hasBibleText = hasModule(churchSettings, 'bible_text');
 
   const bookmarkMap = useMemo(() => {
     return new Map(bookmarks.map(bookmark => [
