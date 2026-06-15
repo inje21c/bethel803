@@ -216,10 +216,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-500">
         {/* 로고 */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-primary mx-auto mb-4 flex items-center justify-center shadow-lg">
             <BookOpen className="w-8 h-8 text-primary-foreground" />
           </div>
@@ -411,7 +411,7 @@ export default function Login() {
         </Tabs>
 
         {/* 교회 등록 링크 */}
-        <p className="text-center text-xs text-muted-foreground pt-2">
+        <p className="text-center text-xs text-muted-foreground pt-4 pb-2">
           새 교회를 등록하시겠어요?{' '}
           <Link to="/signup/church" className="text-primary underline underline-offset-2 font-medium">
             교회 무료 등록
