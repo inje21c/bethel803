@@ -1246,51 +1246,59 @@ export default function AdminDashboard() {
                 </Dialog>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">이번 주 주보 자동 파싱</p>
-                    <p className="text-xs text-muted-foreground">bethel.or.kr 주보 PDF 자동 다운로드 → GPT-4o 파싱</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleParseBulletin()}
-                    disabled={parsingBulletin}
-                  >
-                    {parsingBulletin ? (
-                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                    ) : (
-                      <Download className="w-3 h-3 mr-1" />
-                    )}
-                    자동 파싱
-                  </Button>
-                </div>
+                {churchSettings?.modules?.bulletin_parsing ? (
+                  <>
+                    {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium">이번 주 주보 자동 파싱</p>
+                        <p className="text-xs text-muted-foreground">bethel.or.kr 주보 PDF 자동 다운로드 → GPT-4o 파싱</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleParseBulletin()}
+                        disabled={parsingBulletin}
+                      >
+                        {parsingBulletin ? (
+                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Download className="w-3 h-3 mr-1" />
+                        )}
+                        자동 파싱
+                      </Button>
+                    </div>
 
-                {/* 수동 URL 입력 */}
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">PDF URL 직접 입력</p>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="http://bethel.or.kr/wp-content/uploads/2026/03/weekly260308.pdf"
-                      value={bulletinUrl}
-                      onChange={(e) => setBulletinUrl(e.target.value)}
-                      className="text-xs"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleParseBulletin(bulletinUrl)}
-                      disabled={parsingBulletin || !bulletinUrl.trim()}
-                    >
-                      <Link className="w-3 h-3 mr-1" />
-                      파싱
-                    </Button>
-                  </div>
-                </div>
+                    {/* 수동 URL 입력 */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">PDF URL 직접 입력</p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="http://bethel.or.kr/wp-content/uploads/2026/03/weekly260308.pdf"
+                          value={bulletinUrl}
+                          onChange={(e) => setBulletinUrl(e.target.value)}
+                          className="text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleParseBulletin(bulletinUrl)}
+                          disabled={parsingBulletin || !bulletinUrl.trim()}
+                        >
+                          <Link className="w-3 h-3 mr-1" />
+                          파싱
+                        </Button>
+                      </div>
+                    </div>
 
-                <p className="text-xs text-muted-foreground">
-                  CRON: 매주 일요일 20:00 KST 자동 실행 | 등록된 공부: {bibleStudies.length}개 (발행: {bibleStudies.filter(s => s.published).length}개)
-                </p>
+                    <p className="text-xs text-muted-foreground">
+                      CRON: 매주 일요일 20:00 KST 자동 실행 | 등록된 공부: {bibleStudies.length}개 (발행: {bibleStudies.filter(s => s.published).length}개)
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-2">
+                    주보 자동 파싱은 이 교회에 활성화되지 않았습니다.
+                  </p>
+                )}
               </CardContent>
             </Card>
 

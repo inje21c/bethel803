@@ -25,6 +25,7 @@ export default function QTMain() {
   });
   const qtMode = settings?.qtMode ?? 'scraped';
   const qtSimpleBook = settings?.qtSimpleBook ?? '시편';
+  const hasBibleText = settings?.modules?.bible_text ?? false;
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
     queryKey: ['qt_content', today, qtMode, qtSimpleBook],
@@ -172,11 +173,21 @@ export default function QTMain() {
         )}
 
         {/* 성경 본문 */}
-        {qt.scriptureText && (
+        {hasBibleText && qt.scriptureText && (
           <div className="card-elevated p-5">
             <p className="text-xs text-muted-foreground font-semibold mb-3">성경 본문 (개역개정)</p>
             <p className="text-sm leading-loose whitespace-pre-line text-foreground/90">{qt.scriptureText}</p>
           </div>
+        )}
+        {!hasBibleText && qt.scripture && (
+          <a
+            href="https://www.bskorea.or.kr/bible/korbibReadpage.php"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+          >
+            {qt.scripture} 본문 읽기 (대한성서공회)
+          </a>
         )}
 
         {/* QT 질문 */}
