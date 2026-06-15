@@ -85,7 +85,7 @@ export default function ChurchSignup() {
             <Building2 className="w-6 h-6 text-primary-foreground" />
           </div>
           <h1 className="font-display text-2xl font-bold">교회 등록하기</h1>
-          <p className="text-sm text-muted-foreground">30일 무료 체험 · 신용카드 불필요</p>
+          <p className="text-sm text-muted-foreground">30일 무료 체험</p>
         </div>
 
         {/* 오진입 방지 안내 */}
