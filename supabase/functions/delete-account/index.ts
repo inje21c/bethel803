@@ -17,13 +17,10 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('authorization');
     if (!authHeader) return new Response(JSON.stringify({ error: '인증 필요' }), { status: 401, headers: corsHeaders });
 
-    const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) return new Response(JSON.stringify({ error: '인증 실패' }), { status: 401, headers: corsHeaders });
-
+    const token = authHeader.replace('Bearer ', '');
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !user) return new Response(JSON.stringify({ error: '인증 실패' }), { status: 401, headers: corsHeaders });
 
     // 현재 사용자의 역할과 교회 확인
     const { data: profile } = await adminClient
