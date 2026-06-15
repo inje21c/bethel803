@@ -3025,6 +3025,11 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   }
 }
 
+export async function assignMyDistrict(districtId: string): Promise<void> {
+  const { error } = await supabase.rpc('assign_my_district', { p_district_id: districtId });
+  if (error) throw error;
+}
+
 export async function deleteMyAccount(): Promise<{ error?: string; message?: string }> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { error: '로그인 필요' };
