@@ -5,7 +5,7 @@ import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lu
 import { useAuth } from '@/lib/authContext';
 import {
   getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
-  getDeepMeditation, getMyChurchSettings, getOrCreateSimpleQT, getKSTDateString,
+  getDeepMeditation, getMyChurchSettings, hasModule, getOrCreateSimpleQT, getKSTDateString,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ export default function QTMain() {
   });
   const qtMode = settings?.qtMode ?? 'scraped';
   const qtSimpleBook = settings?.qtSimpleBook ?? '시편';
-  const hasBibleText = settings?.modules?.bible_text ?? false;
+  const hasBibleText = hasModule(settings, 'bible_text');
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
     queryKey: ['qt_content', today, qtMode, qtSimpleBook],

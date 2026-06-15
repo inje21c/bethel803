@@ -164,6 +164,17 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+        {churchInfo && !churchInfo.isTrialing && churchInfo.status === 'trialing' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">무료 체험이 종료되었습니다</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400">일부 기능이 제한됩니다. 계속 사용하려면 플랜을 선택하세요.</p>
+            </div>
+            <Link to="/pricing" className="text-xs font-semibold text-primary underline underline-offset-2 shrink-0">
+              플랜 보기
+            </Link>
+          </div>
+        )}
 
         {/* QT 히어로 카드 */}
         <motion.div variants={item} initial="hidden" animate="show">
