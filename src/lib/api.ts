@@ -3022,21 +3022,27 @@ export function hasModule(settings: ChurchSettings | null | undefined, module: s
  */
 export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   try {
-    const [settingsRes, infoRes] = await Promise.all([
+    // allSettled: 한 쪽 타임아웃이 다른 쪽을 죽이지 않음
+    const [settingsResult, infoResult] = await Promise.allSettled([
       withApiTimeout(
         supabase.from('church_settings').select('*').limit(1).maybeSingle(),
         '교회 설정 조회'
       ),
       withApiTimeout(supabase.rpc('get_my_church_info'), '교회 정보 조회'),
     ]);
+    if (settingsResult.status === 'rejected') return null;
+    const settingsRes = settingsResult.value;
     if (settingsRes.error || !settingsRes.data) return null;
     const row = settingsRes.data as Record<string, unknown>;
-    const infoRows = (infoRes.data as Record<string, unknown>[] | null) ?? [];
+
+    const infoRows = infoResult.status === 'fulfilled' && !infoResult.value.error
+      ? ((infoResult.value.data as Record<string, unknown>[] | null) ?? [])
+      : [];
     const info = infoRows[0] ?? null;
     const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
     const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
     const isTrialing = info?.billing_status === 'trialing' && trialMs > 0;
-    const plan = info ? (info.plan as string) : 'free';
+    const plan = info ? (info.plan as string) : 'unknown';
     return {
       qtMode: (row.qt_mode as QTMode) ?? 'simple',
       modules: (row.modules as Record<string, boolean>) ?? {},
