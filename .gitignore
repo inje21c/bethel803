@@ -29,3 +29,6 @@ dist-ssr
 # Generated Bible seed SQL files
 docs/bible_kr_seed.sql
 docs/bible_seed_chunks/
+
+# 테넌트 격리 테스트 픽스처(계정/비번 포함, 커밋 금지)
+scripts/.tenant-fixtures.json
