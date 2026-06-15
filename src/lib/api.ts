@@ -3025,6 +3025,26 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   }
 }
 
+export async function deleteMyAccount(): Promise<{ error?: string; message?: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: '로그인 필요' };
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+    {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'content-type': 'application/json',
+      },
+    }
+  );
+  const json = await res.json() as { success?: boolean; error?: string; message?: string };
+  if (!res.ok) return { error: json.error, message: json.message };
+  return {};
+}
+
 export interface ChurchInfo {
   id: string;
   name: string;
