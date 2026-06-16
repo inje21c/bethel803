@@ -1237,43 +1237,44 @@ export default function AdminDashboard() {
 
           {/* Bible Study Management Tab */}
           <TabsContent value="study" className="space-y-4 md:col-start-2 md:mt-0">
+            <div className="flex justify-end">
+              <Dialog
+                open={studyDialogOpen}
+                onOpenChange={(open) => {
+                  setStudyDialogOpen(open);
+                  if (!open) setEditingStudy(undefined);
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-1.5">
+                    <Plus className="w-4 h-4" />
+                    공부 등록
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{editingStudy ? '성경공부 수정' : '성경공부 등록'}</DialogTitle>
+                    <DialogDescription className="sr-only">성경공부 자료를 등록하거나 수정합니다.</DialogDescription>
+                  </DialogHeader>
+                  <BibleStudyForm
+                    study={editingStudy}
+                    onSave={handleSaveStudy}
+                    onClose={() => {
+                      setStudyDialogOpen(false);
+                      setEditingStudy(undefined);
+                    }}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+
             {hasModule('bulletin_parsing') && <Card>
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4" />
-                    스크래핑 상태
-                  </CardTitle>
-                  <CardDescription>자동 수집 전에도 관리자 수동 등록으로 테스트할 수 있습니다.</CardDescription>
-                </div>
-                <Dialog
-                  open={studyDialogOpen}
-                  onOpenChange={(open) => {
-                    setStudyDialogOpen(open);
-                    if (!open) setEditingStudy(undefined);
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1.5">
-                      <Plus className="w-4 h-4" />
-                      공부 등록
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>{editingStudy ? '성경공부 수정' : '성경공부 등록'}</DialogTitle>
-                      <DialogDescription className="sr-only">성경공부 자료를 등록하거나 수정합니다.</DialogDescription>
-                    </DialogHeader>
-                    <BibleStudyForm
-                      study={editingStudy}
-                      onSave={handleSaveStudy}
-                      onClose={() => {
-                        setStudyDialogOpen(false);
-                        setEditingStudy(undefined);
-                      }}
-                    />
-                  </DialogContent>
-                </Dialog>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  스크래핑 상태
+                </CardTitle>
+                <CardDescription>주보 PDF 자동 파싱 또는 URL 직접 입력으로 공부 원본을 가져옵니다.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* 자동 파싱 (이번 주 일요일 URL 자동 계산) */}
