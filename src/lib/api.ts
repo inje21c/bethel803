@@ -3198,3 +3198,60 @@ export async function updateChurchQTSimpleBook(bookName: string): Promise<void> 
   );
   if (error) throw error;
 }
+
+// ============================================================
+// 고객지원 (support_tickets)
+// ============================================================
+
+export interface SupportTicket {
+  id: string;
+  church_id: string;
+  user_id: string;
+  ticket_type: 'bug' | 'feature' | 'question' | 'other';
+  title: string;
+  content: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  github_issue_number: number | null;
+  github_issue_url: string | null;
+  admin_reply: string | null;
+  replied_at: string | null;
+  reply_read_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getMyTickets(): Promise<SupportTicket[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('support_tickets')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    '내 문의 목록 조회'
+  );
+  if (error) throw error;
+  return (data ?? []) as SupportTicket[];
+}
+
+export async function getUnreadReplyCount(): Promise<number> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .not('admin_reply', 'is', null)
+      .is('reply_read_at', null),
+    '미확인 답변 수 조회'
+  );
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function markTicketReplyRead(ticketId: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase
+      .from('support_tickets')
+      .update({ reply_read_at: new Date().toISOString() })
+      .eq('id', ticketId),
+    '답변 확인 처리'
+  );
+  if (error) throw error;
+}

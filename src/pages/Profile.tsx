@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BellRing, Link2, Lock, Save, Smartphone, Trash2, User } from 'lucide-react';
+import { BellRing, ChevronRight, Link2, Lock, MessageCircleQuestion, Save, Smartphone, Trash2, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -546,6 +546,25 @@ export default function Profile() {
                   비밀번호 변경
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* 문의하기 */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <Card
+            className="cursor-pointer hover:bg-muted/40 transition-colors"
+            onClick={() => navigate('/support')}
+          >
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-3">
+                <MessageCircleQuestion className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">문의하기</p>
+                  <p className="text-xs text-muted-foreground">버그 신고, 기능 요청, 사용 문의</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </div>
             </CardContent>
           </Card>
         </motion.div>

@@ -3,8 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
+import { getUnreadReplyCount } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import DistrictSelector from '@/components/DistrictSelector';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -114,6 +116,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const { data: unreadReplyCount = 0 } = useQuery({
+    queryKey: ['unread_reply_count'],
+    queryFn: getUnreadReplyCount,
+    enabled: !!user,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
@@ -181,9 +191,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </Suspense>
             <Link
               to="/profile"
-              className="hidden sm:flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover:text-foreground transition-colors relative"
             >
-              <UserCircle className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="relative">
+                <UserCircle className="w-4 h-4 md:w-5 md:h-5" />
+                {unreadReplyCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />
+                )}
+              </span>
               {user?.name} {user?.role === 'master' ? '(마스터)' : user?.role === 'leader' ? '(구역장)' : ''}
             </Link>
             <Suspense fallback={<HeaderActionFallback type="notification" />}>
@@ -276,6 +291,26 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   >
                     <HelpCircle className="w-4 h-4" />
                     사용 안내
+                  </Link>
+                  <Link
+                    to="/support"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                      location.pathname === '/support' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <span className="relative">
+                      <HelpCircle className="w-4 h-4" />
+                      {unreadReplyCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />
+                      )}
+                    </span>
+                    문의하기
+                    {unreadReplyCount > 0 && (
+                      <span className="ml-auto text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5">
+                        {unreadReplyCount}
+                      </span>
+                    )}
                   </Link>
                   <button
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground"
