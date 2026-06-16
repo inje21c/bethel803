@@ -2,6 +2,16 @@
 -- 035. 고객지원 티켓 (사용자 문의 → GitHub Issues 연동)
 -- ============================================================
 
+-- update_updated_at_column: 여러 테이블에서 공유하는 트리거 함수.
+-- prod에는 이미 존재하나 staging에 없을 수 있어 OR REPLACE로 보장.
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
 CREATE TABLE public.support_tickets (
   id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   church_id            UUID        NOT NULL REFERENCES public.churches(id) ON DELETE CASCADE,
