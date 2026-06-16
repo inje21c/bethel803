@@ -322,6 +322,43 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================
 -- 5. create_bible_study_from_source: 원본 교회 일치 가드
 -- ============================================================
+
+-- ============================================================
+-- 6. notifications: 교회 스코프 SELECT 정책 교체
+-- ============================================================
+-- 008에서 만든 "active users can read notifications" 정책은 전 교회 알림을 노출.
+-- staging orphan 드리프트(notifications_select_active 등)도 전역 is_master() 사용.
+-- district_id → districts.church_id 경유로 교회 경계 강제.
+--
+-- service 범위 알림(scope_type='service', district_id=NULL): 시스템 공지 성격이므로
+-- 교회 구분 없이 모든 active 유저에게 표시 (fetch-devotional 등 service_role이 삽입).
+-- district 범위 알림: 내 교회 구역 알림만 + 마스터/해당 구역원만 열람.
+
+DROP POLICY IF EXISTS "active users can read notifications" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_select_active" ON public.notifications;
+CREATE POLICY "notifications_select_active" ON public.notifications
+  FOR SELECT USING (
+    public.is_active()
+    AND (
+      scope_type = 'service'
+      OR (
+        scope_type = 'district'
+        AND EXISTS (
+          SELECT 1 FROM public.districts d
+          WHERE d.id = notifications.district_id
+            AND d.church_id = public.get_my_church_id()
+            AND (
+              public.is_church_master(d.church_id)
+              OR d.id = public.get_my_district_id()
+            )
+        )
+      )
+    )
+  );
+
+-- orphan 드리프트 삭제 정책 제거 (021의 notifications_delete_leader가 이미 church-scoped)
+DROP POLICY IF EXISTS "notifications_delete_district" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_delete_service" ON public.notifications;
 CREATE OR REPLACE FUNCTION public.create_bible_study_from_source(
   p_source_id UUID,
   p_district_id UUID DEFAULT NULL

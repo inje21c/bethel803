@@ -20,10 +20,16 @@ const FIXTURE_PATH = join(__dirname, '.tenant-fixtures.json');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const TEARDOWN = process.argv.includes('--teardown');
+const PURGE = process.argv.includes('--purge'); // 이름 규칙으로 잔여 테스트 교회 전부 삭제
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('환경변수 필요: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+// 시드: service_role(계정 생성) + anon(마스터 로그인해 역할 승격) 둘 다 필요.
+// 역할 변경은 enforce_role_change 트리거가 막으므로 마스터 인증 컨텍스트로만 가능.
+// teardown은 service_role만 있으면 됨.
+const NEEDS_ANON = !TEARDOWN && !PURGE;
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY || (NEEDS_ANON && !ANON_KEY)) {
+  console.error('환경변수 필요: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY' + (NEEDS_ANON ? ', SUPABASE_ANON_KEY' : ''));
   process.exit(1);
 }
 
@@ -61,10 +67,21 @@ async function createUser(meta, addr) {
   return data.user.id;
 }
 
-async function promote(userId, role, churchId, districtId) {
+async function signInClient(addr) {
+  const client = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error } = await client.auth.signInWithPassword({ email: addr, password: PASSWORD });
+  if (error) throw new Error(`로그인 실패(${addr}): ${error.message}`);
+  return client;
+}
+
+// 역할/승인 변경은 '마스터 인증 컨텍스트'에서만 가능(트리거 enforce_role_change).
+// service_role 직접 UPDATE는 auth.uid()=null이라 is_master() false로 차단됨.
+async function promote(masterClient, userId, role, churchId, districtId) {
   const patch = { role, status: 'active' };
   if (districtId) patch.district_id = districtId;
-  const { error } = await admin
+  const { error } = await masterClient
     .from('users')
     .update(patch)
     .eq('id', userId)
@@ -90,6 +107,9 @@ async function seed() {
     if (mErr) throw new Error(`master 조회 실패: ${mErr.message}`);
     const churchId = masterRow.church_id;
 
+    // 마스터로 로그인 → 이후 역할 승격/승인은 이 컨텍스트로 수행
+    const masterClient = await signInClient(masterAddr);
+
     // 2) 추가 구역 생성 (트리거는 1구역만 만듦)
     const { data: existingDistricts } = await admin
       .from('districts').select('id, name').eq('church_id', churchId);
@@ -114,14 +134,14 @@ async function seed() {
       const leaderAddr = email('leader', church.key, i + 1);
       const leaderId = await createUser(
         { name: `${church.key} 구역장${i + 1}`, district_id: d.id }, leaderAddr);
-      await promote(leaderId, 'leader', churchId, d.id);
+      await promote(masterClient, leaderId, 'leader', churchId, d.id);
 
       const members = [];
       for (let m = 1; m <= 2; m++) {
         const memAddr = email('member', church.key, `${i + 1}_${m}`);
         const memId = await createUser(
           { name: `${church.key} 구역원${i + 1}-${m}`, district_id: d.id }, memAddr);
-        await promote(memId, 'member', churchId, d.id);
+        await promote(masterClient, memId, 'member', churchId, d.id);
         members.push({ id: memId, email: memAddr, districtId: d.id });
       }
 
@@ -156,7 +176,28 @@ async function teardown() {
   console.log('정리 완료. 픽스처 파일은 수동 삭제하세요.');
 }
 
-(TEARDOWN ? teardown() : seed()).catch((e) => {
+// 이름 규칙으로 잔여 테스트 교회/계정을 전부 삭제 (실패한 부분 시드 청소용)
+async function purge() {
+  const { data: churches, error } = await admin
+    .from('churches').select('id, name').like('name', '격리테스트교회%');
+  if (error) throw new Error(`교회 조회 실패: ${error.message}`);
+  if (!churches || churches.length === 0) {
+    console.log('삭제할 테스트 교회가 없습니다.');
+    return;
+  }
+  for (const c of churches) {
+    const { data: members } = await admin.from('users').select('id').eq('church_id', c.id);
+    for (const u of members ?? []) {
+      await admin.auth.admin.deleteUser(u.id).catch(() => {});
+    }
+    await admin.from('churches').delete().eq('id', c.id);
+    console.log(`삭제: ${c.name} (계정 ${members?.length ?? 0}개)`);
+  }
+  console.log('잔여 테스트 교회 청소 완료.');
+}
+
+const action = PURGE ? purge() : TEARDOWN ? teardown() : seed();
+action.catch((e) => {
   console.error('\n오류:', e.message);
   process.exit(1);
 });
