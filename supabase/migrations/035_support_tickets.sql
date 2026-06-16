@@ -12,7 +12,7 @@ BEGIN
 END;
 $$;
 
-CREATE TABLE public.support_tickets (
+CREATE TABLE IF NOT EXISTS public.support_tickets (
   id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   church_id            UUID        NOT NULL REFERENCES public.churches(id) ON DELETE CASCADE,
   user_id              UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -35,18 +35,18 @@ CREATE TABLE public.support_tickets (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX ON public.support_tickets (church_id, created_at DESC);
-CREATE INDEX ON public.support_tickets (user_id, created_at DESC);
-CREATE INDEX ON public.support_tickets (github_issue_number) WHERE github_issue_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS support_tickets_church_created_idx ON public.support_tickets (church_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS support_tickets_user_created_idx ON public.support_tickets (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS support_tickets_github_issue_idx ON public.support_tickets (github_issue_number) WHERE github_issue_number IS NOT NULL;
 
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 
--- 본인 티켓 조회
+DROP POLICY IF EXISTS "support_tickets_select_own" ON public.support_tickets;
 CREATE POLICY "support_tickets_select_own"
   ON public.support_tickets FOR SELECT
   USING (user_id = auth.uid());
 
--- master: 자기 교회 전체 티켓 조회
+DROP POLICY IF EXISTS "support_tickets_select_master" ON public.support_tickets;
 CREATE POLICY "support_tickets_select_master"
   ON public.support_tickets FOR SELECT
   USING (
@@ -57,7 +57,7 @@ CREATE POLICY "support_tickets_select_master"
     )
   );
 
--- active member: 자기 교회로 제출
+DROP POLICY IF EXISTS "support_tickets_insert_member" ON public.support_tickets;
 CREATE POLICY "support_tickets_insert_member"
   ON public.support_tickets FOR INSERT
   WITH CHECK (
@@ -69,12 +69,13 @@ CREATE POLICY "support_tickets_insert_member"
     )
   );
 
--- 본인: reply_read_at 업데이트 (답변 확인 처리)
+DROP POLICY IF EXISTS "support_tickets_update_own_read" ON public.support_tickets;
 CREATE POLICY "support_tickets_update_own_read"
   ON public.support_tickets FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+DROP TRIGGER IF EXISTS support_tickets_updated_at ON public.support_tickets;
 CREATE TRIGGER support_tickets_updated_at
   BEFORE UPDATE ON public.support_tickets
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
