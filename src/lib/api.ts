@@ -3016,7 +3016,8 @@ export interface ChurchSettings {
 export function hasModule(settings: ChurchSettings | null | undefined, module: string): boolean {
   if (!settings) return false;
   if (settings.plan === 'legacy') return true;
-  if (module !== 'bible_text' && settings.isTrialing) return true;
+  const LEGACY_ONLY_MODULES = ['bible_text', 'bulletin_parsing'];
+  if (!LEGACY_ONLY_MODULES.includes(module) && settings.isTrialing) return true;
   return settings.modules[module] ?? false;
 }
 
