@@ -84,6 +84,7 @@ async function fetchAndStoreQT(
     .from('qt_contents')
     .upsert(
       {
+        church_id: '00000000-0000-4100-a000-000000000001',
         date,
         title: detail.title,
         scripture: detail.scripture,
@@ -95,7 +96,7 @@ async function fetchAndStoreQT(
         audio_url: detail.audioUrl,
         hymn_suggestions: detail.hymnSuggestions,
       },
-      { onConflict: 'date' }
+      { onConflict: 'church_id,date' }
     );
   if (qtError) throw qtError;
 
