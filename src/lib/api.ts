@@ -3058,7 +3058,11 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   const settingsRow = row ?? {};
   const trialEndsAt = info ? (info.trial_ends_at as string | null) : null;
   const trialMs = trialEndsAt ? new Date(trialEndsAt).getTime() - Date.now() : 0;
-  const isTrialing = info?.billing_status === 'trialing' && trialMs > 0;
+  // billing_status가 'trialing'인 동안은 만료 여부와 무관하게 체험 상태로 간주.
+  // 슈퍼어드민이 billing_status를 변경할 때만 모듈이 잠김.
+  const isBillingTrialing = info?.billing_status === 'trialing';
+  const isTrialing = isBillingTrialing && trialMs > 0;
+  const trialDaysLeft = isBillingTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0;
 
   return {
     qtMode: (settingsRow.qt_mode as QTMode) ?? 'simple',
@@ -3070,8 +3074,8 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
     slug: info ? (info.slug as string) : '',
     status: info ? (info.status as string) : 'unknown',
     billingStatus: info ? (info.billing_status as string) : 'unknown',
-    isTrialing: isTrialing as boolean,
-    trialDaysLeft: isTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0,
+    isTrialing: isBillingTrialing as boolean,
+    trialDaysLeft,
     plan: info ? (info.plan as string) : 'unknown',
   };
 }

@@ -150,7 +150,7 @@ export default function Dashboard() {
         </div>
 
         {/* Trial 배너 */}
-        {churchInfo?.isTrialing && (
+        {churchInfo?.isTrialing && churchInfo.trialDaysLeft > 7 && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               <span className="text-sm font-bold text-primary">{churchInfo.trialDaysLeft}</span>
@@ -161,14 +161,28 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        {churchInfo && !churchInfo.isTrialing && churchInfo.status === 'trialing' && (
+        {churchInfo?.isTrialing && churchInfo.trialDaysLeft > 0 && churchInfo.trialDaysLeft <= 7 && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">무료 체험이 종료되었습니다</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400">일부 기능이 제한됩니다. 계속 사용하려면 플랜을 선택하세요.</p>
+            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+              <span className="text-sm font-bold text-amber-700 dark:text-amber-300">{churchInfo.trialDaysLeft}</span>
             </div>
-            <Link to="/pricing" className="text-xs font-semibold text-primary underline underline-offset-2 shrink-0">
-              플랜 보기
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">체험 종료 {churchInfo.trialDaysLeft}일 전</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400">도입을 원하시면 아래 문의하기로 연락주세요</p>
+            </div>
+            <Link to="/support" className="text-xs font-semibold text-amber-800 dark:text-amber-300 underline underline-offset-2 shrink-0">
+              문의하기
+            </Link>
+          </div>
+        )}
+        {churchInfo?.isTrialing && churchInfo.trialDaysLeft === 0 && (
+          <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-800 dark:text-red-300">무료 체험 기간이 끝났습니다</p>
+              <p className="text-xs text-red-700 dark:text-red-400">지금은 계속 이용하실 수 있습니다. 도입 문의는 아래로 연락주세요</p>
+            </div>
+            <Link to="/support" className="text-xs font-semibold text-red-800 dark:text-red-300 underline underline-offset-2 shrink-0">
+              문의하기
             </Link>
           </div>
         )}
