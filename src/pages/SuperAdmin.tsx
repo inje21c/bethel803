@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Users, RefreshCw, Pencil, X, ChevronRight } from 'lucide-react';
-import { getAllChurchesSuperAdmin, updateChurchSuperAdmin, type SuperAdminChurch } from '@/lib/api';
+import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound } from 'lucide-react';
+import { getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword, type SuperAdminChurch } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -191,6 +191,19 @@ function EditModal({
 
 export default function SuperAdmin() {
   const [editing, setEditing] = useState<SuperAdminChurch | null>(null);
+  const [resettingEmail, setResettingEmail] = useState<string | null>(null);
+
+  async function handleResetPassword(email: string) {
+    setResettingEmail(email);
+    try {
+      await resetMasterPassword(email);
+      toast.success(`${email}으로 비밀번호 재설정 이메일을 발송했습니다`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setResettingEmail(null);
+    }
+  }
 
   const { data: churches = [], isLoading, error, refetch } = useQuery({
     queryKey: ['superadmin_churches'],
@@ -266,6 +279,32 @@ export default function SuperAdmin() {
                   {church.ui_mode}
                 </span>
               </div>
+
+              {/* 마스터 정보 */}
+              {church.master_name && (
+                <div className="rounded-lg bg-muted/50 px-3 py-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{church.master_name}</p>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                        <Mail className="w-3 h-3 shrink-0" />
+                        {church.master_email}
+                      </p>
+                    </div>
+                  </div>
+                  {church.master_email && (
+                    <button
+                      onClick={() => handleResetPassword(church.master_email!)}
+                      disabled={resettingEmail === church.master_email}
+                      className="shrink-0 flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    >
+                      <KeyRound className="w-3 h-3" />
+                      {resettingEmail === church.master_email ? '발송 중...' : 'PW 초기화'}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* 수치 */}
               <div className="flex items-center gap-4 text-xs text-muted-foreground">

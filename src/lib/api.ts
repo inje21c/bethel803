@@ -3328,6 +3328,16 @@ export interface SuperAdminChurch {
   ui_mode: string;
   district_count: number;
   member_count: number;
+  master_id: string | null;
+  master_name: string | null;
+  master_email: string | null;
+}
+
+export async function resetMasterPassword(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  if (error) throw error;
 }
 
 export async function getAllChurchesSuperAdmin(): Promise<SuperAdminChurch[]> {
