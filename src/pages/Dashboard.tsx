@@ -121,10 +121,12 @@ export default function Dashboard() {
   });
 
   // 가이드 phase — 1: 기본 기능 / 2: 심화 기능 탐색
-  // phase1 완료 후 다음 접속 시 phase2로 전환 (userId별 localStorage)
-  const [guidePhase] = useState<1 | 2>(() =>
-    localStorage.getItem(`bethel_guide_phase1_done_${uid}`) ? 2 : 1
-  );
+  // 가이드 phase 1→2→3 순차 전환 (userId별 localStorage)
+  const [guidePhase] = useState<1 | 2 | 3>(() => {
+    if (localStorage.getItem(`bethel_guide_phase2_done_${uid}`)) return 3;
+    if (localStorage.getItem(`bethel_guide_phase1_done_${uid}`)) return 2;
+    return 1;
+  });
 
   // phase 2 감지 쿼리 (phase2 진입 시에만 실행)
   const { data: qtEverDone = false } = useQuery({
@@ -141,6 +143,26 @@ export default function Dashboard() {
   });
   const [notifDone, setNotifDone] = useState(() =>
     !!localStorage.getItem(`bethel_notifications_setup_done_${uid}`)
+  );
+
+  // phase 3 감지 쿼리
+  const { data: myIntercessions } = useQuery({
+    queryKey: ['my_intercessions', user?.id],
+    queryFn: () => getMyIntercessions(user!.id),
+    enabled: showGuide && guidePhase === 3 && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: bibleStudies = [] } = useQuery({
+    queryKey: ['bible_studies', currentDistrictId],
+    queryFn: () => getBibleStudies(currentDistrictId),
+    enabled: showGuide && guidePhase === 3 && !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
+  });
+  const [qtDashboardDone, setQtDashboardDone] = useState(() =>
+    !!localStorage.getItem(`bethel_qt_dashboard_done_${uid}`)
+  );
+  const [attendanceDone, setAttendanceDone] = useState(() =>
+    !!localStorage.getItem(`bethel_attendance_done_${uid}`)
   );
 
   const queryClient = useQueryClient();
@@ -213,6 +235,12 @@ export default function Dashboard() {
           weeklyReportCount={weeklyReportList.length}
           notifDone={notifDone}
           setNotifDone={setNotifDone}
+          intercessionDone={(myIntercessions?.size ?? 0) > 0}
+          bibleStudyExists={bibleStudies.length > 0}
+          qtDashboardDone={qtDashboardDone}
+          setQtDashboardDone={setQtDashboardDone}
+          attendanceDone={attendanceDone}
+          setAttendanceDone={setAttendanceDone}
         />}
 
         {/* Trial 배너 */}
@@ -533,7 +561,7 @@ export default function Dashboard() {
 // ── 이번 주 할 일 가이드 카드 ──────────────────────────────
 interface WeeklyGuideCardProps {
   uid: string;
-  guidePhase: 1 | 2;
+  guidePhase: 1 | 2 | 3;
   activeMemberCount: number;
   noticeDone: boolean;
   noticeKey: string;
@@ -545,6 +573,12 @@ interface WeeklyGuideCardProps {
   weeklyReportCount: number;
   notifDone: boolean;
   setNotifDone: Dispatch<SetStateAction<boolean>>;
+  intercessionDone: boolean;
+  bibleStudyExists: boolean;
+  qtDashboardDone: boolean;
+  setQtDashboardDone: Dispatch<SetStateAction<boolean>>;
+  attendanceDone: boolean;
+  setAttendanceDone: Dispatch<SetStateAction<boolean>>;
 }
 
 function WeeklyGuideCard({
@@ -561,6 +595,12 @@ function WeeklyGuideCard({
   weeklyReportCount,
   notifDone,
   setNotifDone,
+  intercessionDone,
+  bibleStudyExists,
+  qtDashboardDone,
+  setQtDashboardDone,
+  attendanceDone,
+  setAttendanceDone,
 }: WeeklyGuideCardProps) {
   const phase1Steps = [
     {
@@ -634,24 +674,67 @@ function WeeklyGuideCard({
     },
   ];
 
-  const steps = guidePhase === 1 ? phase1Steps : phase2Steps;
+  const phase3Steps = [
+    {
+      id: 'intercession',
+      label: '중보기도 요청하기',
+      desc: '구역원의 기도제목에 중보기도를 눌러 함께 기도해 주세요.',
+      link: '/prayer-requests',
+      icon: HeartHandshake,
+      done: intercessionDone,
+    },
+    {
+      id: 'bible-study',
+      label: '성경공부 과제 만들기',
+      desc: '이번 주 공부할 본문과 질문을 올리고 구역원 답변을 확인하세요.',
+      link: '/bible-study',
+      icon: BookOpen,
+      done: bibleStudyExists,
+    },
+    {
+      id: 'qt-dashboard',
+      label: '구역원 QT 현황 확인',
+      desc: '이번 주 구역원들의 큐티 참여 현황을 한눈에 볼 수 있습니다.',
+      link: '/leader/qt-dashboard',
+      icon: BookOpenCheck,
+      done: qtDashboardDone,
+      onNav: () => { localStorage.setItem(`bethel_qt_dashboard_done_${uid}`, '1'); setQtDashboardDone(true); },
+    },
+    {
+      id: 'attendance',
+      label: '모임 후 출석 체크',
+      desc: '모임이 끝난 후 일정에서 구역원 출석 여부를 표시해 보세요.',
+      link: '/schedule',
+      icon: CheckCircle2,
+      done: attendanceDone,
+      onNav: () => { localStorage.setItem(`bethel_attendance_done_${uid}`, '1'); setAttendanceDone(true); },
+    },
+  ];
+
+  const steps = guidePhase === 1 ? phase1Steps : guidePhase === 2 ? phase2Steps : phase3Steps;
   const doneCount = steps.filter(s => s.done).length;
   const allDone = doneCount === steps.length;
 
-  // phase 1 전체 완료 시 다음 접속을 위해 플래그 저장
+  const phaseSubtitle: Record<number, string> = {
+    2: '기본 기능 완료 — 새로운 기능을 사용해보세요',
+    3: '앱을 더 깊이 활용해보세요',
+  };
+
+  // 각 phase 완료 시 다음 접속을 위해 플래그 저장
   useEffect(() => {
-    if (guidePhase === 1 && allDone) {
-      localStorage.setItem(`bethel_guide_phase1_done_${uid}`, '1');
+    if (allDone) {
+      if (guidePhase === 1) localStorage.setItem(`bethel_guide_phase1_done_${uid}`, '1');
+      if (guidePhase === 2) localStorage.setItem(`bethel_guide_phase2_done_${uid}`, '1');
     }
-  }, [guidePhase, allDone]);
+  }, [guidePhase, allDone, uid]);
 
   return (
     <div className="rounded-2xl border bg-card p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-semibold">이번 주 할 일</p>
-          {guidePhase === 2 && (
-            <p className="text-xs text-muted-foreground mt-0.5">기본 기능 완료 — 새로운 기능을 사용해보세요</p>
+          {guidePhase > 1 && (
+            <p className="text-xs text-muted-foreground mt-0.5">{phaseSubtitle[guidePhase]}</p>
           )}
         </div>
         <span className="text-xs text-muted-foreground">{doneCount} / {steps.length} 완료</span>
@@ -680,7 +763,7 @@ function WeeklyGuideCard({
       </div>
       {allDone && (
         <p className="text-xs text-center text-green-600 font-medium mt-3">
-          {guidePhase === 1 ? '완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.' : '모든 기능을 체험하셨습니다!'}
+          {guidePhase < 3 ? '완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.' : '앱의 모든 기능을 체험하셨습니다!'}
         </p>
       )}
     </div>
