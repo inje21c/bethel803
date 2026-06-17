@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound } from 'lucide-react';
-import { getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword, type SuperAdminChurch } from '@/lib/api';
+import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword, restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin, type SuperAdminChurch } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -192,6 +192,29 @@ function EditModal({
 export default function SuperAdmin() {
   const [editing, setEditing] = useState<SuperAdminChurch | null>(null);
   const [resettingEmail, setResettingEmail] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  async function handleRestore(churchId: string) {
+    setActionLoading(`restore-${churchId}`);
+    try {
+      await restoreChurchSuperAdmin(churchId);
+      toast.success('교회 복구 완료');
+      qc.invalidateQueries({ queryKey: ['superadmin_churches'] });
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setActionLoading(null); }
+  }
+
+  async function handleHardDelete(church: SuperAdminChurch) {
+    if (!confirm(`[${church.name}] 데이터를 영구 삭제합니다. 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
+    setActionLoading(`delete-${church.id}`);
+    try {
+      await hardDeleteChurchSuperAdmin(church.id);
+      toast.success(`${church.name} 영구 삭제 완료`);
+      qc.invalidateQueries({ queryKey: ['superadmin_churches'] });
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setActionLoading(null); }
+  }
 
   async function handleResetPassword(email: string) {
     setResettingEmail(email);
@@ -303,6 +326,34 @@ export default function SuperAdmin() {
                       {resettingEmail === church.master_email ? '발송 중...' : 'PW 초기화'}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* 삭제 예정 상태 */}
+              {church.deleted_at && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-destructive font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    삭제 예정 — {new Date(church.deleted_at).toLocaleDateString('ko-KR')} 영구 삭제
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleRestore(church.id)}
+                      disabled={actionLoading === `restore-${church.id}`}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-primary/30 bg-primary/5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      {actionLoading === `restore-${church.id}` ? '복구 중...' : '복구'}
+                    </button>
+                    <button
+                      onClick={() => handleHardDelete(church)}
+                      disabled={actionLoading === `delete-${church.id}`}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-destructive/30 bg-destructive/5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      {actionLoading === `delete-${church.id}` ? '삭제 중...' : '영구 삭제'}
+                    </button>
+                  </div>
                 </div>
               )}
 

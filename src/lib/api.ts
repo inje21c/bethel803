@@ -3056,6 +3056,8 @@ export interface ChurchSettings {
   trialDaysLeft: number;
   plan: string;
   uiMode: 'simple' | 'full';
+  isPendingDeletion: boolean;
+  deletionDate: string | null;
 }
 
 /**
@@ -3128,6 +3130,8 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
     trialDaysLeft,
     plan: info ? (info.plan as string) : 'unknown',
     uiMode: (settingsRow.ui_mode as 'simple' | 'full') ?? 'full',
+    isPendingDeletion: !!(info as Record<string, unknown>)?.deleted_at,
+    deletionDate: ((info as Record<string, unknown>)?.deleted_at as string) ?? null,
   };
 }
 
@@ -3325,12 +3329,23 @@ export interface SuperAdminChurch {
   billing_status: string;
   trial_ends_at: string | null;
   created_at: string;
+  deleted_at: string | null;
   ui_mode: string;
   district_count: number;
   member_count: number;
   master_id: string | null;
   master_name: string | null;
   master_email: string | null;
+}
+
+export async function restoreChurchSuperAdmin(churchId: string): Promise<void> {
+  const { error } = await supabase.rpc('restore_church_superadmin', { p_church_id: churchId });
+  if (error) throw error;
+}
+
+export async function hardDeleteChurchSuperAdmin(churchId: string): Promise<void> {
+  const { error } = await supabase.rpc('hard_delete_church_superadmin', { p_church_id: churchId });
+  if (error) throw error;
 }
 
 export async function resetMasterPassword(email: string): Promise<void> {

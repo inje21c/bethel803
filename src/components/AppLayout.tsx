@@ -77,8 +77,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isMaster, isLeader, isSuperAdmin } = useAuth();
-  const { uiMode } = useChurch();
+  const { uiMode, isPendingDeletion, deletionDate } = useChurch();
   const isSimple = uiMode === 'simple';
+  const deletionDaysLeft = deletionDate
+    ? Math.max(0, Math.ceil((new Date(deletionDate).getTime() - Date.now()) / 86400000))
+    : null;
   const {
     currentDistrictName,
     homeDistrictName,
@@ -163,6 +166,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 교회 삭제 예정 배너 */}
+      {isPendingDeletion && deletionDaysLeft !== null && (
+        <div className="bg-destructive text-destructive-foreground text-xs text-center py-2 px-4 flex items-center justify-center gap-2">
+          <span className="font-semibold">서비스 종료 예정</span>
+          <span>{deletionDaysLeft > 0 ? `D-${deletionDaysLeft} 후 데이터가 영구 삭제됩니다` : '오늘 데이터가 영구 삭제됩니다'}</span>
+          <Link to="/support" className="underline underline-offset-2 font-semibold">복구 문의</Link>
+        </div>
+      )}
 
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
