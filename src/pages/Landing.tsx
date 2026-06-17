@@ -54,15 +54,12 @@ export default function Landing() {
 
       {/* 히어로 */}
       <section className="max-w-4xl mx-auto px-4 py-20 text-center space-y-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-          30일 무료 체험
-        </div>
         <h1 className="font-display text-4xl sm:text-5xl font-bold leading-tight">
           구역 모임을<br />더 풍성하게
         </h1>
         <p className="text-lg text-muted-foreground max-w-md mx-auto">
-          기도제목, QT, 성경읽기, 성경공부까지.
-          교회 구역 모임에 필요한 모든 것을 하나의 앱으로.
+          말씀 묵상부터 기도제목, 성경읽기, 성경공부까지.<br />
+          구역원이 함께 자라는 공간을 만들어 보세요.
         </p>
 
         {/* 두 가지 진입 경로 */}
