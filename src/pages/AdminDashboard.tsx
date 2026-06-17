@@ -948,7 +948,7 @@ export default function AdminDashboard() {
                                   비밀번호 초기화
                                 </Button>
                               )}
-                              {u.role === 'leader' && (
+                              {u.role !== 'master' && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1041,7 +1041,7 @@ export default function AdminDashboard() {
                                       <KeyRound className="w-3 h-3" /> 비밀번호
                                     </Button>
                                   )}
-                                  {isMaster && u.role === 'leader' && u.id !== user?.id && (
+                                  {isMaster && u.role !== 'master' && u.id !== user?.id && (
                                     <Button
                                       size="sm"
                                       variant="ghost"
