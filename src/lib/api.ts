@@ -610,6 +610,19 @@ export async function getUnansweredPrayerCount(districtId: string): Promise<numb
   return count ?? 0;
 }
 
+export async function getActiveMemberCount(districtId: string): Promise<number> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('district_id', districtId)
+      .eq('status', 'active'),
+    '활성 구역원 수 조회'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getPrayerRequest(id: string): Promise<PrayerRequest | null> {
   const { data, error } = await withApiTimeout(
     supabase

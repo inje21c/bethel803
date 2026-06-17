@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getActiveMemberCount } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -95,6 +95,26 @@ export default function Dashboard() {
   const { settings: churchInfo, uiMode } = useChurch();
   const isSimple = uiMode === 'simple';
 
+  // 이번 주 모임 공지 완료 여부 — localStorage 주간 플래그
+  const thisISOWeek = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay() === 0 ? 7 : d.getDay();
+    const thu = new Date(d);
+    thu.setDate(d.getDate() - day + 4);
+    const yearStart = new Date(thu.getFullYear(), 0, 1);
+    const week = Math.ceil(((thu.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    return `${thu.getFullYear()}-W${String(week).padStart(2, '0')}`;
+  }, []);
+  const noticeKey = `bethel_notice_done_${thisISOWeek}`;
+  const [noticeDone, setNoticeDone] = useState(() => !!localStorage.getItem(noticeKey));
+
+  const { data: activeMemberCount = 0 } = useQuery({
+    queryKey: ['active_member_count', currentDistrictId],
+    queryFn: () => getActiveMemberCount(currentDistrictId),
+    enabled: isSimple && !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({
     mutationFn: (prayerRequestId: string) => toggleIntercession(prayerRequestId, user!.id),
@@ -151,30 +171,84 @@ export default function Dashboard() {
         </div>
 
         {/* 이번 주 할 일 — simple 모드 구역장 가이드 */}
-        {isSimple && (
-          <motion.div variants={item} className="rounded-2xl border bg-card p-4 space-y-1">
-            <p className="text-sm font-semibold mb-3">이번 주 할 일</p>
-            {[
-              { label: '구역원 초대하기', desc: '초대 링크를 복사해서 카카오톡 채팅방에 붙여넣기만 하면 됩니다.', link: '/admin?tab=members', icon: Megaphone },
-              { label: '이번 주 모임 공지 보내기', desc: '날짜·장소를 입력하면 공지문을 자동으로 만들어 줍니다.', link: '/admin?tab=kakao', icon: Megaphone },
-              { label: '기도제목 함께 나누기', desc: '구역원이 올린 기도제목을 확인하고 함께 기도할 수 있습니다.', link: '/prayer-requests', icon: MessageSquareHeart },
-              { label: '구역모임 일정 등록하기', desc: '모임 날짜와 장소를 등록하면 구역원들이 앱에서 확인합니다.', link: '/schedule', icon: CalendarDays },
-            ].map(({ label, desc, link, icon: Icon }) => (
-              <Link
-                key={link}
-                to={link}
-                className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors"
-              >
-                <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-              </Link>
-            ))}
-          </motion.div>
-        )}
+        {isSimple && (() => {
+          const steps = [
+            {
+              label: '구역원 초대하기',
+              desc: '초대 링크를 복사해서 카카오톡 채팅방에 붙여넣기만 하면 됩니다.',
+              link: '/admin?tab=members',
+              icon: Megaphone,
+              done: activeMemberCount > 1,
+            },
+            {
+              label: '이번 주 모임 공지 보내기',
+              desc: '날짜·장소를 입력하면 공지문을 자동으로 만들어 줍니다.',
+              link: '/admin?tab=kakao',
+              icon: Megaphone,
+              done: noticeDone,
+              onNav: () => { localStorage.setItem(noticeKey, '1'); setNoticeDone(true); },
+            },
+            {
+              label: '기도제목 함께 나누기',
+              desc: '구역원이 올린 기도제목을 확인하고 함께 기도할 수 있습니다.',
+              link: '/prayer-requests',
+              icon: MessageSquareHeart,
+              done: groupPrayers.length > 0,
+            },
+            {
+              label: '구역모임 일정 등록하기',
+              desc: '모임 날짜와 장소를 등록하면 구역원들이 앱에서 확인합니다.',
+              link: '/schedule',
+              icon: CalendarDays,
+              done: schedules.length > 0,
+            },
+          ];
+          const doneCount = steps.filter(s => s.done).length;
+          const nextIdx = steps.findIndex(s => !s.done);
+          return (
+            <motion.div variants={item} className="rounded-2xl border bg-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold">이번 주 할 일</p>
+                <span className="text-xs text-muted-foreground">{doneCount} / {steps.length} 완료</span>
+              </div>
+              <div className="space-y-1">
+                {steps.map(({ label, desc, link, icon: Icon, done, onNav }, idx) => {
+                  const isNext = idx === nextIdx;
+                  return (
+                    <Link
+                      key={link}
+                      to={link}
+                      onClick={onNav}
+                      className={`flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                        done
+                          ? 'opacity-50'
+                          : isNext
+                          ? 'bg-primary/5 border border-primary/20 hover:bg-primary/10'
+                          : 'hover:bg-muted/60'
+                      }`}
+                    >
+                      {done
+                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                        : <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      }
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium ${done ? 'line-through' : ''}`}>{label}</p>
+                          {isNext && <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">다음</span>}
+                        </div>
+                        {!done && <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>}
+                      </div>
+                      {!done && <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
+                    </Link>
+                  );
+                })}
+              </div>
+              {doneCount === steps.length && (
+                <p className="text-xs text-center text-green-600 font-medium mt-3">이번 주 할 일을 모두 완료했습니다!</p>
+              )}
+            </motion.div>
+          );
+        })()}
 
         {/* Trial 배너 */}
         {churchInfo?.isTrialing && churchInfo.trialDaysLeft > 7 && (
