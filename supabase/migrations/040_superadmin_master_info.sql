@@ -4,6 +4,8 @@
 -- get_all_churches_superadmin에 master_id / master_name / master_email 포함.
 -- auth.users는 SECURITY DEFINER 함수에서만 접근 가능.
 
+DROP FUNCTION IF EXISTS public.get_all_churches_superadmin();
+
 CREATE OR REPLACE FUNCTION public.get_all_churches_superadmin()
 RETURNS TABLE (
   id             UUID,
