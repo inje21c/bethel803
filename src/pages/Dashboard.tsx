@@ -857,6 +857,13 @@ function WeeklyGuideCard({
     }
   }, [isLeader, guidePhase, memberGuidePhase, allDone, uid]);
 
+  const isFullyGraduated = allDone && (
+    (isLeader && guidePhase === 3) || (!isLeader && memberGuidePhase === 2)
+  );
+
+  // 구역원은 모든 단계 완료 시 카드 숨김
+  if (!isLeader && isFullyGraduated) return null;
+
   return (
     <div className="rounded-2xl border bg-card p-4">
       <div className="flex items-center justify-between mb-3">
@@ -890,12 +897,21 @@ function WeeklyGuideCard({
           </Link>
         ))}
       </div>
-      {allDone && (
+      {allDone && !isFullyGraduated && (
         <p className="text-xs text-center text-green-600 font-medium mt-3">
-          {(!isLeader && memberGuidePhase === 2) || guidePhase === 3
-            ? '앱의 모든 기능을 체험하셨습니다!'
-            : '완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.'}
+          완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.
         </p>
+      )}
+      {isFullyGraduated && isLeader && (
+        <div className="mt-4 pt-3 border-t space-y-1.5">
+          <p className="text-xs text-center text-muted-foreground">앱의 모든 기능을 체험하셨습니다</p>
+          <Link
+            to="/support"
+            className="flex items-center justify-center gap-2 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            정식 도입 문의하기 <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
       )}
     </div>
   );
