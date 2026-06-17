@@ -73,7 +73,7 @@ function HeaderActionFallback({ type }: { type: 'search' | 'notification' }) {
   );
 }
 
-export default function AppLayout({ children, title }: { children: ReactNode; title?: string }) {
+export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isMaster, isLeader } = useAuth();

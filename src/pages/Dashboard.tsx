@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, ChevronRight, Bell, BookOpenCheck } from 'lucide-react';
+import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, ChevronRight, Bell, BookOpenCheck, Users } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
@@ -681,7 +681,7 @@ function WeeklyGuideCard({
       label: '구역원 초대하기',
       desc: '초대 링크를 복사해서 카카오톡 채팅방에 붙여넣기만 하면 됩니다.',
       link: '/admin?tab=members',
-      icon: Megaphone,
+      icon: Users,
       done: activeMemberCount > 1,
     },
     {
