@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked,
@@ -238,7 +239,8 @@ export default function AdminDashboard() {
     isViewingOtherDistrict,
   } = useDistrict();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') ?? 'overview');
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [editingStudy, setEditingStudy] = useState<BibleStudy | undefined>();
   const [deletingStudyId, setDeletingStudyId] = useState<string | null>(null);

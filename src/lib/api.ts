@@ -3006,6 +3006,7 @@ export interface ChurchSettings {
   isTrialing: boolean;
   trialDaysLeft: number;
   plan: string;
+  uiMode: 'simple' | 'full';
 }
 
 /**
@@ -3077,6 +3078,7 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
     isTrialing: isBillingTrialing as boolean,
     trialDaysLeft,
     plan: info ? (info.plan as string) : 'unknown',
+    uiMode: (settingsRow.ui_mode as 'simple' | 'full') ?? 'full',
   };
 }
 

@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame } from 'lucide-react';
+import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, FileText, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
@@ -92,7 +92,8 @@ export default function Dashboard() {
     enabled: groupPrayerIds.length > 0,
   });
 
-  const { settings: churchInfo } = useChurch();
+  const { settings: churchInfo, uiMode } = useChurch();
+  const isSimple = uiMode === 'simple';
 
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({
@@ -148,6 +149,31 @@ export default function Dashboard() {
           <h1 className="font-display text-2xl font-bold">안녕하세요, {user?.name}님</h1>
           <p className="text-muted-foreground text-sm mt-1">이번 주도 은혜로운 한 주 보내세요!</p>
         </div>
+
+        {/* 이번 주 할 일 — simple 모드 구역장 가이드 */}
+        {isSimple && (
+          <motion.div variants={item} className="rounded-2xl border bg-card p-4 space-y-3">
+            <p className="text-sm font-semibold">이번 주 할 일</p>
+            <div className="space-y-1">
+              {[
+                { label: '구역원 초대하기', link: '/admin?tab=members', icon: CalendarDays },
+                { label: '모임 공지 보내기', link: '/admin?tab=kakao', icon: Megaphone },
+                { label: '기도제목 확인', link: '/prayer-requests', icon: MessageSquareHeart },
+                { label: '주간 보고하기', link: '/admin?tab=report', icon: FileText },
+              ].map(({ label, link, icon: Icon }) => (
+                <Link
+                  key={link}
+                  to={link}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors"
+                >
+                  <Icon className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-sm flex-1">{label}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Trial 배너 */}
         {churchInfo?.isTrialing && churchInfo.trialDaysLeft > 7 && (

@@ -19,6 +19,8 @@ interface ChurchContextType {
   hasModule: (module: string) => boolean;
   /** 설정 변경(관리자) 후 강제 갱신. */
   refresh: () => void;
+  /** UI 복잡도 모드. simple: 핵심 기능만, full: 전체 기능 */
+  uiMode: 'simple' | 'full';
 }
 
 const ChurchContext = createContext<ChurchContextType | null>(null);
@@ -62,6 +64,7 @@ export function ChurchProvider({ children }: { children: ReactNode }) {
         qtMode: settings?.qtMode ?? 'scraped',
         hasModule,
         refresh,
+        uiMode: settings?.uiMode ?? 'full',
       }}
     >
       {children}

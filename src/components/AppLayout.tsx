@@ -6,6 +6,7 @@ import { useTheme } from 'next-themes';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
+import { useChurch } from '@/lib/churchContext';
 import { getUnreadReplyCount } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import DistrictSelector from '@/components/DistrictSelector';
@@ -20,7 +21,7 @@ const navItems = [
   { path: '/bible-study', label: '구역성경공부', icon: BookOpen },
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
-  { path: '/bible-reading', label: '성경', icon: BookMarked },
+  { path: '/bible-reading', label: '성경', icon: BookMarked, simpleHide: true },
   { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
   { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
@@ -33,12 +34,14 @@ const mobileTabItems = [
 ];
 
 function isItemVisible(
-  item: { leaderOnly?: boolean; masterOnly?: boolean },
+  item: { leaderOnly?: boolean; masterOnly?: boolean; simpleHide?: boolean },
   isLeader: boolean,
   isMaster: boolean,
+  isSimple: boolean,
 ) {
   if (item.masterOnly && !isMaster) return false;
   if (item.leaderOnly && !isLeader) return false;
+  if (item.simpleHide && isSimple) return false;
   return true;
 }
 
@@ -70,10 +73,12 @@ function HeaderActionFallback({ type }: { type: 'search' | 'notification' }) {
   );
 }
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default function AppLayout({ children, title }: { children: ReactNode; title?: string }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isMaster, isLeader } = useAuth();
+  const { uiMode } = useChurch();
+  const isSimple = uiMode === 'simple';
   const {
     currentDistrictName,
     homeDistrictName,
@@ -186,9 +191,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 내 구역으로
               </Button>
             )}
-            <Suspense fallback={<HeaderActionFallback type="search" />}>
-              <GlobalSearch />
-            </Suspense>
+            {!isSimple && (
+              <Suspense fallback={<HeaderActionFallback type="search" />}>
+                <GlobalSearch />
+              </Suspense>
+            )}
             <Link
               to="/profile"
               className="hidden sm:flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground hover:text-foreground transition-colors relative"
@@ -252,7 +259,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <div className="space-y-1">
                   <p className="px-2 text-[11px] font-medium tracking-wide text-muted-foreground">메뉴</p>
                   {navItems.map(item => {
-                    if (!isItemVisible(item, isLeader, isMaster)) return null;
+                    if (!isItemVisible(item, isLeader, isMaster, isSimple)) return null;
                     const active = location.pathname.startsWith(item.path);
                     return (
                       <Link
@@ -345,7 +352,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             aria-label="주 메뉴"
           >
             {navItems.map(item => {
-              if (!isItemVisible(item, isLeader, isMaster)) return null;
+              if (!isItemVisible(item, isLeader, isMaster, isSimple)) return null;
               const active = location.pathname.startsWith(item.path);
               return (
                 <Link
