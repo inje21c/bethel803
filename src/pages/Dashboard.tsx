@@ -1,12 +1,12 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, ChevronRight } from 'lucide-react';
+import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, ChevronRight, Bell, BookOpenCheck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getActiveMemberCount } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getActiveMemberCount, hasEverDoneQT, getWeeklyReports } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -115,6 +115,29 @@ export default function Dashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // 가이드 phase — 1: 기본 기능 / 2: 심화 기능 탐색
+  // phase1 완료 후 다음 접속 시 phase2로 전환 (localStorage 기반)
+  const [guidePhase] = useState<1 | 2>(() =>
+    localStorage.getItem('bethel_guide_phase1_done') ? 2 : 1
+  );
+
+  // phase 2 감지 쿼리 (phase2 진입 시에만 실행)
+  const { data: qtEverDone = false } = useQuery({
+    queryKey: ['qt_ever_done', user?.id],
+    queryFn: () => hasEverDoneQT(user!.id),
+    enabled: isSimple && guidePhase === 2 && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: weeklyReportList = [] } = useQuery({
+    queryKey: ['weekly_reports', currentDistrictId],
+    queryFn: () => getWeeklyReports(currentDistrictId),
+    enabled: isSimple && guidePhase === 2 && !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
+  });
+  const [notifDone, setNotifDone] = useState(() =>
+    !!localStorage.getItem('bethel_notifications_setup_done')
+  );
+
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({
     mutationFn: (prayerRequestId: string) => toggleIntercession(prayerRequestId, user!.id),
@@ -171,73 +194,20 @@ export default function Dashboard() {
         </div>
 
         {/* 이번 주 할 일 — simple 모드 구역장 가이드 */}
-        {isSimple && (() => {
-          const steps = [
-            {
-              label: '구역원 초대하기',
-              desc: '초대 링크를 복사해서 카카오톡 채팅방에 붙여넣기만 하면 됩니다.',
-              link: '/admin?tab=members',
-              icon: Megaphone,
-              done: activeMemberCount > 1,
-            },
-            {
-              label: '이번 주 모임 공지 보내기',
-              desc: '날짜·장소를 입력하면 공지문을 자동으로 만들어 줍니다.',
-              link: '/admin?tab=kakao',
-              icon: Megaphone,
-              done: noticeDone,
-              onNav: () => { localStorage.setItem(noticeKey, '1'); setNoticeDone(true); },
-            },
-            {
-              label: '기도제목 함께 나누기',
-              desc: '구역원이 올린 기도제목을 확인하고 함께 기도할 수 있습니다.',
-              link: '/prayer-requests',
-              icon: MessageSquareHeart,
-              done: groupPrayers.length > 0,
-            },
-            {
-              label: '구역모임 일정 등록하기',
-              desc: '모임 날짜와 장소를 등록하면 구역원들이 앱에서 확인합니다.',
-              link: '/schedule',
-              icon: CalendarDays,
-              done: schedules.length > 0,
-            },
-          ];
-          const doneCount = steps.filter(s => s.done).length;
-          return (
-            <motion.div variants={item} className="rounded-2xl border bg-card p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold">이번 주 할 일</p>
-                <span className="text-xs text-muted-foreground">{doneCount} / {steps.length} 완료</span>
-              </div>
-              <div className="space-y-1">
-                {steps.map(({ label, desc, link, icon: Icon, done, onNav }) => (
-                  <Link
-                    key={link}
-                    to={link}
-                    onClick={onNav}
-                    className={`flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                      done ? 'opacity-50' : 'hover:bg-muted/60'
-                    }`}
-                  >
-                    {done
-                      ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                      : <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    }
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${done ? 'line-through' : ''}`}>{label}</p>
-                      {!done && <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>}
-                    </div>
-                    {!done && <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
-                  </Link>
-                ))}
-              </div>
-              {doneCount === steps.length && (
-                <p className="text-xs text-center text-green-600 font-medium mt-3">이번 주 할 일을 모두 완료했습니다!</p>
-              )}
-            </motion.div>
-          );
-        })()}
+        {isSimple && <WeeklyGuideCard
+          guidePhase={guidePhase}
+          activeMemberCount={activeMemberCount}
+          noticeDone={noticeDone}
+          noticeKey={noticeKey}
+          setNoticeDone={setNoticeDone}
+          groupPrayersCount={groupPrayers.length}
+          schedulesCount={schedules.length}
+          qtEverDone={qtEverDone}
+          totalChapters={totalChapters}
+          weeklyReportCount={weeklyReportList.length}
+          notifDone={notifDone}
+          setNotifDone={setNotifDone}
+        />}
 
         {/* Trial 배너 */}
         {churchInfo?.isTrialing && churchInfo.trialDaysLeft > 7 && (
@@ -551,5 +521,160 @@ export default function Dashboard() {
         </AnimatePresence>
       </div>
     </AppLayout>
+  );
+}
+
+// ── 이번 주 할 일 가이드 카드 ──────────────────────────────
+interface WeeklyGuideCardProps {
+  guidePhase: 1 | 2;
+  activeMemberCount: number;
+  noticeDone: boolean;
+  noticeKey: string;
+  setNoticeDone: Dispatch<SetStateAction<boolean>>;
+  groupPrayersCount: number;
+  schedulesCount: number;
+  qtEverDone: boolean;
+  totalChapters: number;
+  weeklyReportCount: number;
+  notifDone: boolean;
+  setNotifDone: Dispatch<SetStateAction<boolean>>;
+}
+
+function WeeklyGuideCard({
+  guidePhase,
+  activeMemberCount,
+  noticeDone,
+  noticeKey,
+  setNoticeDone,
+  groupPrayersCount,
+  schedulesCount,
+  qtEverDone,
+  totalChapters,
+  weeklyReportCount,
+  notifDone,
+  setNotifDone,
+}: WeeklyGuideCardProps) {
+  const phase1Steps = [
+    {
+      id: 'invite',
+      label: '구역원 초대하기',
+      desc: '초대 링크를 복사해서 카카오톡 채팅방에 붙여넣기만 하면 됩니다.',
+      link: '/admin?tab=members',
+      icon: Megaphone,
+      done: activeMemberCount > 1,
+    },
+    {
+      id: 'notice',
+      label: '이번 주 모임 공지 보내기',
+      desc: '날짜·장소를 입력하면 공지문을 자동으로 만들어 줍니다.',
+      link: '/admin?tab=kakao',
+      icon: Megaphone,
+      done: noticeDone,
+      onNav: () => { localStorage.setItem(noticeKey, '1'); setNoticeDone(true); },
+    },
+    {
+      id: 'prayer',
+      label: '기도제목 함께 나누기',
+      desc: '구역원이 올린 기도제목을 확인하고 함께 기도할 수 있습니다.',
+      link: '/prayer-requests',
+      icon: MessageSquareHeart,
+      done: groupPrayersCount > 0,
+    },
+    {
+      id: 'schedule',
+      label: '구역모임 일정 등록하기',
+      desc: '모임 날짜와 장소를 등록하면 구역원들이 앱에서 확인합니다.',
+      link: '/schedule',
+      icon: CalendarDays,
+      done: schedulesCount > 0,
+    },
+  ];
+
+  const phase2Steps = [
+    {
+      id: 'qt',
+      label: 'QT 큐티 참여하기',
+      desc: '오늘의 묵상 본문을 읽고 나눔을 올려보세요.',
+      link: '/qt',
+      icon: BookOpenCheck,
+      done: qtEverDone,
+    },
+    {
+      id: 'bible',
+      label: '성경읽기 첫 기록',
+      desc: '오늘 읽은 성경 장수를 기록하면 진도가 쌓입니다.',
+      link: '/bible-reading',
+      icon: BookOpen,
+      done: totalChapters > 0,
+    },
+    {
+      id: 'report',
+      label: '주간 보고서 작성',
+      desc: '모임 결과를 요약해 담당자에게 보고할 수 있습니다.',
+      link: '/admin?tab=report',
+      icon: CheckCircle2,
+      done: weeklyReportCount > 0,
+    },
+    {
+      id: 'notif',
+      label: '알림 설정하기',
+      desc: '기도제목·QT 알림을 켜두면 구역원 활동을 놓치지 않습니다.',
+      link: '/profile',
+      icon: Bell,
+      done: notifDone,
+      onNav: () => { localStorage.setItem('bethel_notifications_setup_done', '1'); setNotifDone(true); },
+    },
+  ];
+
+  const steps = guidePhase === 1 ? phase1Steps : phase2Steps;
+  const doneCount = steps.filter(s => s.done).length;
+  const allDone = doneCount === steps.length;
+
+  // phase 1 전체 완료 시 다음 접속을 위해 플래그 저장
+  useEffect(() => {
+    if (guidePhase === 1 && allDone) {
+      localStorage.setItem('bethel_guide_phase1_done', '1');
+    }
+  }, [guidePhase, allDone]);
+
+  return (
+    <div className="rounded-2xl border bg-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm font-semibold">이번 주 할 일</p>
+          {guidePhase === 2 && (
+            <p className="text-xs text-muted-foreground mt-0.5">기본 기능 완료 — 새로운 기능을 사용해보세요</p>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">{doneCount} / {steps.length} 완료</span>
+      </div>
+      <div className="space-y-1">
+        {steps.map(({ label, desc, link, icon: Icon, done, onNav }) => (
+          <Link
+            key={link}
+            to={link}
+            onClick={onNav}
+            className={`flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+              done ? 'opacity-50' : 'hover:bg-muted/60'
+            }`}
+          >
+            {done
+              ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+              : <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            }
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium ${done ? 'line-through' : ''}`}>{label}</p>
+              {!done && <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>}
+            </div>
+            {!done && <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
+          </Link>
+        ))}
+      </div>
+      {allDone && (
+        <p className="text-xs text-center text-green-600 font-medium mt-3">
+          {guidePhase === 1 ? '완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.' : '모든 기능을 체험하셨습니다!'}
+        </p>
+      )}
+    </div>
   );
 }
