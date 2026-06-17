@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, FileText, ChevronRight } from 'lucide-react';
+import { BookOpen, BookMarked, MessageSquareHeart, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, HelpCircle, BookHeart, Flame, Megaphone, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
@@ -159,7 +159,7 @@ export default function Dashboard() {
                 { label: '구역원 초대하기', link: '/admin?tab=members', icon: CalendarDays },
                 { label: '모임 공지 보내기', link: '/admin?tab=kakao', icon: Megaphone },
                 { label: '기도제목 확인', link: '/prayer-requests', icon: MessageSquareHeart },
-                { label: '주간 보고하기', link: '/admin?tab=report', icon: FileText },
+                { label: '일정 등록하기', link: '/schedule', icon: CalendarDays },
               ].map(({ label, link, icon: Icon }) => (
                 <Link
                   key={link}
