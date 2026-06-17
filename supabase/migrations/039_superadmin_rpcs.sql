@@ -5,6 +5,7 @@
 -- RLS 우회가 필요하므로 SECURITY DEFINER 사용.
 
 -- 1. 전체 교회 목록 조회
+DROP FUNCTION IF EXISTS public.get_all_churches_superadmin();
 CREATE OR REPLACE FUNCTION public.get_all_churches_superadmin()
 RETURNS TABLE (
   id            UUID,
