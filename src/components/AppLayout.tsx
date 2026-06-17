@@ -381,6 +381,47 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+
+            <div className="mt-3 border-t pt-3 flex flex-col gap-1">
+              {[
+                { path: '/profile', label: '내 프로필', icon: UserCircle },
+                { path: '/manual',  label: '사용 안내',  icon: HelpCircle },
+                { path: '/support', label: '문의하기',   icon: HelpCircle },
+              ].map(({ path, label, icon: Icon }) => (
+                <Link
+                  key={path}
+                  to={path}
+                  className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    location.pathname === path
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="relative">
+                    {label}
+                    {path === '/support' && unreadReplyCount > 0 && (
+                      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold w-4 h-4">
+                        {unreadReplyCount}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              ))}
+              {isSuperAdmin && (
+                <Link
+                  to="/superadmin"
+                  className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    location.pathname === '/superadmin'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  <span>슈퍼어드민</span>
+                </Link>
+              )}
+            </div>
           </nav>
         </aside>
 
