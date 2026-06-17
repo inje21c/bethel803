@@ -152,26 +152,27 @@ export default function Dashboard() {
 
         {/* 이번 주 할 일 — simple 모드 구역장 가이드 */}
         {isSimple && (
-          <motion.div variants={item} className="rounded-2xl border bg-card p-4 space-y-3">
-            <p className="text-sm font-semibold">이번 주 할 일</p>
-            <div className="space-y-1">
-              {[
-                { label: '구역원 초대하기', link: '/admin?tab=members', icon: CalendarDays },
-                { label: '모임 공지 보내기', link: '/admin?tab=kakao', icon: Megaphone },
-                { label: '기도제목 확인', link: '/prayer-requests', icon: MessageSquareHeart },
-                { label: '일정 등록하기', link: '/schedule', icon: CalendarDays },
-              ].map(({ label, link, icon: Icon }) => (
-                <Link
-                  key={link}
-                  to={link}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors"
-                >
-                  <Icon className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm flex-1">{label}</span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </Link>
-              ))}
-            </div>
+          <motion.div variants={item} className="rounded-2xl border bg-card p-4 space-y-1">
+            <p className="text-sm font-semibold mb-3">이번 주 할 일</p>
+            {[
+              { label: '구역원 초대하기', desc: '초대 링크를 복사해서 카카오톡 채팅방에 붙여넣기만 하면 됩니다.', link: '/admin?tab=members', icon: Megaphone },
+              { label: '이번 주 모임 공지 보내기', desc: '날짜·장소를 입력하면 공지문을 자동으로 만들어 줍니다.', link: '/admin?tab=kakao', icon: Megaphone },
+              { label: '기도제목 함께 나누기', desc: '구역원이 올린 기도제목을 확인하고 함께 기도할 수 있습니다.', link: '/prayer-requests', icon: MessageSquareHeart },
+              { label: '구역모임 일정 등록하기', desc: '모임 날짜와 장소를 등록하면 구역원들이 앱에서 확인합니다.', link: '/schedule', icon: CalendarDays },
+            ].map(({ label, desc, link, icon: Icon }) => (
+              <Link
+                key={link}
+                to={link}
+                className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors"
+              >
+                <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              </Link>
+            ))}
           </motion.div>
         )}
 
