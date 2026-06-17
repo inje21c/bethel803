@@ -1,7 +1,7 @@
 import { lazy, ReactNode, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart, ShieldCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -76,9 +76,12 @@ function HeaderActionFallback({ type }: { type: 'search' | 'notification' }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isMaster, isLeader } = useAuth();
-  const { uiMode } = useChurch();
+  const { user, logout, isMaster, isLeader, isSuperAdmin } = useAuth();
+  const { uiMode, isPendingDeletion, deletionDate } = useChurch();
   const isSimple = uiMode === 'simple';
+  const deletionDaysLeft = deletionDate
+    ? Math.max(0, Math.ceil((new Date(deletionDate).getTime() - Date.now()) / 86400000))
+    : null;
   const {
     currentDistrictName,
     homeDistrictName,
@@ -163,6 +166,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 교회 삭제 예정 배너 */}
+      {isPendingDeletion && deletionDaysLeft !== null && (
+        <div className="bg-destructive text-destructive-foreground text-xs text-center py-2 px-4 flex items-center justify-center gap-2">
+          <span className="font-semibold">서비스 종료 예정</span>
+          <span>{deletionDaysLeft > 0 ? `D-${deletionDaysLeft} 후 데이터가 영구 삭제됩니다` : '오늘 데이터가 영구 삭제됩니다'}</span>
+          <Link to="/support" className="underline underline-offset-2 font-semibold">복구 문의</Link>
+        </div>
+      )}
 
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
@@ -319,6 +331,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       </span>
                     )}
                   </Link>
+                  {isSuperAdmin && (
+                    <Link
+                      to="/superadmin"
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                        location.pathname === '/superadmin' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      슈퍼어드민
+                    </Link>
+                  )}
                   <button
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground"
                     onClick={toggleTheme}
@@ -369,6 +393,47 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+
+            <div className="mt-3 border-t pt-3 flex flex-col gap-1">
+              {[
+                { path: '/profile', label: '내 프로필', icon: UserCircle },
+                { path: '/manual',  label: '사용 안내',  icon: HelpCircle },
+                { path: '/support', label: '문의하기',   icon: HelpCircle },
+              ].map(({ path, label, icon: Icon }) => (
+                <Link
+                  key={path}
+                  to={path}
+                  className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    location.pathname === path
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="relative">
+                    {label}
+                    {path === '/support' && unreadReplyCount > 0 && (
+                      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold w-4 h-4">
+                        {unreadReplyCount}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              ))}
+              {isSuperAdmin && (
+                <Link
+                  to="/superadmin"
+                  className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    location.pathname === '/superadmin'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  <span>슈퍼어드민</span>
+                </Link>
+              )}
+            </div>
           </nav>
         </aside>
 

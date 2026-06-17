@@ -52,6 +52,7 @@ const Landing = lazy(() => import("./pages/Landing"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Support = lazy(() => import("./pages/Support"));
+const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -76,6 +77,13 @@ function LeaderRoute({ children }: { children: React.ReactNode }) {
 function MasterRoute({ children }: { children: React.ReactNode }) {
   const { isMaster } = useAuth();
   if (!isMaster) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isSuperAdmin, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -117,6 +125,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/manual" element={<ProtectedRoute><UserManual /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+        <Route path="/superadmin" element={<ProtectedRoute><SuperAdminRoute><SuperAdmin /></SuperAdminRoute></ProtectedRoute>} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />

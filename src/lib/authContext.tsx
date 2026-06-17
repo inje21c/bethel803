@@ -76,6 +76,8 @@ interface AuthContextType {
   refreshProfile: () => Promise<UserProfile | null>;
   isMaster: boolean;
   isLeader: boolean;
+  isSuperAdmin: boolean;
+  authEmail: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -197,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initialProfile = useRef(loadCachedProfile());
   const [user, setUserState] = useState<UserProfile | null>(initialProfile.current);
   const [loading, setLoading] = useState(initialProfile.current === null);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
   const requestId = useRef(0);
   const mounted = useRef(true);
   const userRef = useRef<UserProfile | null>(initialProfile.current);
@@ -240,10 +243,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(fallbackTimer);
         if (mounted.current) {
           setUser(null);
+          setAuthEmail(null);
           setLoading(false);
         }
         return;
       }
+
+      if (session.user.email && mounted.current) setAuthEmail(session.user.email);
 
       // 토큰 갱신은 프로필 변경과 무관 → 기존 user 유지, 불필요한 fetch 차단
       if (event === 'TOKEN_REFRESHED' && userRef.current) {
@@ -435,6 +441,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshProfile,
       isMaster: user?.role === 'master',
       isLeader: user?.role === 'master' || user?.role === 'leader',
+      isSuperAdmin: authEmail === 'cmhyun@gmail.com',
+      authEmail,
     }}>
       {children}
     </AuthContext.Provider>

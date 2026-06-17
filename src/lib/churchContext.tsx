@@ -21,6 +21,10 @@ interface ChurchContextType {
   refresh: () => void;
   /** UI 복잡도 모드. simple: 핵심 기능만, full: 전체 기능 */
   uiMode: 'simple' | 'full';
+  /** 마스터 탈퇴로 교회가 삭제 예정 상태(30일 유예)인지 여부 */
+  isPendingDeletion: boolean;
+  /** 영구 삭제 예정일 (ISO 문자열) */
+  deletionDate: string | null;
 }
 
 const ChurchContext = createContext<ChurchContextType | null>(null);
@@ -65,6 +69,8 @@ export function ChurchProvider({ children }: { children: ReactNode }) {
         hasModule,
         refresh,
         uiMode: settings?.uiMode ?? 'full',
+        isPendingDeletion: settings?.isPendingDeletion ?? false,
+        deletionDate: settings?.deletionDate ?? null,
       }}
     >
       {children}
