@@ -94,6 +94,11 @@ export default function Dashboard() {
 
   const { settings: churchInfo, uiMode } = useChurch();
   const isSimple = uiMode === 'simple';
+  const isLeader = user?.role === 'leader' || user?.role === 'master';
+  const showGuide = isSimple && isLeader;
+
+  // localStorage 키를 userId로 구분 — 같은 브라우저에서 계정 전환 시 혼용 방지
+  const uid = user?.id ?? 'anon';
 
   // 이번 주 모임 공지 완료 여부 — localStorage 주간 플래그
   const thisISOWeek = useMemo(() => {
@@ -105,37 +110,37 @@ export default function Dashboard() {
     const week = Math.ceil(((thu.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
     return `${thu.getFullYear()}-W${String(week).padStart(2, '0')}`;
   }, []);
-  const noticeKey = `bethel_notice_done_${thisISOWeek}`;
+  const noticeKey = `bethel_notice_done_${uid}_${thisISOWeek}`;
   const [noticeDone, setNoticeDone] = useState(() => !!localStorage.getItem(noticeKey));
 
   const { data: activeMemberCount = 0 } = useQuery({
     queryKey: ['active_member_count', currentDistrictId],
     queryFn: () => getActiveMemberCount(currentDistrictId),
-    enabled: isSimple && !!currentDistrictId,
+    enabled: showGuide && !!currentDistrictId,
     staleTime: 1000 * 60 * 5,
   });
 
   // 가이드 phase — 1: 기본 기능 / 2: 심화 기능 탐색
-  // phase1 완료 후 다음 접속 시 phase2로 전환 (localStorage 기반)
+  // phase1 완료 후 다음 접속 시 phase2로 전환 (userId별 localStorage)
   const [guidePhase] = useState<1 | 2>(() =>
-    localStorage.getItem('bethel_guide_phase1_done') ? 2 : 1
+    localStorage.getItem(`bethel_guide_phase1_done_${uid}`) ? 2 : 1
   );
 
   // phase 2 감지 쿼리 (phase2 진입 시에만 실행)
   const { data: qtEverDone = false } = useQuery({
     queryKey: ['qt_ever_done', user?.id],
     queryFn: () => hasEverDoneQT(user!.id),
-    enabled: isSimple && guidePhase === 2 && !!user,
+    enabled: showGuide && guidePhase === 2 && !!user,
     staleTime: 1000 * 60 * 5,
   });
   const { data: weeklyReportList = [] } = useQuery({
     queryKey: ['weekly_reports', currentDistrictId],
     queryFn: () => getWeeklyReports(currentDistrictId),
-    enabled: isSimple && guidePhase === 2 && !!currentDistrictId,
+    enabled: showGuide && guidePhase === 2 && !!currentDistrictId,
     staleTime: 1000 * 60 * 5,
   });
   const [notifDone, setNotifDone] = useState(() =>
-    !!localStorage.getItem('bethel_notifications_setup_done')
+    !!localStorage.getItem(`bethel_notifications_setup_done_${uid}`)
   );
 
   const queryClient = useQueryClient();
@@ -193,8 +198,9 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-sm mt-1">이번 주도 은혜로운 한 주 보내세요!</p>
         </div>
 
-        {/* 이번 주 할 일 — simple 모드 구역장 가이드 */}
-        {isSimple && <WeeklyGuideCard
+        {/* 이번 주 할 일 — simple 모드 구역장 전용 가이드 */}
+        {showGuide && <WeeklyGuideCard
+          uid={uid}
           guidePhase={guidePhase}
           activeMemberCount={activeMemberCount}
           noticeDone={noticeDone}
@@ -526,6 +532,7 @@ export default function Dashboard() {
 
 // ── 이번 주 할 일 가이드 카드 ──────────────────────────────
 interface WeeklyGuideCardProps {
+  uid: string;
   guidePhase: 1 | 2;
   activeMemberCount: number;
   noticeDone: boolean;
@@ -541,6 +548,7 @@ interface WeeklyGuideCardProps {
 }
 
 function WeeklyGuideCard({
+  uid,
   guidePhase,
   activeMemberCount,
   noticeDone,
@@ -622,7 +630,7 @@ function WeeklyGuideCard({
       link: '/profile',
       icon: Bell,
       done: notifDone,
-      onNav: () => { localStorage.setItem('bethel_notifications_setup_done', '1'); setNotifDone(true); },
+      onNav: () => { localStorage.setItem(`bethel_notifications_setup_done_${uid}`, '1'); setNotifDone(true); },
     },
   ];
 
@@ -633,7 +641,7 @@ function WeeklyGuideCard({
   // phase 1 전체 완료 시 다음 접속을 위해 플래그 저장
   useEffect(() => {
     if (guidePhase === 1 && allDone) {
-      localStorage.setItem('bethel_guide_phase1_done', '1');
+      localStorage.setItem(`bethel_guide_phase1_done_${uid}`, '1');
     }
   }, [guidePhase, allDone]);
 
