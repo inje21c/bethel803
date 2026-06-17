@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getActiveMemberCount, hasEverDoneQT, getWeeklyReports } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getActiveMemberCount, hasEverDoneQT, getWeeklyReports, hasEverPostedPrayer, hasEverAnsweredStudy } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -95,7 +95,8 @@ export default function Dashboard() {
   const { settings: churchInfo, uiMode } = useChurch();
   const isSimple = uiMode === 'simple';
   const isLeader = user?.role === 'leader' || user?.role === 'master';
-  const showGuide = isSimple && isLeader;
+  const isMember = user?.role === 'member';
+  const showGuide = isSimple && (isLeader || isMember);
 
   // localStorage 키를 userId로 구분 — 같은 브라우저에서 계정 전환 시 혼용 방지
   const uid = user?.id ?? 'anon';
@@ -165,6 +166,45 @@ export default function Dashboard() {
     !!localStorage.getItem(`bethel_attendance_done_${uid}`)
   );
 
+  // 구역원 가이드 phase
+  const [memberGuidePhase] = useState<1 | 2>(() =>
+    localStorage.getItem(`bethel_member_guide_phase1_done_${uid}`) ? 2 : 1
+  );
+
+  // 구역원 phase 1 감지
+  const { data: memberQtDone = false } = useQuery({
+    queryKey: ['qt_ever_done', user?.id],
+    queryFn: () => hasEverDoneQT(user!.id),
+    enabled: showGuide && isMember && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: memberPrayerDone = false } = useQuery({
+    queryKey: ['ever_posted_prayer', user?.id],
+    queryFn: () => hasEverPostedPrayer(user!.id),
+    enabled: showGuide && isMember && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: memberStudyAnswerDone = false } = useQuery({
+    queryKey: ['ever_answered_study', user?.id],
+    queryFn: () => hasEverAnsweredStudy(user!.id),
+    enabled: showGuide && isMember && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // 구역원 phase 2 감지
+  const { data: memberIntercessions } = useQuery({
+    queryKey: ['my_intercessions_member', user?.id],
+    queryFn: () => getMyIntercessions(user!.id),
+    enabled: showGuide && isMember && memberGuidePhase === 2 && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const [memberNotifDone, setMemberNotifDone] = useState(() =>
+    !!localStorage.getItem(`bethel_notifications_setup_done_${uid}`)
+  );
+  const [memberQtShareDone, setMemberQtShareDone] = useState(() =>
+    !!localStorage.getItem(`bethel_qt_share_done_${uid}`)
+  );
+
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({
     mutationFn: (prayerRequestId: string) => toggleIntercession(prayerRequestId, user!.id),
@@ -223,6 +263,8 @@ export default function Dashboard() {
         {/* 이번 주 할 일 — simple 모드 구역장 전용 가이드 */}
         {showGuide && <WeeklyGuideCard
           uid={uid}
+          isLeader={isLeader}
+          // 구역장 props
           guidePhase={guidePhase}
           activeMemberCount={activeMemberCount}
           noticeDone={noticeDone}
@@ -241,6 +283,18 @@ export default function Dashboard() {
           setQtDashboardDone={setQtDashboardDone}
           attendanceDone={attendanceDone}
           setAttendanceDone={setAttendanceDone}
+          // 구역원 props
+          memberGuidePhase={memberGuidePhase}
+          memberQtDone={memberQtDone}
+          memberPrayerDone={memberPrayerDone}
+          memberBibleDone={totalChapters > 0}
+          memberStudyAnswerDone={memberStudyAnswerDone}
+          memberIntercessionDone={(memberIntercessions?.size ?? 0) > 0}
+          memberNotifDone={memberNotifDone}
+          setMemberNotifDone={setMemberNotifDone}
+          memberQtShareDone={memberQtShareDone}
+          setMemberQtShareDone={setMemberQtShareDone}
+          memberStreakDone={(streak?.currentStreak ?? 0) >= 3}
         />}
 
         {/* Trial 배너 */}
@@ -561,6 +615,7 @@ export default function Dashboard() {
 // ── 이번 주 할 일 가이드 카드 ──────────────────────────────
 interface WeeklyGuideCardProps {
   uid: string;
+  isLeader: boolean;
   guidePhase: 1 | 2 | 3;
   activeMemberCount: number;
   noticeDone: boolean;
@@ -579,10 +634,23 @@ interface WeeklyGuideCardProps {
   setQtDashboardDone: Dispatch<SetStateAction<boolean>>;
   attendanceDone: boolean;
   setAttendanceDone: Dispatch<SetStateAction<boolean>>;
+  // 구역원 props
+  memberGuidePhase: 1 | 2;
+  memberQtDone: boolean;
+  memberPrayerDone: boolean;
+  memberBibleDone: boolean;
+  memberStudyAnswerDone: boolean;
+  memberIntercessionDone: boolean;
+  memberNotifDone: boolean;
+  setMemberNotifDone: Dispatch<SetStateAction<boolean>>;
+  memberQtShareDone: boolean;
+  setMemberQtShareDone: Dispatch<SetStateAction<boolean>>;
+  memberStreakDone: boolean;
 }
 
 function WeeklyGuideCard({
   uid,
+  isLeader,
   guidePhase,
   activeMemberCount,
   noticeDone,
@@ -601,6 +669,17 @@ function WeeklyGuideCard({
   setQtDashboardDone,
   attendanceDone,
   setAttendanceDone,
+  memberGuidePhase,
+  memberQtDone,
+  memberPrayerDone,
+  memberBibleDone,
+  memberStudyAnswerDone,
+  memberIntercessionDone,
+  memberNotifDone,
+  setMemberNotifDone,
+  memberQtShareDone,
+  setMemberQtShareDone,
+  memberStreakDone,
 }: WeeklyGuideCardProps) {
   const phase1Steps = [
     {
@@ -711,30 +790,86 @@ function WeeklyGuideCard({
     },
   ];
 
-  const steps = guidePhase === 1 ? phase1Steps : guidePhase === 2 ? phase2Steps : phase3Steps;
+  // 구역원 step 세트
+  const memberPhase1Steps = [
+    {
+      id: 'm-qt', label: 'QT 큐티 참여하기',
+      desc: '오늘의 묵상 본문을 읽고 나눔을 올려보세요.',
+      link: '/qt', icon: BookOpenCheck, done: memberQtDone,
+    },
+    {
+      id: 'm-prayer', label: '기도제목 올리기',
+      desc: '내 기도제목을 올리면 구역원들과 함께 기도할 수 있습니다.',
+      link: '/prayer-requests', icon: MessageSquareHeart, done: memberPrayerDone,
+    },
+    {
+      id: 'm-bible', label: '성경읽기 기록하기',
+      desc: '오늘 읽은 성경 장수를 기록하면 진도가 쌓입니다.',
+      link: '/bible-reading', icon: BookOpen, done: memberBibleDone,
+    },
+    {
+      id: 'm-study', label: '성경공부 답변하기',
+      desc: '구역장이 올린 이번 주 공부 문제에 답변해 보세요.',
+      link: '/bible-study', icon: BookMarked, done: memberStudyAnswerDone,
+    },
+  ];
+
+  const memberPhase2Steps = [
+    {
+      id: 'm-intercession', label: '중보기도 참여하기',
+      desc: '구역원의 기도제목에 중보기도를 눌러 함께 기도해 주세요.',
+      link: '/prayer-requests', icon: HeartHandshake, done: memberIntercessionDone,
+    },
+    {
+      id: 'm-notif', label: '알림 설정하기',
+      desc: 'QT·기도제목 알림을 켜두면 구역 소식을 놓치지 않습니다.',
+      link: '/profile', icon: Bell, done: memberNotifDone,
+      onNav: () => { localStorage.setItem(`bethel_notifications_setup_done_${uid}`, '1'); setMemberNotifDone(true); },
+    },
+    {
+      id: 'm-qt-share', label: 'QT 나눔 읽어보기',
+      desc: '다른 구역원들의 큐티 나눔을 읽고 은혜를 나눠보세요.',
+      link: '/qt', icon: BookOpenCheck, done: memberQtShareDone,
+      onNav: () => { localStorage.setItem(`bethel_qt_share_done_${uid}`, '1'); setMemberQtShareDone(true); },
+    },
+    {
+      id: 'm-streak', label: '성경읽기 3일 연속 기록',
+      desc: '3일 연속 성경읽기를 기록하면 스트릭이 시작됩니다.',
+      link: '/bible-reading', icon: Flame, done: memberStreakDone,
+    },
+  ];
+
+  const steps = isLeader
+    ? (guidePhase === 1 ? phase1Steps : guidePhase === 2 ? phase2Steps : phase3Steps)
+    : (memberGuidePhase === 1 ? memberPhase1Steps : memberPhase2Steps);
+
   const doneCount = steps.filter(s => s.done).length;
   const allDone = doneCount === steps.length;
 
-  const phaseSubtitle: Record<number, string> = {
-    2: '기본 기능 완료 — 새로운 기능을 사용해보세요',
-    3: '앱을 더 깊이 활용해보세요',
-  };
+  const phaseSubtitle = !isLeader && memberGuidePhase === 2
+    ? '기본 기능 완료 — 더 깊이 참여해보세요'
+    : guidePhase === 2 ? '기본 기능 완료 — 새로운 기능을 사용해보세요'
+    : guidePhase === 3 ? '앱을 더 깊이 활용해보세요'
+    : '';
 
   // 각 phase 완료 시 다음 접속을 위해 플래그 저장
   useEffect(() => {
-    if (allDone) {
+    if (!allDone) return;
+    if (isLeader) {
       if (guidePhase === 1) localStorage.setItem(`bethel_guide_phase1_done_${uid}`, '1');
       if (guidePhase === 2) localStorage.setItem(`bethel_guide_phase2_done_${uid}`, '1');
+    } else {
+      if (memberGuidePhase === 1) localStorage.setItem(`bethel_member_guide_phase1_done_${uid}`, '1');
     }
-  }, [guidePhase, allDone, uid]);
+  }, [isLeader, guidePhase, memberGuidePhase, allDone, uid]);
 
   return (
     <div className="rounded-2xl border bg-card p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-semibold">이번 주 할 일</p>
-          {guidePhase > 1 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{phaseSubtitle[guidePhase]}</p>
+          {phaseSubtitle && (
+            <p className="text-xs text-muted-foreground mt-0.5">{phaseSubtitle}</p>
           )}
         </div>
         <span className="text-xs text-muted-foreground">{doneCount} / {steps.length} 완료</span>
@@ -763,7 +898,9 @@ function WeeklyGuideCard({
       </div>
       {allDone && (
         <p className="text-xs text-center text-green-600 font-medium mt-3">
-          {guidePhase < 3 ? '완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.' : '앱의 모든 기능을 체험하셨습니다!'}
+          {(!isLeader && memberGuidePhase === 2) || guidePhase === 3
+            ? '앱의 모든 기능을 체험하셨습니다!'
+            : '완료! 다음 접속 시 새로운 기능을 소개해 드릴게요.'}
         </p>
       )}
     </div>

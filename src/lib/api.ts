@@ -2758,6 +2758,30 @@ export async function updateQTStreak(userId: string): Promise<{ currentStreak: n
   return { currentStreak: current, maxStreak: max };
 }
 
+export async function hasEverPostedPrayer(userId: string): Promise<boolean> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    '기도제목 작성 여부 확인'
+  );
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
+export async function hasEverAnsweredStudy(userId: string): Promise<boolean> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('study_answers')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    '성경공부 답변 여부 확인'
+  );
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
 export async function hasEverDoneQT(userId: string): Promise<boolean> {
   const { count, error } = await withApiTimeout(
     supabase
