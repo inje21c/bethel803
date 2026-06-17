@@ -37,9 +37,9 @@ BEGIN
   WITH master_users AS (
     SELECT DISTINCT ON (d.church_id)
       d.church_id,
-      u.id    AS user_id,
-      u.name  AS user_name,
-      au.email AS user_email
+      u.id         AS user_id,
+      u.name::TEXT AS user_name,
+      au.email::TEXT AS user_email
     FROM public.users u
     JOIN public.districts d ON d.id = u.district_id
     JOIN auth.users au ON au.id = u.id
@@ -48,19 +48,19 @@ BEGIN
   )
   SELECT
     c.id,
-    c.name,
-    c.slug,
-    c.status,
-    c.plan,
-    c.billing_status,
+    c.name::TEXT,
+    c.slug::TEXT,
+    c.status::TEXT,
+    c.plan::TEXT,
+    c.billing_status::TEXT,
     c.trial_ends_at,
     c.created_at,
-    COALESCE(cs.ui_mode, 'full')  AS ui_mode,
-    COUNT(DISTINCT d.id)          AS district_count,
-    COUNT(DISTINCT u.id)          AS member_count,
-    mu.user_id                    AS master_id,
-    mu.user_name                  AS master_name,
-    mu.user_email                 AS master_email
+    COALESCE(cs.ui_mode, 'full')::TEXT AS ui_mode,
+    COUNT(DISTINCT d.id)               AS district_count,
+    COUNT(DISTINCT u.id)               AS member_count,
+    mu.user_id                         AS master_id,
+    mu.user_name                       AS master_name,
+    mu.user_email                      AS master_email
   FROM public.churches c
   LEFT JOIN public.church_settings cs ON cs.church_id = c.id
   LEFT JOIN public.districts d  ON d.church_id = c.id AND d.is_active = true
