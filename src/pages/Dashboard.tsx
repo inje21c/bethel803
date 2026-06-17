@@ -146,13 +146,7 @@ export default function Dashboard() {
     !!localStorage.getItem(`bethel_notifications_setup_done_${uid}`)
   );
 
-  // phase 3 감지 쿼리
-  const { data: myIntercessions } = useQuery({
-    queryKey: ['my_intercessions', user?.id],
-    queryFn: () => getMyIntercessions(user!.id),
-    enabled: showGuide && guidePhase === 3 && !!user,
-    staleTime: 1000 * 60 * 5,
-  });
+  // phase 3 감지 쿼리 (myIntercessions는 line 83에서 이미 조회)
   const { data: bibleStudies = [] } = useQuery({
     queryKey: ['bible_studies', currentDistrictId],
     queryFn: () => getBibleStudies(currentDistrictId),
