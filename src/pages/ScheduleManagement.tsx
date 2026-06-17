@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, Paperclip, CheckCircle2, XCircle, HelpCircle, Upload } from 'lucide-react';
+import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance, uploadScheduleAttachment } from '@/lib/api';
+import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance } from '@/lib/api';
 import type { Schedule, Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -24,28 +24,11 @@ function ScheduleForm({ schedule, onSave, onClose }: { schedule?: Schedule; onSa
   const [location, setLocation] = useState(schedule?.location || '');
   const [memo, setMemo] = useState(schedule?.memo || '');
   const [attendanceCheck, setAttendanceCheck] = useState(schedule?.attendanceCheck ?? false);
-  const [attachment, setAttachment] = useState(schedule?.attachment || '');
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await uploadScheduleAttachment(file);
-      setAttachment(url);
-    } catch {
-      // 업로드 실패 시 URL 필드 유지
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !date) return;
-    onSave({ title: title.trim(), date, time, location: location.trim(), memo: memo.trim(), attendanceCheck, attachment });
+    onSave({ title: title.trim(), date, time, location: location.trim(), memo: memo.trim(), attendanceCheck, attachment: '' });
     onClose();
   };
 
@@ -77,42 +60,9 @@ function ScheduleForm({ schedule, onSave, onClose }: { schedule?: Schedule; onSa
         <Label htmlFor="attendance" className="cursor-pointer">참석여부 조사</Label>
         <Switch id="attendance" checked={attendanceCheck} onCheckedChange={setAttendanceCheck} />
       </div>
-      <div className="space-y-2">
-        <Label>첨부자료</Label>
-        <div className="flex gap-2">
-          <Input
-            value={attachment}
-            onChange={e => setAttachment(e.target.value)}
-            placeholder="URL 직접 입력 또는 파일 업로드"
-            maxLength={500}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {uploading
-              ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              : <Upload className="w-4 h-4" />
-            }
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
-            onChange={handleFileChange}
-          />
-        </div>
-        {attachment && (
-          <p className="text-xs text-muted-foreground truncate">{attachment}</p>
-        )}
-      </div>
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onClose} className="flex-1">취소</Button>
-        <Button type="submit" className="flex-1" disabled={uploading}>저장</Button>
+        <Button type="submit" className="flex-1">저장</Button>
       </div>
     </form>
   );
@@ -209,24 +159,24 @@ export default function ScheduleManagement() {
       createdBy: user!.id,
       districtId: currentDistrictId,
     }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'] });
       toast({ title: '일정이 등록되었습니다.' });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (schedule: Schedule) => updateSchedule(schedule),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'] });
       toast({ title: '일정이 수정되었습니다.' });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteSchedule(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'] });
       toast({ title: '일정이 삭제되었습니다.', variant: 'destructive' });
     },
   });
@@ -288,11 +238,6 @@ export default function ScheduleManagement() {
           )}
           {schedule.memo && (
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{schedule.memo}</p>
-          )}
-          {schedule.attachment && (
-            <a href={schedule.attachment} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary mt-2 hover:underline">
-              <Paperclip className="w-3 h-3" /> 첨부자료 보기
-            </a>
           )}
         </div>
         {isLeader && (

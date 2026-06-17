@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BarChart3, Users, BookOpen, MessageSquareHeart, BookMarked,
-  CalendarDays, CheckCircle2, Clock, TrendingUp,
+  CalendarDays, CheckCircle2, Clock, TrendingUp, MapPin,
   RefreshCw, Edit, Trash2, MessageCircle, Lock, LockOpen,
   UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft,
   BookHeart, Circle, AlertTriangle, Save, Flame, KeyRound, Crown
@@ -16,6 +16,9 @@ import {
   getSharedPrayerRequests,
   updatePrayerRequest,
   getSchedules,
+  addSchedule,
+  updateSchedule,
+  deleteSchedule,
   getAllUsers,
   approveUser,
   rejectUser,
@@ -46,7 +49,7 @@ import {
   getBibleBooks,
   updateChurchQTSimpleBook,
 } from '@/lib/api';
-import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport, StudySource } from '@/lib/api';
+import type { FullUser, BibleReadingSummary, AccessInfo, WeeklyReport, StudySource, Schedule } from '@/lib/api';
 import type { BibleStudy } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,6 +99,65 @@ function TabFallback() {
     <div className="flex justify-center py-8">
       <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
+  );
+}
+
+function ScheduleForm({
+  schedule,
+  onSave,
+  onClose,
+}: {
+  schedule?: Schedule;
+  onSave: (s: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(schedule?.title || '');
+  const [date, setDate] = useState(schedule?.date || '');
+  const [time, setTime] = useState(schedule?.time || '');
+  const [location, setLocation] = useState(schedule?.location || '');
+  const [memo, setMemo] = useState(schedule?.memo || '');
+  const [attendanceCheck, setAttendanceCheck] = useState(schedule?.attendanceCheck ?? false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !date) return;
+    onSave({ title: title.trim(), date, time, location: location.trim(), memo: memo.trim(), attendanceCheck, attachment: '' });
+    onClose();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="s-title">제목 *</Label>
+        <Input id="s-title" value={title} onChange={e => setTitle(e.target.value)} placeholder="일정 제목" maxLength={100} required />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="s-date">일자 *</Label>
+          <Input id="s-date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="s-time">시간</Label>
+          <Input id="s-time" type="time" value={time} onChange={e => setTime(e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="s-location">장소</Label>
+        <Input id="s-location" value={location} onChange={e => setLocation(e.target.value)} placeholder="장소 입력" maxLength={200} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="s-memo">메모</Label>
+        <Textarea id="s-memo" value={memo} onChange={e => setMemo(e.target.value)} placeholder="추가 안내사항" maxLength={500} rows={3} />
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="s-attendance" className="cursor-pointer">참석여부 조사</Label>
+        <Switch id="s-attendance" checked={attendanceCheck} onCheckedChange={setAttendanceCheck} />
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onClose} className="flex-1">취소</Button>
+        <Button type="submit" className="flex-1">저장</Button>
+      </div>
+    </form>
   );
 }
 
@@ -245,6 +307,9 @@ export default function AdminDashboard() {
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [editingStudy, setEditingStudy] = useState<BibleStudy | undefined>();
   const [deletingStudyId, setDeletingStudyId] = useState<string | null>(null);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | undefined>();
+  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [viewAnswersStudy, setViewAnswersStudy] = useState<BibleStudy | undefined>();
   const [bulletinUrl, setBulletinUrl] = useState('');
   const [parsingBulletin, setParsingBulletin] = useState(false);
@@ -530,6 +595,43 @@ export default function AdminDashboard() {
       toast.error(msg);
     },
   });
+
+  const addScheduleMutation = useMutation({
+    mutationFn: (data: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) =>
+      addSchedule({ ...data, createdBy: user!.id, districtId: currentDistrictId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast.success('일정이 등록되었습니다.');
+    },
+    onError: () => toast.error('일정 등록에 실패했습니다.'),
+  });
+
+  const updateScheduleMutation = useMutation({
+    mutationFn: (schedule: Schedule) => updateSchedule(schedule),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast.success('일정이 수정되었습니다.');
+    },
+    onError: () => toast.error('일정 수정에 실패했습니다.'),
+  });
+
+  const deleteScheduleMutation = useMutation({
+    mutationFn: (id: string) => deleteSchedule(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast.success('일정이 삭제되었습니다.');
+    },
+    onError: () => toast.error('일정 삭제에 실패했습니다.'),
+  });
+
+  const handleSaveSchedule = (data: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) => {
+    if (editingSchedule) {
+      updateScheduleMutation.mutate({ ...editingSchedule, ...data });
+    } else {
+      addScheduleMutation.mutate(data);
+    }
+    setEditingSchedule(undefined);
+  };
 
   // Redirect if not leader/master
   if (user?.role !== 'leader' && user?.role !== 'master') {
@@ -1786,9 +1888,29 @@ export default function AdminDashboard() {
 
             <Card>
               <CardHeader>
-                <div>
-                  <CardTitle className="text-lg">일정 목록</CardTitle>
-                  <CardDescription>등록된 모든 일정</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">일정 목록</CardTitle>
+                    <CardDescription>등록된 모든 일정</CardDescription>
+                  </div>
+                  <Dialog open={scheduleDialogOpen} onOpenChange={(open) => { setScheduleDialogOpen(open); if (!open) setEditingSchedule(undefined); }}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-1.5">
+                        <Plus className="w-4 h-4" /> 일정 등록
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>{editingSchedule ? '일정 수정' : '새 일정 등록'}</DialogTitle>
+                        <DialogDescription className="sr-only">일정 정보를 입력하거나 수정합니다.</DialogDescription>
+                      </DialogHeader>
+                      <ScheduleForm
+                        schedule={editingSchedule}
+                        onSave={handleSaveSchedule}
+                        onClose={() => { setScheduleDialogOpen(false); setEditingSchedule(undefined); }}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1799,16 +1921,36 @@ export default function AdminDashboard() {
                       <TableHead>일시</TableHead>
                       <TableHead>장소</TableHead>
                       <TableHead>출석체크</TableHead>
+                      <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {schedules.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                          등록된 일정이 없습니다. 위의 일정 등록 버튼을 눌러 추가하세요.
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {schedules.map((schedule) => (
                       <TableRow key={schedule.id}>
-                        <TableCell className="font-medium">{schedule.title}</TableCell>
-                        <TableCell className="text-sm">
-                          {format(new Date(schedule.date), 'MM/dd')} {schedule.time}
+                        <TableCell className="font-medium">
+                          <div>{schedule.title}</div>
+                          {schedule.memo && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{schedule.memo}</p>}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{schedule.location}</TableCell>
+                        <TableCell className="text-sm">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            {format(new Date(schedule.date), 'MM/dd')} {schedule.time}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {schedule.location && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />{schedule.location}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {schedule.attendanceCheck ? (
                             <Badge className="bg-green-500/10 text-green-600 text-xs">활성</Badge>
@@ -1816,12 +1958,50 @@ export default function AdminDashboard() {
                             <Badge variant="secondary" className="text-xs">비활성</Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => { setEditingSchedule(schedule); setScheduleDialogOpen(true); }}
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => setDeletingScheduleId(schedule.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
+
+            <AlertDialog open={!!deletingScheduleId} onOpenChange={(open) => { if (!open) setDeletingScheduleId(null); }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>일정 삭제</AlertDialogTitle>
+                  <AlertDialogDescription>이 일정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => { if (deletingScheduleId) { deleteScheduleMutation.mutate(deletingScheduleId); setDeletingScheduleId(null); } }}
+                  >
+                    삭제
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           {/* Weekly Report Tab */}

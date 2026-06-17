@@ -88,13 +88,20 @@ export default function PrayerRequestDetail() {
   });
 
   const addResponseMutation = useMutation({
-    mutationFn: () => addPrayerResponse({ prayerRequestId: id!, userId: user!.id, content: newResponse.trim() }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prayer_responses', id] });
+    mutationFn: () => {
+      if (!user?.id || !id) throw new Error('인증 정보가 없습니다. 다시 로그인해 주세요.');
+      return addPrayerResponse({ prayerRequestId: id, userId: user.id, content: newResponse.trim() });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['prayer_responses', id] });
       setNewResponse('');
       toast.success('응답이 기록되었습니다.');
     },
-    onError: () => toast.error('응답 기록에 실패했습니다.'),
+    onError: (err) => {
+      console.error('[prayer_responses insert]', err);
+      const msg = err instanceof Error ? err.message : '응답 기록에 실패했습니다.';
+      toast.error(msg);
+    },
   });
 
   const deleteResponseMutation = useMutation({
