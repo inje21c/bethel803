@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
-import { getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword, restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin, type SuperAdminChurch } from '@/lib/api';
+import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown } from 'lucide-react';
+import {
+  getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword,
+  restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin,
+  getChurchMembersSuperAdmin, changeMasterSuperAdmin,
+  type SuperAdminChurch, type ChurchMemberBasic,
+} from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -189,8 +194,110 @@ function EditModal({
   );
 }
 
+function MasterChangeModal({
+  church,
+  onClose,
+}: {
+  church: SuperAdminChurch;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [selectedId, setSelectedId] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+
+  const { data: members = [], isLoading } = useQuery<ChurchMemberBasic[]>({
+    queryKey: ['church_members_superadmin', church.id],
+    queryFn: () => getChurchMembersSuperAdmin(church.id),
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => changeMasterSuperAdmin(church.id, selectedId),
+    onSuccess: () => {
+      toast.success('마스터가 변경되었습니다.');
+      qc.invalidateQueries({ queryKey: ['superadmin_churches'] });
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const selectedMember = members.find(m => m.id === selectedId);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border bg-card p-6 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-amber-500" />
+              마스터 강제 변경
+            </p>
+            <p className="text-xs text-muted-foreground">{church.name}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">새 마스터 선택</Label>
+              <select
+                value={selectedId}
+                onChange={e => { setSelectedId(e.target.value); setConfirmed(false); }}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">-- 선택 --</option>
+                {members.filter(m => m.role !== 'master').map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.role === 'leader' ? '구역장' : '구역원'}) — {m.district_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedMember && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 space-y-1 dark:bg-amber-900/20 dark:border-amber-800">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">변경 내용</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  현 마스터({church.master_name ?? '-'}) → 구역장 강등
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {selectedMember.name} → 마스터 승격
+                </p>
+                <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={e => setConfirmed(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">변경 사항을 확인했습니다</span>
+                </label>
+              </div>
+            )}
+
+            <Button
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+              disabled={!selectedId || !confirmed || mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? '변경 중...' : '마스터 변경'}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdmin() {
   const [editing, setEditing] = useState<SuperAdminChurch | null>(null);
+  const [masterChanging, setMasterChanging] = useState<SuperAdminChurch | null>(null);
   const [resettingEmail, setResettingEmail] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -258,6 +365,7 @@ export default function SuperAdmin() {
   return (
     <AppLayout>
       {editing && <EditModal church={editing} onClose={() => setEditing(null)} />}
+      {masterChanging && <MasterChangeModal church={masterChanging} onClose={() => setMasterChanging(null)} />}
 
       <div className="space-y-4">
         {/* 헤더 */}
@@ -305,27 +413,38 @@ export default function SuperAdmin() {
 
               {/* 마스터 정보 */}
               {church.master_name && (
-                <div className="rounded-lg bg-muted/50 px-3 py-2 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{church.master_name}</p>
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
-                        <Mail className="w-3 h-3 shrink-0" />
-                        {church.master_email}
-                      </p>
+                <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{church.master_name}</p>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                          <Mail className="w-3 h-3 shrink-0" />
+                          {church.master_email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-1">
+                      {church.master_email && (
+                        <button
+                          onClick={() => handleResetPassword(church.master_email!)}
+                          disabled={resettingEmail === church.master_email}
+                          className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        >
+                          <KeyRound className="w-3 h-3" />
+                          {resettingEmail === church.master_email ? '발송 중...' : 'PW 초기화'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setMasterChanging(church)}
+                        className="flex items-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-[11px] font-medium text-amber-600 hover:bg-amber-50 transition-colors dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                      >
+                        <Crown className="w-3 h-3" />
+                        마스터 변경
+                      </button>
                     </div>
                   </div>
-                  {church.master_email && (
-                    <button
-                      onClick={() => handleResetPassword(church.master_email!)}
-                      disabled={resettingEmail === church.master_email}
-                      className="shrink-0 flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                      <KeyRound className="w-3 h-3" />
-                      {resettingEmail === church.master_email ? '발송 중...' : 'PW 초기화'}
-                    </button>
-                  )}
                 </div>
               )}
 

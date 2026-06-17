@@ -6,7 +6,7 @@ import {
   CalendarDays, CheckCircle2, Clock, TrendingUp,
   RefreshCw, Edit, Trash2, MessageCircle, Lock, LockOpen,
   UserCheck, UserX, Plus, FileText, Copy, Download, Link, ShieldCheck, Shield, ArrowRightLeft,
-  BookHeart, Circle, AlertTriangle, Save, Flame, KeyRound
+  BookHeart, Circle, AlertTriangle, Save, Flame, KeyRound, Crown
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -37,6 +37,7 @@ import {
   parseBulletin,
   changeUserDistrict,
   adminResetUserPassword,
+  transferMasterRole,
   getDistricts,
   getQTDistrictSummary,
   getTodayQT,
@@ -249,6 +250,8 @@ export default function AdminDashboard() {
   const [parsingBulletin, setParsingBulletin] = useState(false);
   const [districtChangeTarget, setDistrictChangeTarget] = useState<FullUser | null>(null);
   const [passwordResetTarget, setPasswordResetTarget] = useState<FullUser | null>(null);
+  const [transferMasterTarget, setTransferMasterTarget] = useState<FullUser | null>(null);
+  const [transferMasterConfirm, setTransferMasterConfirm] = useState('');
   const [resetCustomPassword, setResetCustomPassword] = useState('');
   const [resetResultPassword, setResetResultPassword] = useState('');
   const [readingFrom, setReadingFrom] = useState('');
@@ -440,6 +443,17 @@ export default function AdminDashboard() {
       toast.success('역할이 변경되었습니다.');
     },
     onError: () => toast.error('역할 변경에 실패했습니다.'),
+  });
+
+  const transferMasterMutation = useMutation({
+    mutationFn: (userId: string) => transferMasterRole(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all_users'] });
+      setTransferMasterTarget(null);
+      setTransferMasterConfirm('');
+      toast.success('마스터 권한이 이관되었습니다. 본인은 구역장으로 변경되었습니다.');
+    },
+    onError: (e: unknown) => toast.error((e as Error).message ?? '마스터 이관에 실패했습니다.'),
   });
 
   const changeDistrictMutation = useMutation({
@@ -934,6 +948,17 @@ export default function AdminDashboard() {
                                   비밀번호 초기화
                                 </Button>
                               )}
+                              {u.role === 'leader' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-9 gap-1 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 col-span-2"
+                                  onClick={() => { setTransferMasterConfirm(''); setTransferMasterTarget(u); }}
+                                >
+                                  <Crown className="w-3.5 h-3.5" />
+                                  마스터 이관
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1016,6 +1041,16 @@ export default function AdminDashboard() {
                                       <KeyRound className="w-3 h-3" /> 비밀번호
                                     </Button>
                                   )}
+                                  {isMaster && u.role === 'leader' && u.id !== user?.id && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      onClick={() => { setTransferMasterConfirm(''); setTransferMasterTarget(u); }}
+                                    >
+                                      <Crown className="w-3 h-3" /> 이관
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -1034,6 +1069,48 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 마스터 이관 확인 다이얼로그 */}
+            <AlertDialog open={!!transferMasterTarget} onOpenChange={(open) => { if (!open) { setTransferMasterTarget(null); setTransferMasterConfirm(''); } }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-amber-500" />
+                    마스터 권한 이관
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3 text-sm">
+                      <p>
+                        <span className="font-semibold text-foreground">{transferMasterTarget?.name}</span>님에게 마스터 권한을 이관합니다.
+                      </p>
+                      <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300 space-y-1">
+                        <p className="font-semibold text-xs">이관 후 변경 사항</p>
+                        <p className="text-xs">본인은 구역장으로 변경됩니다.</p>
+                        <p className="text-xs">이관 후 되돌리려면 새 마스터의 동의가 필요합니다.</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">확인을 위해 <span className="font-semibold">{transferMasterTarget?.name}</span>의 이름을 입력하세요</Label>
+                        <Input
+                          value={transferMasterConfirm}
+                          onChange={e => setTransferMasterConfirm(e.target.value)}
+                          placeholder={transferMasterTarget?.name ?? ''}
+                        />
+                      </div>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                    disabled={transferMasterConfirm.trim() !== (transferMasterTarget?.name ?? '') || transferMasterMutation.isPending}
+                    onClick={() => { if (transferMasterTarget) transferMasterMutation.mutate(transferMasterTarget.id); }}
+                  >
+                    {transferMasterMutation.isPending ? '이관 중...' : '이관 확인'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* District Change Dialog */}
             <Dialog open={!!districtChangeTarget} onOpenChange={() => setDistrictChangeTarget(null)}>

@@ -3385,3 +3385,33 @@ export async function updateChurchSuperAdmin(params: {
   );
   if (error) throw error;
 }
+
+/** 마스터가 자신의 마스터 권한을 다른 구성원에게 이관한다 */
+export async function transferMasterRole(newMasterId: string): Promise<void> {
+  const { error } = await supabase.rpc('transfer_master', { p_new_master_id: newMasterId });
+  if (error) throw error;
+}
+
+export interface ChurchMemberBasic {
+  id: string;
+  name: string;
+  role: string;
+  district_name: string;
+}
+
+export async function getChurchMembersSuperAdmin(churchId: string): Promise<ChurchMemberBasic[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_church_members_superadmin', { p_church_id: churchId }),
+    '슈퍼어드민 구성원 목록'
+  );
+  if (error) throw error;
+  return (data ?? []) as ChurchMemberBasic[];
+}
+
+export async function changeMasterSuperAdmin(churchId: string, newMasterId: string): Promise<void> {
+  const { error } = await supabase.rpc('change_master_superadmin', {
+    p_church_id:      churchId,
+    p_new_master_id:  newMasterId,
+  });
+  if (error) throw error;
+}
