@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ExternalLink, MessageSquare, Plus, Send } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Plus, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import {
   getMyTickets,
@@ -255,42 +255,43 @@ export default function Support() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{selectedTicket.content}</p>
-
-                {user?.role === 'master' && selectedTicket.github_issue_url && (
-                  <a
-                    href={selectedTicket.github_issue_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    GitHub 이슈 보기
-                  </a>
-                )}
               </CardContent>
             </Card>
 
-            {selectedTicket.admin_reply && (
-              <Card className="border-primary/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-primary">개발팀 답변</CardTitle>
-                  {selectedTicket.replied_at && (
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(selectedTicket.replied_at).toLocaleString('ko-KR')}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm whitespace-pre-wrap">{selectedTicket.admin_reply}</p>
-                </CardContent>
-              </Card>
-            )}
+            {/* 대화 스레드 */}
+            <div className="space-y-3">
+              {/* 내 문의 말풍선 */}
+              <div className="flex justify-end">
+                <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3">
+                  <p className="text-xs font-medium mb-1 opacity-80">나의 문의</p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedTicket.content}</p>
+                  <p className="text-xs opacity-60 mt-1.5 text-right">
+                    {new Date(selectedTicket.created_at).toLocaleString('ko-KR')}
+                  </p>
+                </div>
+              </div>
 
-            {!selectedTicket.admin_reply && (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                아직 답변이 등록되지 않았습니다. 답변이 오면 알림을 보내드립니다.
-              </p>
-            )}
+              {/* 개발팀 답변 말풍선 */}
+              {selectedTicket.admin_reply ? (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] space-y-1">
+                    <p className="text-xs text-muted-foreground pl-1">벧엘구역 개발팀</p>
+                    <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
+                      <p className="text-sm whitespace-pre-wrap">{selectedTicket.admin_reply}</p>
+                      {selectedTicket.replied_at && (
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          {new Date(selectedTicket.replied_at).toLocaleString('ko-KR')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  아직 답변이 등록되지 않았습니다. 답변이 오면 알림을 보내드립니다.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>
