@@ -760,7 +760,7 @@ function WeeklyGuideCard({
       id: 'bible-study',
       label: '성경공부 과제 만들기',
       desc: '이번 주 공부할 본문과 질문을 올리고 구역원 답변을 확인하세요.',
-      link: '/bible-study',
+      link: '/admin?tab=study',
       icon: BookOpen,
       done: bibleStudyExists,
     },
