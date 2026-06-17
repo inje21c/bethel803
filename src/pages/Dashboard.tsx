@@ -204,7 +204,6 @@ export default function Dashboard() {
             },
           ];
           const doneCount = steps.filter(s => s.done).length;
-          const nextIdx = steps.findIndex(s => !s.done);
           return (
             <motion.div variants={item} className="rounded-2xl border bg-card p-4">
               <div className="flex items-center justify-between mb-3">
@@ -212,36 +211,26 @@ export default function Dashboard() {
                 <span className="text-xs text-muted-foreground">{doneCount} / {steps.length} 완료</span>
               </div>
               <div className="space-y-1">
-                {steps.map(({ label, desc, link, icon: Icon, done, onNav }, idx) => {
-                  const isNext = idx === nextIdx;
-                  return (
-                    <Link
-                      key={link}
-                      to={link}
-                      onClick={onNav}
-                      className={`flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                        done
-                          ? 'opacity-50'
-                          : isNext
-                          ? 'bg-primary/5 border border-primary/20 hover:bg-primary/10'
-                          : 'hover:bg-muted/60'
-                      }`}
-                    >
-                      {done
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                        : <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      }
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium ${done ? 'line-through' : ''}`}>{label}</p>
-                          {isNext && <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">다음</span>}
-                        </div>
-                        {!done && <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>}
-                      </div>
-                      {!done && <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
-                    </Link>
-                  );
-                })}
+                {steps.map(({ label, desc, link, icon: Icon, done, onNav }) => (
+                  <Link
+                    key={link}
+                    to={link}
+                    onClick={onNav}
+                    className={`flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                      done ? 'opacity-50' : 'hover:bg-muted/60'
+                    }`}
+                  >
+                    {done
+                      ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                      : <Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${done ? 'line-through' : ''}`}>{label}</p>
+                      {!done && <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>}
+                    </div>
+                    {!done && <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
+                  </Link>
+                ))}
               </div>
               {doneCount === steps.length && (
                 <p className="text-xs text-center text-green-600 font-medium mt-3">이번 주 할 일을 모두 완료했습니다!</p>
