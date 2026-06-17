@@ -610,6 +610,19 @@ export async function getUnansweredPrayerCount(districtId: string): Promise<numb
   return count ?? 0;
 }
 
+export async function getActiveMemberCount(districtId: string): Promise<number> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('district_id', districtId)
+      .eq('status', 'active'),
+    '활성 구역원 수 조회'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getPrayerRequest(id: string): Promise<PrayerRequest | null> {
   const { data, error } = await withApiTimeout(
     supabase
@@ -2745,6 +2758,42 @@ export async function updateQTStreak(userId: string): Promise<{ currentStreak: n
   return { currentStreak: current, maxStreak: max };
 }
 
+export async function hasEverPostedPrayer(userId: string): Promise<boolean> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    '기도제목 작성 여부 확인'
+  );
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
+export async function hasEverAnsweredStudy(userId: string): Promise<boolean> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('study_answers')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    '성경공부 답변 여부 확인'
+  );
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
+export async function hasEverDoneQT(userId: string): Promise<boolean> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('qt_responses')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    'QT 참여 여부 확인'
+  );
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
 export async function getMyStreak(userId: string): Promise<Streak | null> {
   const { data, error } = await withApiTimeout(
     supabase.from('streaks').select('*').eq('user_id', userId).maybeSingle(),
@@ -3006,6 +3055,7 @@ export interface ChurchSettings {
   isTrialing: boolean;
   trialDaysLeft: number;
   plan: string;
+  uiMode: 'simple' | 'full';
 }
 
 /**
@@ -3077,6 +3127,7 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
     isTrialing: isBillingTrialing as boolean,
     trialDaysLeft,
     plan: info ? (info.plan as string) : 'unknown',
+    uiMode: (settingsRow.ui_mode as 'simple' | 'full') ?? 'full',
   };
 }
 

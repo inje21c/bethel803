@@ -49,12 +49,12 @@ export default function Join() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [kakaoLoading, setKakaoLoading] = useState(false);
 
-  // 구역 정보 조회
+  // 구역 정보 조회 — churches JOIN 제외 (034 RLS: anon은 churches 접근 불가)
   useEffect(() => {
     if (!districtId) { setInfoLoading(false); setInfoError(true); return; }
     supabase
       .from('districts')
-      .select('id, name, churches(name)')
+      .select('id, name')
       .eq('id', districtId)
       .eq('is_active', true)
       .maybeSingle()
@@ -62,8 +62,8 @@ export default function Join() {
         if (error || !data) {
           setInfoError(true);
         } else {
-          const row = data as { id: string; name: string; churches: { name: string } | null };
-          setDistrictInfo({ id: row.id, name: row.name, churchName: row.churches?.name ?? '교회' });
+          const row = data as { id: string; name: string };
+          setDistrictInfo({ id: row.id, name: row.name, churchName: '' });
         }
         setInfoLoading(false);
       });
@@ -162,10 +162,7 @@ export default function Join() {
         {/* 구역 정보 */}
         <div className="rounded-xl border bg-muted/40 px-4 py-3 flex items-center gap-3">
           <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div>
-            <p className="text-sm font-medium">{districtInfo.churchName}</p>
-            <p className="text-xs text-muted-foreground">{districtInfo.name}</p>
-          </div>
+          <p className="text-sm font-medium">{districtInfo.name}</p>
         </div>
 
         {/* 소셜 로그인 */}
