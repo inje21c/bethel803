@@ -3311,3 +3311,52 @@ export async function markTicketReplyRead(ticketId: string): Promise<void> {
   );
   if (error) throw error;
 }
+
+// ============================================================
+// 슈퍼어드민 전용
+// ============================================================
+
+export interface SuperAdminChurch {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  billing_status: string;
+  trial_ends_at: string | null;
+  created_at: string;
+  ui_mode: string;
+  district_count: number;
+  member_count: number;
+}
+
+export async function getAllChurchesSuperAdmin(): Promise<SuperAdminChurch[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_all_churches_superadmin'),
+    '슈퍼어드민 교회 목록 조회'
+  );
+  if (error) throw error;
+  return (data ?? []) as SuperAdminChurch[];
+}
+
+export async function updateChurchSuperAdmin(params: {
+  churchId: string;
+  plan: string;
+  status: string;
+  billingStatus: string;
+  trialEndsAt: string | null;
+  uiMode: string;
+}): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.rpc('update_church_superadmin', {
+      p_church_id:      params.churchId,
+      p_plan:           params.plan,
+      p_status:         params.status,
+      p_billing_status: params.billingStatus,
+      p_trial_ends_at:  params.trialEndsAt,
+      p_ui_mode:        params.uiMode,
+    }),
+    '슈퍼어드민 교회 정보 수정'
+  );
+  if (error) throw error;
+}

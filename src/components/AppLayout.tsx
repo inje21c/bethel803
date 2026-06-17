@@ -1,7 +1,7 @@
 import { lazy, ReactNode, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart, ShieldCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -76,7 +76,7 @@ function HeaderActionFallback({ type }: { type: 'search' | 'notification' }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isMaster, isLeader } = useAuth();
+  const { user, logout, isMaster, isLeader, isSuperAdmin } = useAuth();
   const { uiMode } = useChurch();
   const isSimple = uiMode === 'simple';
   const {
@@ -319,6 +319,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       </span>
                     )}
                   </Link>
+                  {isSuperAdmin && (
+                    <Link
+                      to="/superadmin"
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                        location.pathname === '/superadmin' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      슈퍼어드민
+                    </Link>
+                  )}
                   <button
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground"
                     onClick={toggleTheme}
