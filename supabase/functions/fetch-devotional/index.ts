@@ -57,9 +57,46 @@ async function fetchAndStoreQT(
   supabase: ReturnType<typeof createClient>,
   date: string,
 ): Promise<{ date: string; scripture: string }> {
-  const cached = await getCachedDevotional(supabase, date);
-  if (cached) return cached;
+  // scraped 모드 교회 목록 동적 조회 (슈퍼어드민 허가 교회)
+  const { data: settingsRows } = await supabase
+    .from('church_settings')
+    .select('church_id')
+    .eq('qt_mode', 'scraped');
 
+  const scrapedIds = (settingsRows ?? []).map((r) => r.church_id as string);
+
+  // 이미 저장된 교회 확인: church_id IN (...) 필터로 maybeSingle 오류 방지
+  if (scrapedIds.length > 0) {
+    const { data: existing } = await supabase
+      .from('qt_contents')
+      .select('church_id, date, title, scripture, scripture_text, summary, question, prayer, application, audio_url, hymn_suggestions')
+      .in('church_id', scrapedIds)
+      .eq('date', date);
+
+    const existingMap = new Map((existing ?? []).map((r) => [r.church_id as string, r]));
+
+    if (existingMap.size === scrapedIds.length) {
+      // 모든 scraped 교회에 데이터 있음 → 완전 캐시
+      const first = existingMap.values().next().value;
+      return { date, scripture: first.scripture as string };
+    }
+
+    if (existingMap.size > 0) {
+      // 일부만 있음 (신규 교회 추가 등) → 기존 행에서 복사
+      const template = existingMap.values().next().value;
+      const missingIds = scrapedIds.filter((id) => !existingMap.has(id));
+      for (const churchId of missingIds) {
+        const { church_id: _cid, ...fields } = template as Record<string, unknown>;
+        const { error } = await supabase
+          .from('qt_contents')
+          .upsert({ ...fields, church_id: churchId }, { onConflict: 'church_id,date' });
+        if (error) console.error(`qt_contents copy upsert error for church ${churchId}:`, error.message);
+      }
+      return { date, scripture: template.scripture as string };
+    }
+  }
+
+  // 스크래핑 필요
   let detail: QTDetail;
   let scriptureText = '';
 
@@ -70,36 +107,24 @@ async function fetchAndStoreQT(
     ]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : JSON.stringify(err);
-    console.warn(`QT source fetch failed for ${date}; checking cached devotional: ${msg}`);
+    console.warn(`QT source fetch failed for ${date}: ${msg}`);
 
-    const fallback = await getCachedDevotional(supabase, date);
-    if (fallback) return fallback;
+    // daily_devotionals fallback (스크래핑 실패 시)
+    const { data: devFallback } = await supabase
+      .from('daily_devotionals')
+      .select('devotional_date, scripture')
+      .eq('devotional_date', date)
+      .maybeSingle();
+    if (devFallback?.scripture) {
+      return { date: devFallback.devotional_date as string, scripture: devFallback.scripture as string };
+    }
 
     throw err;
   }
 
   const { question, prayer, application } = await generateAIFields(detail.summary);
 
-  const { error: qtError } = await supabase
-    .from('qt_contents')
-    .upsert(
-      {
-        church_id: '00000000-0000-4100-a000-000000000001',
-        date,
-        title: detail.title,
-        scripture: detail.scripture,
-        scripture_text: scriptureText,
-        summary: detail.summary,
-        question,
-        prayer,
-        application,
-        audio_url: detail.audioUrl,
-        hymn_suggestions: detail.hymnSuggestions,
-      },
-      { onConflict: 'church_id,date' }
-    );
-  if (qtError) throw qtError;
-
+  // daily_devotionals 저장 (non-fatal)
   const { error: devError } = await supabase
     .from('daily_devotionals')
     .upsert(
@@ -115,39 +140,30 @@ async function fetchAndStoreQT(
     );
   if (devError) console.error('daily_devotionals upsert error (non-fatal):', devError.message);
 
+  // 모든 scraped 교회에 qt_contents 저장
+  for (const churchId of scrapedIds) {
+    const { error: qtError } = await supabase
+      .from('qt_contents')
+      .upsert(
+        {
+          church_id: churchId,
+          date,
+          title: detail.title,
+          scripture: detail.scripture,
+          scripture_text: scriptureText,
+          summary: detail.summary,
+          question,
+          prayer,
+          application,
+          audio_url: detail.audioUrl,
+          hymn_suggestions: detail.hymnSuggestions,
+        },
+        { onConflict: 'church_id,date' }
+      );
+    if (qtError) console.error(`qt_contents upsert error for church ${churchId}:`, qtError.message);
+  }
+
   return { date, scripture: detail.scripture };
-}
-
-async function getCachedDevotional(
-  supabase: ReturnType<typeof createClient>,
-  date: string,
-): Promise<{ date: string; scripture: string } | null> {
-  const { data: qt, error: qtError } = await supabase
-    .from('qt_contents')
-    .select('date, scripture')
-    .eq('date', date)
-    .maybeSingle();
-
-  if (qt?.scripture) return { date: qt.date as string, scripture: qt.scripture as string };
-  if (qtError) console.warn(`qt_contents cache lookup failed for ${date}: ${qtError.message}`);
-
-  const { data: devotional, error: devotionalError } = await supabase
-    .from('daily_devotionals')
-    .select('devotional_date, scripture')
-    .eq('devotional_date', date)
-    .maybeSingle();
-
-  if (devotional?.scripture) {
-    return {
-      date: devotional.devotional_date as string,
-      scripture: devotional.scripture as string,
-    };
-  }
-  if (devotionalError) {
-    console.warn(`daily_devotionals cache lookup failed for ${date}: ${devotionalError.message}`);
-  }
-
-  return null;
 }
 
 function getTodayKST(): string {
