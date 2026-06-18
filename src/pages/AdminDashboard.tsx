@@ -60,6 +60,7 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -788,6 +789,12 @@ export default function AdminDashboard() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><BarChart3 className="w-4 h-4" /> 대시보드 개요</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                우리 구역의 전체 통계와 승인 대기자 수, 성경읽기 목표 달성률을 한눈에 파악할 수 있는 요약 화면입니다.
+              </AlertDescription>
+            </Alert>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <Card>
@@ -849,6 +856,12 @@ export default function AdminDashboard() {
 
           {/* Members Management Tab */}
           <TabsContent value="members" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><Users className="w-4 h-4" /> 구역원 초대 및 관리</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                우측 상단의 <strong>[초대 링크 복사]</strong>를 눌러 카카오톡으로 공유하세요. 링크를 통해 가입한 사람은 <strong>승인 없이 즉시 우리 구역으로 자동 등록</strong>됩니다. (이 화면에 있는 대기자는 초대 링크 없이 직접 가입한 분들이므로 수동 승인이 필요합니다.)
+              </AlertDescription>
+            </Alert>
             {/* 초대 링크 */}
             {isMaster && allDistricts.filter(d => d.isActive).length > 0 && (
               <Card>
@@ -1342,6 +1355,12 @@ export default function AdminDashboard() {
 
           {/* Access Logs Tab */}
           <TabsContent value="access" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> 구역원 접속현황</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                오늘 앱에 접속한 구역원 수와 각 구역원의 마지막 접속 시간을 확인합니다. 오랫동안 접속하지 않은 구역원에게 안부를 전해보세요.
+              </AlertDescription>
+            </Alert>
             {(() => {
               const today = new Date().toISOString().slice(0, 10);
               const loggedInToday = accessInfo.filter((a: AccessInfo) =>
@@ -1418,6 +1437,13 @@ export default function AdminDashboard() {
 
           {/* Bible Study Management Tab */}
           <TabsContent value="study" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> 구역성경공부 자료 등록</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                <strong>[공부 등록]</strong> 버튼을 눌러 직접 질문을 입력하거나, <strong>주보 PDF 링크</strong>를 입력하면 AI가 이번 주 본문과 질문을 <strong>자동 추출하여 초안</strong>을 만들어 줍니다.
+                등록 후 반드시 <strong>'즉시 발행' 스위치</strong>를 켜야 구역원들에게 노출됩니다.
+              </AlertDescription>
+            </Alert>
             <div className="flex justify-end">
               <Dialog
                 open={studyDialogOpen}
@@ -1692,6 +1718,12 @@ export default function AdminDashboard() {
 
           {/* Prayer Management Tab */}
           <TabsContent value="prayer" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><MessageSquareHeart className="w-4 h-4" /> 기도제목 관리</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                구역원들이 나눈 기도제목 목록입니다. 기도제목은 구역원 본인이 등록하며, 구역장은 전체 목록을 확인하고 응답 여부를 체크할 수 있습니다.
+              </AlertDescription>
+            </Alert>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
               <Card>
                 <CardHeader className="px-4 py-3 md:px-6 md:pb-2 md:pt-6">
@@ -1838,6 +1870,12 @@ export default function AdminDashboard() {
 
           {/* Bible Reading Tab */}
           <TabsContent value="bible" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><BookMarked className="w-4 h-4" /> 성경읽기 현황</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                구역원들의 성경읽기 진행 현황을 확인합니다. 날짜 범위를 설정하면 해당 기간의 읽기 기록을 한눈에 볼 수 있습니다.
+              </AlertDescription>
+            </Alert>
             <Suspense fallback={<TabFallback />}>
               <AdminBibleReadingTab
                 readingFrom={readingFrom}
@@ -1853,6 +1891,12 @@ export default function AdminDashboard() {
 
           {/* Schedule Management Tab */}
           <TabsContent value="schedule" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><CalendarDays className="w-4 h-4" /> 구역 일정 관리</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                구역 모임, 예배, 행사 등의 일정을 등록하고 관리합니다. 등록된 일정은 구역원들의 앱 홈 화면에 표시되어 일정을 놓치지 않도록 안내합니다.
+              </AlertDescription>
+            </Alert>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -2006,6 +2050,13 @@ export default function AdminDashboard() {
 
           {/* Weekly Report Tab */}
           <TabsContent value="report" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><FileText className="w-4 h-4" /> 주간 보고서 (엑셀 내보내기)</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                이번 주 구역 모임 참석 인원과 온라인 활동(말씀 묵상 연속일, 성경읽기 등) 내역이 한 곳에 집계됩니다. 
+                매주 주일이 지나면 <strong>[마감하기]</strong> 버튼을 누른 후, 상단에서 <strong>엑셀 파일(CSV)로 다운로드</strong>하여 교회에 제출할 수 있습니다.
+              </AlertDescription>
+            </Alert>
             <Suspense fallback={<TabFallback />}>
               <AdminWeeklyReportTab
                 weeklyReports={weeklyReports}
@@ -2020,6 +2071,13 @@ export default function AdminDashboard() {
 
           {/* Kakao Notice Tab */}
           <TabsContent value="kakao" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><MessageCircle className="w-4 h-4" /> 공지 문자 자동 생성</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                다가오는 모임 일정, 이번 주 성경공부 진도 등을 요약한 안내 문자를 자동으로 만들어 줍니다. 
+                <strong>[복사]</strong> 버튼을 누른 뒤 구역 단체 카카오톡 채팅방에 바로 붙여넣기 하세요!
+              </AlertDescription>
+            </Alert>
             <Suspense fallback={<TabFallback />}>
               <KakaoNoticeGenerator />
             </Suspense>
@@ -2027,6 +2085,13 @@ export default function AdminDashboard() {
 
           {/* QT 현황 Tab */}
           <TabsContent value="qt" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><BookHeart className="w-4 h-4" /> 오늘 QT (말씀 묵상) 현황</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                오늘 우리 구역원들이 QT를 완료했는지 실시간으로 확인합니다. 며칠째 완료하지 못한 구역원이 있다면 따뜻한 격려를 보내주세요.
+                상단의 <strong>[코멘트 작성]</strong>에 구역장님의 한마디를 적어두면 구역원들이 아침 묵상 시 읽을 수 있습니다.
+              </AlertDescription>
+            </Alert>
             {(() => {
               const completedCount = qtMembers.filter((m) => m.isCompleted).length;
               const totalCount = qtMembers.length;
