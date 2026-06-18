@@ -1355,6 +1355,12 @@ export default function AdminDashboard() {
 
           {/* Access Logs Tab */}
           <TabsContent value="access" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> 구역원 접속현황</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                오늘 앱에 접속한 구역원 수와 각 구역원의 마지막 접속 시간을 확인합니다. 오랫동안 접속하지 않은 구역원에게 안부를 전해보세요.
+              </AlertDescription>
+            </Alert>
             {(() => {
               const today = new Date().toISOString().slice(0, 10);
               const loggedInToday = accessInfo.filter((a: AccessInfo) =>
@@ -1434,7 +1440,7 @@ export default function AdminDashboard() {
             <Alert className="bg-primary/5 border-primary/20 text-primary">
               <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> 구역성경공부 자료 등록</AlertTitle>
               <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
-                <strong>[새 성경공부 추가]</strong>를 눌러 직접 질문을 등록할 수 있습니다. 벧엘교회의 경우 <strong>주보 PDF 링크</strong>를 입력하면 AI가 이번 주 본문과 질문을 <strong>자동 추출하여 초안</strong>을 만들어 줍니다.
+                <strong>[공부 등록]</strong> 버튼을 눌러 직접 질문을 입력하거나, <strong>주보 PDF 링크</strong>를 입력하면 AI가 이번 주 본문과 질문을 <strong>자동 추출하여 초안</strong>을 만들어 줍니다.
                 등록 후 반드시 <strong>'즉시 발행' 스위치</strong>를 켜야 구역원들에게 노출됩니다.
               </AlertDescription>
             </Alert>
@@ -1712,6 +1718,12 @@ export default function AdminDashboard() {
 
           {/* Prayer Management Tab */}
           <TabsContent value="prayer" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><MessageSquareHeart className="w-4 h-4" /> 기도제목 관리</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                구역원들이 나눈 기도제목 목록입니다. 기도제목은 구역원 본인이 등록하며, 구역장은 전체 목록을 확인하고 응답 여부를 체크할 수 있습니다.
+              </AlertDescription>
+            </Alert>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
               <Card>
                 <CardHeader className="px-4 py-3 md:px-6 md:pb-2 md:pt-6">
@@ -1858,6 +1870,12 @@ export default function AdminDashboard() {
 
           {/* Bible Reading Tab */}
           <TabsContent value="bible" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><BookMarked className="w-4 h-4" /> 성경읽기 현황</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                구역원들의 성경읽기 진행 현황을 확인합니다. 날짜 범위를 설정하면 해당 기간의 읽기 기록을 한눈에 볼 수 있습니다.
+              </AlertDescription>
+            </Alert>
             <Suspense fallback={<TabFallback />}>
               <AdminBibleReadingTab
                 readingFrom={readingFrom}
@@ -1873,6 +1891,12 @@ export default function AdminDashboard() {
 
           {/* Schedule Management Tab */}
           <TabsContent value="schedule" className="space-y-4 md:col-start-2 md:mt-0">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertTitle className="font-semibold text-sm flex items-center gap-1.5"><CalendarDays className="w-4 h-4" /> 구역 일정 관리</AlertTitle>
+              <AlertDescription className="text-xs text-primary/80 mt-1 break-keep">
+                구역 모임, 예배, 행사 등의 일정을 등록하고 관리합니다. 등록된 일정은 구역원들의 앱 홈 화면에 표시되어 일정을 놓치지 않도록 안내합니다.
+              </AlertDescription>
+            </Alert>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-2">
