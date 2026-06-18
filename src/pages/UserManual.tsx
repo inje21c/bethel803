@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays,
@@ -188,12 +188,12 @@ const getLeaderSections = (type: LeaderType): Section[] => {
     commonAdmin,
     {
       id: 'admin_special',
-      title: '💎 풀 패키지 관리 가이드',
+      title: '💎 유료/특별 권한 관리 가이드',
       icon: Star,
       content: [
         {
           subtitle: '엑셀 보고서 및 상세 관리',
-          text: '슈퍼어드민 특별 권한이 부여되었습니다. 구역원들의 QT 묵상율, 성경읽기 진도율, 성경공부 참여도를 엑셀 리포트로 다운로드하여 효과적으로 관리해 보세요.'
+          text: '소속 교회의 설정에 따라 풀 패키지 기능이 제공됩니다. 구역원들의 QT 묵상율, 성경읽기 진도율, 성경공부 참여도를 엑셀 리포트로 다운로드하여 효과적으로 관리해 보세요.'
         },
         {
           subtitle: '권한 관련 참고사항',
@@ -245,7 +245,26 @@ export default function UserManual() {
     return 'special';
   }, [settings]);
 
+  const memberSections = useMemo(() => getMemberSections(), []);
+  const leaderSections = useMemo(() => getLeaderSections(leaderType), [leaderType]);
+
   const hasBibleText = hasModule('bible_text');
+
+  useEffect(() => {
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const matchedIds = new Set<string>();
+      const allSecs = [...memberSections, ...leaderSections, ...faqSections];
+      allSecs.forEach(sec => {
+        if (sec.title.toLowerCase().includes(q)) {
+          matchedIds.add(sec.id);
+        } else if (sec.content.some(item => item.subtitle.toLowerCase().includes(q) || item.text.toLowerCase().includes(q))) {
+          matchedIds.add(sec.id);
+        }
+      });
+      setOpenSections(prev => new Set([...prev, ...matchedIds]));
+    }
+  }, [searchQuery, memberSections, leaderSections]);
 
   const toggle = (id: string) => {
     setOpenSections(prev => {
@@ -297,7 +316,7 @@ export default function UserManual() {
         
         <AnimatePresence>
           {filtered.map((section, idx) => {
-            const isOpen = openSections.has(section.id) || searchQuery.trim() !== '';
+            const isOpen = openSections.has(section.id);
             const Icon = section.icon;
             
             return (
@@ -357,7 +376,9 @@ export default function UserManual() {
                           {item.isPremium && !hasBibleText && (
                             <div className="mt-3 p-3 bg-amber-50/50 border border-amber-100 rounded-lg dark:bg-amber-900/10 dark:border-amber-900/30">
                               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
-                                📣 현재 우리 구역은 기본 체험판을 사용 중이어서 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 정식 버전 도입을 건의해 보세요!
+                                {settings?.isTrialing
+                                  ? "📣 현재 우리 구역은 기본 체험판을 사용 중이어서 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 정식 버전 도입을 건의해 보세요!"
+                                  : "📣 현재 우리 교회의 플랜에서는 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 풀 패키지 도입을 건의해 보세요!"}
                               </p>
                             </div>
                           )}
@@ -400,7 +421,7 @@ export default function UserManual() {
         </div>
 
         <Tabs defaultValue="member" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 h-auto p-1 bg-muted/50">
+          <TabsList className={`grid w-full ${isLeaderOrMaster ? 'grid-cols-3' : 'grid-cols-2'} h-auto p-1 bg-muted/50`}>
             <TabsTrigger value="member" className="py-2.5 font-semibold">구역원 가이드</TabsTrigger>
             {isLeaderOrMaster && (
               <TabsTrigger value="leader" className="py-2.5 font-semibold text-primary data-[state=active]:text-primary">
@@ -411,12 +432,12 @@ export default function UserManual() {
           </TabsList>
 
           <TabsContent value="member" className="mt-4 focus-visible:outline-none">
-            {renderSections(getMemberSections())}
+            {renderSections(memberSections)}
           </TabsContent>
 
           {isLeaderOrMaster && (
             <TabsContent value="leader" className="mt-4 focus-visible:outline-none">
-              {renderSections(getLeaderSections(leaderType))}
+              {renderSections(leaderSections)}
             </TabsContent>
           )}
 
