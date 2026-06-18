@@ -3331,6 +3331,7 @@ export interface SuperAdminChurch {
   created_at: string;
   deleted_at: string | null;
   ui_mode: string;
+  qt_mode: string;
   district_count: number;
   member_count: number;
   master_id: string | null;
@@ -3371,6 +3372,7 @@ export async function updateChurchSuperAdmin(params: {
   billingStatus: string;
   trialEndsAt: string | null;
   uiMode: string;
+  qtMode: string;
 }): Promise<void> {
   const { error } = await withApiTimeout(
     supabase.rpc('update_church_superadmin', {
@@ -3380,6 +3382,7 @@ export async function updateChurchSuperAdmin(params: {
       p_billing_status: params.billingStatus,
       p_trial_ends_at:  params.trialEndsAt,
       p_ui_mode:        params.uiMode,
+      p_qt_mode:        params.qtMode,
     }),
     '슈퍼어드민 교회 정보 수정'
   );

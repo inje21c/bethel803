@@ -17,6 +17,10 @@ const PLAN_OPTIONS = ['legacy', 'free', 'starter', 'standard', 'premium'];
 const STATUS_OPTIONS = ['active', 'trialing', 'past_due', 'suspended', 'archived'];
 const BILLING_OPTIONS = ['manual', 'trialing', 'active', 'past_due', 'canceled'];
 const UI_MODE_OPTIONS = ['simple', 'full'];
+const QT_MODE_OPTIONS = [
+  { value: 'simple',  label: 'simple',  desc: '자체 성경 구절' },
+  { value: 'scraped', label: 'scraped', desc: '매일성경 스크래핑' },
+];
 
 const PLAN_COLORS: Record<string, string> = {
   legacy:   'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
@@ -24,6 +28,11 @@ const PLAN_COLORS: Record<string, string> = {
   starter:  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   standard: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
   premium:  'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+};
+const QT_MODE_COLORS: Record<string, string> = {
+  simple:  'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  scraped: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+  admin:   'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
 };
 const STATUS_COLORS: Record<string, string> = {
   active:   'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
@@ -60,6 +69,7 @@ interface EditState {
   billing_status: string;
   trial_ends_at: string;
   ui_mode: string;
+  qt_mode: string;
 }
 
 function EditModal({
@@ -76,6 +86,7 @@ function EditModal({
     billing_status: church.billing_status,
     trial_ends_at:  toLocalDateInput(church.trial_ends_at),
     ui_mode:        church.ui_mode,
+    qt_mode:        church.qt_mode ?? 'simple',
   });
 
   const mutation = useMutation({
@@ -87,6 +98,7 @@ function EditModal({
         billingStatus: form.billing_status,
         trialEndsAt:   form.trial_ends_at ? `${form.trial_ends_at}T00:00:00Z` : null,
         uiMode:        form.ui_mode,
+        qtMode:        form.qt_mode,
       }),
     onSuccess: () => {
       toast.success(`${church.name} 업데이트 완료`);
@@ -175,6 +187,27 @@ function EditModal({
                   }`}
                 >
                   {o}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* qt_mode */}
+          <div className="space-y-1">
+            <Label className="text-xs">QT 방식</Label>
+            <div className="flex gap-2">
+              {QT_MODE_OPTIONS.map(o => (
+                <button
+                  key={o.value}
+                  onClick={() => set('qt_mode', o.value)}
+                  className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
+                    form.qt_mode === o.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  <span className="block">{o.label}</span>
+                  <span className="block text-[10px] font-normal opacity-70">{o.desc}</span>
                 </button>
               ))}
             </div>
@@ -402,6 +435,7 @@ export default function SuperAdmin() {
               <div className="flex flex-wrap gap-1.5">
                 <Badge value={church.plan} colorMap={PLAN_COLORS} />
                 <Badge value={church.status} colorMap={STATUS_COLORS} />
+                <Badge value={church.qt_mode ?? 'simple'} colorMap={QT_MODE_COLORS} />
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                   church.ui_mode === 'simple'
                     ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
