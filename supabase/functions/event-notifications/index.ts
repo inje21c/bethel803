@@ -20,9 +20,13 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } });
   }
 
-  // Webhook 시크릿 검증
+  // Webhook 시크릿 검증 — 시크릿 미설정 시 fail-closed
+  if (!EVENT_WEBHOOK_SECRET) {
+    console.error('event-notifications: EVENT_WEBHOOK_SECRET not configured');
+    return new Response(JSON.stringify({ error: 'Service Unavailable' }), { status: 503 });
+  }
   const incoming = req.headers.get('x-webhook-secret');
-  if (EVENT_WEBHOOK_SECRET && incoming !== EVENT_WEBHOOK_SECRET) {
+  if (incoming !== EVENT_WEBHOOK_SECRET) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 

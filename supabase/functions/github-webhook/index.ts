@@ -24,14 +24,16 @@ Deno.serve(async (req) => {
 
   const rawBody = await req.text();
 
-  // HMAC 서명 검증
-  if (GITHUB_WEBHOOK_SECRET) {
-    const sig = req.headers.get('x-hub-signature-256') ?? '';
-    const valid = await verifySignature(rawBody, sig, GITHUB_WEBHOOK_SECRET);
-    if (!valid) {
-      console.warn('github-webhook: invalid signature');
-      return new Response('Unauthorized', { status: 401 });
-    }
+  // HMAC 서명 검증 — 시크릿 미설정 시 fail-closed
+  if (!GITHUB_WEBHOOK_SECRET) {
+    console.error('github-webhook: GITHUB_WEBHOOK_SECRET not configured');
+    return new Response('Service Unavailable', { status: 503 });
+  }
+  const sig = req.headers.get('x-hub-signature-256') ?? '';
+  const valid = await verifySignature(rawBody, sig, GITHUB_WEBHOOK_SECRET);
+  if (!valid) {
+    console.warn('github-webhook: invalid signature');
+    return new Response('Unauthorized', { status: 401 });
   }
 
   const event = req.headers.get('x-github-event') ?? '';

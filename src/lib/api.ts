@@ -3307,10 +3307,7 @@ export async function getUnreadReplyCount(): Promise<number> {
 
 export async function markTicketReplyRead(ticketId: string): Promise<void> {
   const { error } = await withApiTimeout(
-    supabase
-      .from('support_tickets')
-      .update({ reply_read_at: new Date().toISOString() })
-      .eq('id', ticketId),
+    supabase.rpc('mark_ticket_read', { p_ticket_id: ticketId }),
     '답변 확인 처리'
   );
   if (error) throw error;

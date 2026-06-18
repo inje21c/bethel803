@@ -18,6 +18,7 @@ type ActorProfile = {
   id: string;
   role: 'master' | 'leader' | 'member';
   district_id: string | null;
+  church_id: string | null;
 };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -50,7 +51,7 @@ async function resolveActor(
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('id, role, district_id')
+    .select('id, role, district_id, church_id')
     .eq('id', user.id)
     .single();
 
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
 
   const { data: target, error: targetError } = await supabase
     .from('users')
-    .select('id, name, role')
+    .select('id, name, role, church_id')
     .eq('id', userId)
     .single();
 
@@ -102,6 +103,9 @@ Deno.serve(async (req) => {
   }
   if (target.role === 'master') {
     return jsonResponse(403, { ok: false, error: '마스터 계정은 초기화할 수 없습니다.' });
+  }
+  if (target.church_id !== actor.church_id) {
+    return jsonResponse(403, { ok: false, error: '같은 교회 구성원만 초기화할 수 있습니다.' });
   }
 
   const newPassword = body.newPassword?.trim() || generateTempPassword();
