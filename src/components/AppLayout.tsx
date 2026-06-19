@@ -40,7 +40,7 @@ const mobileTabItems: MobileTabItem[] = [
     path: '/prayer-requests',
     label: '구역',
     icon: Users,
-    matchPaths: ['/prayer-requests', '/bible-study', '/schedule'],
+    matchPaths: ['/prayer-requests', '/bible-study', '/bible-reading', '/schedule'],
   },
   { path: '/profile', label: '나', icon: UserCircle },
 ];

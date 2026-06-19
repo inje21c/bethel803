@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquareHeart, BookOpen, CalendarDays } from 'lucide-react';
+import { MessageSquareHeart, BookOpen, CalendarDays, BookMarked } from 'lucide-react';
 
 const tabs = [
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
+  { path: '/bible-reading',   label: '성경읽기', icon: BookMarked },
   { path: '/bible-study',     label: '성경공부', icon: BookOpen },
   { path: '/schedule',        label: '일정',     icon: CalendarDays },
 ];
