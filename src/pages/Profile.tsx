@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  BellRing, BookMarked, BookOpen, CheckCircle2, ChevronLeft, ChevronRight,
-  Circle, Flame, Link2, Lock, LogOut, MessageCircleQuestion, Moon,
+  BellRing, BookMarked, BookOpen, ChevronLeft, ChevronRight,
+  Link2, Lock, LogOut, MessageCircleQuestion, Moon,
   Save, Smartphone, Sun, Trash2, User,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -14,17 +14,17 @@ import { useDistrict } from '@/lib/districtContext';
 import {
   deactivatePushSubscription,
   deleteMyAccount,
-  getBibleStudies,
-  getMyIntercessions,
-  getMyStreak,
+  getActivityCalendar,
   getNotificationPreferences,
   getPushSubscriptions,
-  getQTCalendar,
-  getStudyAnswer,
-  getTotalChapters,
+  getYearlyChapterCount,
+  getYearlyPrayerCount,
+  getYearlyQTCount,
+  getYearlyStudyCompletedCount,
   saveNotificationPreferences,
   savePushSubscription,
   updateUserName,
+  type ActivityDay,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -199,44 +199,47 @@ export default function Profile() {
     onError: () => toast.error('알림 설정 저장에 실패했습니다.'),
   });
 
-  // ── 나 탭 전용 쿼리 ────────────────────────────────────────
-  const { data: streak } = useQuery({
-    queryKey: ['streak', user?.id],
-    queryFn: () => getMyStreak(user!.id),
+  // ── 나 탭 연간 통계 쿼리 ──────────────────────────────────
+  const thisYear = new Date().getFullYear();
+  const { data: yearlyQT = 0 } = useQuery({
+    queryKey: ['yearly_qt', user?.id, thisYear],
+    queryFn: () => getYearlyQTCount(user!.id, thisYear),
     enabled: !!user,
+    staleTime: 1000 * 60 * 10,
   });
-  const { data: totalChapters = 0 } = useQuery({
-    queryKey: ['total_chapters', user?.id],
-    queryFn: () => getTotalChapters(user!.id),
+  const { data: yearlyChapters = 0 } = useQuery({
+    queryKey: ['yearly_chapters', user?.id, thisYear],
+    queryFn: () => getYearlyChapterCount(user!.id, thisYear),
     enabled: !!user,
+    staleTime: 1000 * 60 * 10,
   });
-  const { data: studies = [] } = useQuery({
-    queryKey: ['bible_studies', 'profile_preview', currentDistrictId],
-    queryFn: () => getBibleStudies(currentDistrictId, { limit: 1 }),
-    enabled: !!currentDistrictId,
-  });
-  const latestStudy = studies[0];
-  const { data: latestAnswer } = useQuery({
-    queryKey: ['study_answer_profile', latestStudy?.id, user?.id],
-    queryFn: () => getStudyAnswer(latestStudy!.id, user!.id),
-    enabled: !!latestStudy && !!user,
-  });
-  const { data: myIntercessions = new Set<string>() } = useQuery({
-    queryKey: ['my_intercessions', user?.id],
-    queryFn: () => getMyIntercessions(user!.id),
+  const { data: yearlyStudy = 0 } = useQuery({
+    queryKey: ['yearly_study', user?.id, thisYear],
+    queryFn: () => getYearlyStudyCompletedCount(user!.id, thisYear),
     enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+  const { data: yearlyPrayer = 0 } = useQuery({
+    queryKey: ['yearly_prayer', user?.id, thisYear],
+    queryFn: () => getYearlyPrayerCount(user!.id, thisYear),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
   });
 
-  // ── QT 캘린더 ─────────────────────────────────────────────
+  // ── 활동 캘린더 ────────────────────────────────────────────
   const now = new Date();
   const [calYear, setCalYear] = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
-  const { data: calendarDays = [] } = useQuery({
-    queryKey: ['qt_calendar', user?.id, calYear, calMonth],
-    queryFn: () => getQTCalendar(user!.id, calYear, calMonth),
-    enabled: !!user,
+  const { data: activityDays = [] } = useQuery({
+    queryKey: ['activity_calendar', user?.id, currentDistrictId, calYear, calMonth],
+    queryFn: () => getActivityCalendar(user!.id, currentDistrictId, calYear, calMonth),
+    enabled: !!user && !!currentDistrictId,
   });
-  const calendarSet = useMemo(() => new Set(calendarDays.map(d => d.date)), [calendarDays]);
+  const activityMap = useMemo(() => {
+    const m = new Map<string, ActivityDay>();
+    activityDays.forEach(d => m.set(d.date, d));
+    return m;
+  }, [activityDays]);
   const firstDayOfWeek = new Date(calYear, calMonth - 1, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth, 0).getDate();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -244,8 +247,6 @@ export default function Profile() {
   const prevCal = () => { if (calMonth === 1) { setCalYear(y => y - 1); setCalMonth(12); } else setCalMonth(m => m - 1); };
   const nextCal = () => { if (calMonth === 12) { setCalYear(y => y + 1); setCalMonth(1); } else setCalMonth(m => m + 1); };
 
-  const currentStreak = streak?.currentStreak ?? 0;
-  const studyCompleted = latestAnswer?.completed ?? false;
   const roleLabel = user?.role === 'master' ? '마스터구역장' : user?.role === 'leader' ? '구역장' : '구역원';
 
   // ── 설정 섹션 토글 ─────────────────────────────────────────
@@ -274,52 +275,44 @@ export default function Profile() {
           </div>
         </motion.div>
 
-        {/* 이번 주 현황 */}
+        {/* 연간 누적 현황 */}
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">이번 주 현황</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">{thisYear}년 누적 현황</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <Flame className={`w-4 h-4 ${currentStreak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
-                <span className="text-xs text-muted-foreground">QT 연속</span>
+                <BookMarked className="w-4 h-4 text-[#4A7AB5]" />
+                <span className="text-xs text-muted-foreground">QT</span>
               </div>
-              {currentStreak > 0
-                ? <p className={`text-2xl font-bold ${currentStreak >= 3 ? 'text-orange-500' : ''}`}>{currentStreak}<span className="text-sm font-normal text-muted-foreground ml-1">일</span></p>
-                : <p className="text-sm font-medium text-muted-foreground">시작해볼까요?</p>}
+              <p className="text-2xl font-bold">{yearlyQT}<span className="text-sm font-normal text-muted-foreground ml-1">일</span></p>
             </div>
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <BookMarked className="w-4 h-4 text-amber-500" />
-                <span className="text-xs text-muted-foreground">누적 성경읽기</span>
+                <BookOpen className="w-4 h-4 text-[#5FAD2A]" />
+                <span className="text-xs text-muted-foreground">성경읽기</span>
               </div>
-              <p className="text-2xl font-bold">{totalChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
+              <p className="text-2xl font-bold">{yearlyChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
             </div>
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">이번 주 공부</span>
+                <span className="text-xs text-muted-foreground">성경공부</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                {studyCompleted
-                  ? <><CheckCircle2 className="w-6 h-6 text-success" /><span className="text-sm font-semibold">완료</span></>
-                  : <><Circle className="w-6 h-6 text-muted-foreground/40" /><span className="text-sm font-medium text-muted-foreground">미완료</span></>}
-              </div>
+              <p className="text-2xl font-bold">{yearlyStudy}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
             </div>
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-base">🙏</span>
-                <span className="text-xs text-muted-foreground">함께기도</span>
+                <span className="text-xs text-muted-foreground">기도하기</span>
               </div>
-              {myIntercessions.size > 0
-                ? <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">개</span></p>
-                : <p className="text-sm font-medium text-muted-foreground">시작해볼까요?</p>}
+              <p className="text-2xl font-bold">{yearlyPrayer}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
             </div>
           </div>
         </div>
 
-        {/* QT 캘린더 */}
+        {/* 활동 캘린더 */}
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">QT 묵상 기록</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">활동 기록</p>
           <div className="card-elevated p-4">
             <div className="flex items-center justify-between mb-3">
               <button onClick={prevCal} className="p-1 rounded-md hover:bg-muted transition-colors" aria-label="이전 달">
@@ -340,26 +333,35 @@ export default function Profile() {
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                const isDone = calendarSet.has(dateStr);
+                const act = activityMap.get(dateStr);
                 const isToday = dateStr === todayStr;
                 const isFuture = dateStr > todayStr;
+                const numCls = isToday
+                  ? 'text-[#4A7AB5] font-semibold'
+                  : isFuture
+                    ? 'text-muted-foreground/30'
+                    : 'text-foreground';
+                const off = 'rgba(140,140,140,0.2)';
                 return (
-                  <div key={day} className={`aspect-square flex items-center justify-center rounded-full text-[11px] font-medium transition-colors
-                    ${isDone ? 'bg-primary text-primary-foreground' : ''}
-                    ${isToday && !isDone ? 'ring-1 ring-primary text-primary' : ''}
-                    ${isFuture ? 'text-muted-foreground/30' : (!isDone ? 'text-muted-foreground' : '')}
-                  `}>
-                    {day}
+                  <div key={day} className="flex flex-col items-center gap-[3px] pb-1">
+                    <span className={`text-[13px] leading-tight ${numCls}`}>{day}</span>
+                    <div className="w-full flex flex-col gap-[2px]">
+                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.qtDone) ? '#4A7AB5' : off }} />
+                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.readingDone) ? '#5FAD2A' : off }} />
+                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.hasSchedule) ? '#C8002A' : off }} />
+                    </div>
                   </div>
                 );
               })}
             </div>
-            {currentStreak > 0 && (
-              <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
-                <Flame className="w-4 h-4 text-orange-500 shrink-0" />
-                <span className="text-xs text-orange-700 dark:text-orange-300">현재 <strong>{currentStreak}일 연속</strong> 묵상 중이에요</span>
-              </div>
-            )}
+            <div className="mt-3 flex items-center justify-center gap-4 pt-2 border-t border-border/50">
+              {[['#4A7AB5','QT'],['#5FAD2A','성경읽기'],['#C8002A','일정']].map(([color, label]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div className="w-4 h-[3px] rounded-full" style={{ background: color }} />
+                  <span className="text-[10px] text-muted-foreground">{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

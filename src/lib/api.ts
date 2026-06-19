@@ -3479,3 +3479,130 @@ export async function getMyWeeklyPrayerCount(userId: string): Promise<number> {
   if (error) throw error;
   return count ?? 0;
 }
+
+// ── 나 탭 연간 누적 통계 ──────────────────────────────────────────
+
+export async function getYearlyQTCount(userId: string, year: number): Promise<number> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('qt_responses')
+      .select('qt_contents!inner(date)')
+      .eq('user_id', userId)
+      .eq('is_completed', true)
+      .gte('qt_contents.date', `${year}-01-01`)
+      .lte('qt_contents.date', `${year}-12-31`),
+    '연간 QT 일수 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).length;
+}
+
+export async function getYearlyChapterCount(userId: string, year: number): Promise<number> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('chapters')
+      .eq('user_id', userId)
+      .gte('log_date', `${year}-01-01`)
+      .lte('log_date', `${year}-12-31`),
+    '연간 성경읽기 장수 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).reduce((sum, row) => sum + (Number(row.chapters) || 0), 0);
+}
+
+export async function getYearlyStudyCompletedCount(userId: string, year: number): Promise<number> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('bible_study_answers')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .gte('updated_at', `${year}-01-01T00:00:00+09:00`)
+      .lte('updated_at', `${year}-12-31T23:59:59+09:00`),
+    '연간 성경공부 완료 건수 조회'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function getYearlyPrayerCount(userId: string, year: number): Promise<number> {
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', `${year}-01-01T00:00:00+09:00`)
+      .lte('created_at', `${year}-12-31T23:59:59+09:00`),
+    '연간 기도제목 건수 조회'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export interface ActivityDay {
+  date: string;
+  qtDone: boolean;
+  readingDone: boolean;
+  hasSchedule: boolean;
+}
+
+export async function getActivityCalendar(
+  userId: string,
+  districtId: string,
+  year: number,
+  month: number
+): Promise<ActivityDay[]> {
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+  const [qtRes, readingRes, scheduleRes] = await Promise.all([
+    withApiTimeout(
+      supabase
+        .from('qt_responses')
+        .select('qt_contents!inner(date)')
+        .eq('user_id', userId)
+        .eq('is_completed', true)
+        .gte('qt_contents.date', from)
+        .lte('qt_contents.date', to),
+      'QT 활동 캘린더 조회'
+    ),
+    withApiTimeout(
+      supabase
+        .from('bible_reading_logs')
+        .select('log_date')
+        .eq('user_id', userId)
+        .gte('log_date', from)
+        .lte('log_date', to),
+      '성경읽기 활동 캘린더 조회'
+    ),
+    withApiTimeout(
+      supabase
+        .from('schedules')
+        .select('date')
+        .eq('district_id', districtId)
+        .gte('date', from)
+        .lte('date', to),
+      '일정 캘린더 조회'
+    ),
+  ]);
+
+  const qtDates = new Set(
+    (qtRes.data ?? []).map(r => ((r as Record<string, unknown>).qt_contents as { date: string }).date)
+  );
+  const readingDates = new Set((readingRes.data ?? []).map(r => r.log_date as string));
+  const scheduleDates = new Set((scheduleRes.data ?? []).map(r => r.date as string));
+
+  const days: ActivityDay[] = [];
+  for (let d = 1; d <= lastDay; d++) {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    days.push({
+      date: dateStr,
+      qtDone: qtDates.has(dateStr),
+      readingDone: readingDates.has(dateStr),
+      hasSchedule: scheduleDates.has(dateStr),
+    });
+  }
+  return days;
+}
