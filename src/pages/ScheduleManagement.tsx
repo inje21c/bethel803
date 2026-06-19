@@ -258,7 +258,7 @@ export default function ScheduleManagement() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6">
         <CommunitySubNav />
         <div className="flex items-center justify-between">
           <div>

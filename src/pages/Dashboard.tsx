@@ -161,7 +161,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6">
 
         {/* 인사말 */}
         <div>

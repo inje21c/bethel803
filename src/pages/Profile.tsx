@@ -255,7 +255,7 @@ export default function Profile() {
 
   return (
     <AppLayout>
-      <div className="max-w-lg mx-auto space-y-5 pb-6">
+      <div className="max-w-2xl mx-auto space-y-5">
 
         {/* 프로필 헤더 */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

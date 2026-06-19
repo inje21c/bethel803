@@ -131,7 +131,7 @@ export default function QTMain() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6 pb-8">
+      <div className="max-w-2xl mx-auto space-y-6">
         {/* 헤더: 날짜 + 스트릭 */}
         <div className="flex items-center justify-between">
           <div>

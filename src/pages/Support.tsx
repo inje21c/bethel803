@@ -105,7 +105,7 @@ export default function Support() {
 
   return (
     <AppLayout title="문의하기">
-      <div className="max-w-2xl mx-auto space-y-4 p-4">
+      <div className="max-w-2xl mx-auto space-y-4">
 
         {/* 헤더 */}
         <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export default function Support() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
           )}
-          <h1 className="text-xl font-semibold">
+          <h1 className="font-display text-2xl font-bold">
             {view === 'list' ? '문의하기' : view === 'new' ? '새 문의' : '문의 상세'}
           </h1>
           {view === 'list' && (
