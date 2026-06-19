@@ -300,10 +300,10 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {/* 성경공부 */}
-              <Link to="/bible-study" className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-colors ${studyDone ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+              <Link to="/bible-study" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${studyDone ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                  <span className="text-sm leading-none">📖</span>
-                  <span className="text-[11px] text-muted-foreground">성경공부</span>
+                  <span className="text-base leading-none">📖</span>
+                  <span className="text-xs text-muted-foreground">성경공부</span>
                 </div>
                 {studyDone
                   ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
@@ -311,37 +311,37 @@ export default function Dashboard() {
               </Link>
               {/* 모임출석 */}
               {attendanceSchedule ? (
-                <Link to="/schedule" className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-colors ${attendanceDone ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+                <Link to="/schedule" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${attendanceDone ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
                   <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                    <span className="text-sm leading-none">📋</span>
-                    <span className="text-[11px] text-muted-foreground">모임출석</span>
+                    <span className="text-base leading-none">📋</span>
+                    <span className="text-xs text-muted-foreground">모임출석</span>
                   </div>
                   {attendanceDone
                     ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
                     : <Circle className="w-5 h-5 text-muted-foreground/25 shrink-0" />}
                 </Link>
               ) : (
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-transparent bg-muted/20">
+                <div className="flex items-center gap-2.5 p-3 rounded-xl border border-transparent bg-muted/20">
                   <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                    <span className="text-sm leading-none">📋</span>
-                    <span className="text-[11px] text-muted-foreground">모임출석</span>
+                    <span className="text-base leading-none">📋</span>
+                    <span className="text-xs text-muted-foreground">모임출석</span>
                   </div>
                   <Circle className="w-5 h-5 text-muted-foreground/15 shrink-0" />
                 </div>
               )}
               {/* 성경읽기 */}
-              <Link to="/bible-reading" className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-colors ${weeklyChapters > 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+              <Link to="/bible-reading" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${weeklyChapters > 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                  <span className="text-sm leading-none">📚</span>
-                  <span className="text-[11px] text-muted-foreground">성경읽기</span>
+                  <span className="text-base leading-none">📚</span>
+                  <span className="text-xs text-muted-foreground">성경읽기</span>
                 </div>
                 <span className={`text-lg font-bold shrink-0 ${weeklyChapters > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground/30'}`}>{weeklyChapters}</span>
               </Link>
               {/* 기도하기 */}
-              <Link to="/prayer-requests" className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-colors ${weeklyPrayerCount > 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+              <Link to="/prayer-requests" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${weeklyPrayerCount > 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                  <span className="text-sm leading-none">🙏</span>
-                  <span className="text-[11px] text-muted-foreground">기도하기</span>
+                  <span className="text-base leading-none">🙏</span>
+                  <span className="text-xs text-muted-foreground">기도하기</span>
                 </div>
                 <span className={`text-lg font-bold shrink-0 ${weeklyPrayerCount > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground/30'}`}>{weeklyPrayerCount}</span>
               </Link>
