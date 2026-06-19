@@ -380,9 +380,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="mx-auto flex max-w-7xl md:px-6">
         {/* Tablet / desktop nav */}
-        <aside className="hidden w-52 shrink-0 md:block lg:w-56">
+        <aside className="hidden w-52 shrink-0 md:block lg:w-56 sticky top-16 self-start h-[calc(100vh-4rem)] overflow-y-auto">
           <nav
-            className="sticky top-20 flex flex-col gap-1 py-6 pr-4"
+            className="flex flex-col gap-1 py-6 pr-4"
             aria-label="주 메뉴"
           >
             {navItems.map(item => {
