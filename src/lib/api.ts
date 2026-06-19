@@ -269,10 +269,13 @@ export async function getActiveDistricts(): Promise<{ id: string; name: string }
 }
 
 export async function createDistrict(params: { name: string; description: string }): Promise<void> {
+  const { data: churchId, error: churchErr } = await supabase.rpc('get_my_church_id');
+  if (churchErr || !churchId) throw new Error('교회 정보를 불러올 수 없습니다.');
   const { error } = await withApiTimeout(
     supabase.from('districts').insert({
       name: params.name,
       description: params.description || null,
+      church_id: churchId,
     }),
     '구역 생성'
   );
