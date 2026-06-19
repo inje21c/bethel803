@@ -120,7 +120,7 @@ export default function BibleStudyDetail() {
   if (!study) {
     return (
       <AppLayout>
-        <div className="space-y-4 max-w-2xl mx-auto">
+        <div className="space-y-4">
           <button onClick={() => navigate('/bible-study')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4" /> 목록으로
           </button>
@@ -137,7 +137,7 @@ export default function BibleStudyDetail() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-2xl mx-auto">
+      <div className="space-y-6">
         <button onClick={() => navigate('/bible-study')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> 목록으로
         </button>

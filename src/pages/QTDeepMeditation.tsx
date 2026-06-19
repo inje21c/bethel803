@@ -155,7 +155,7 @@ export default function QTDeepMeditation() {
   if (!qt) {
     return (
       <AppLayout>
-        <div className="max-w-2xl mx-auto py-10 text-center space-y-3">
+        <div className="py-10 text-center space-y-3">
           <p className="font-semibold">오늘의 QT이 아직 준비되지 않았습니다.</p>
           <Button variant="outline" onClick={() => navigate('/qt')}>QT로 돌아가기</Button>
         </div>
@@ -167,7 +167,7 @@ export default function QTDeepMeditation() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-5 pb-8">
+      <div className="space-y-5">
         {/* 헤더 */}
         <div className="flex items-start justify-between gap-3">
           <div>

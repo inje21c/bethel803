@@ -611,7 +611,7 @@ export default function BibleReading() {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-5xl space-y-5">
+      <div className="space-y-5">
         <CommunitySubNav />
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>

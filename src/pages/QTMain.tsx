@@ -109,7 +109,7 @@ export default function QTMain() {
   if (!qt) {
     return (
       <AppLayout>
-        <div className="max-w-2xl mx-auto py-10 text-center space-y-3">
+        <div className="py-10 text-center space-y-3">
           <Clock className="w-10 h-10 text-muted-foreground mx-auto" />
           <p className="font-semibold">오늘의 QT이 아직 준비되지 않았습니다.</p>
           <p className="text-sm text-muted-foreground">
@@ -131,7 +131,7 @@ export default function QTMain() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* 헤더: 날짜 + 스트릭 */}
         <div className="flex items-center justify-between">
           <div>

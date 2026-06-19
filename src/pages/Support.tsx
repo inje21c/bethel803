@@ -105,7 +105,7 @@ export default function Support() {
 
   return (
     <AppLayout title="문의하기">
-      <div className="max-w-2xl mx-auto space-y-4">
+      <div className="space-y-4">
 
         {/* 헤더 */}
         <div className="flex items-center gap-2">

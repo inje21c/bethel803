@@ -54,7 +54,7 @@ export default function QTLeaderDashboard() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6 pb-8">
+      <div className="space-y-6">
         <div>
           <h1 className="font-display text-2xl font-bold">QT 구역 현황</h1>
           <p className="text-sm text-muted-foreground mt-1">{today} 기준</p>
