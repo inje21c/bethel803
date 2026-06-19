@@ -9,7 +9,7 @@ interface DistrictPickerProps {
 }
 
 export default function DistrictPicker({ value, onChange }: DistrictPickerProps) {
-  const [districts, setDistricts] = useState<{ id: string; name: string }[]>([]);
+  const [districts, setDistricts] = useState<{ id: string; name: string; churchName: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,6 +28,9 @@ export default function DistrictPicker({ value, onChange }: DistrictPickerProps)
   // 구역이 1개면 숨김
   if (!loading && districts.length <= 1) return null;
 
+  // 교회가 2개 이상이면 교회명 표시
+  const multiChurch = new Set(districts.map(d => d.churchName)).size > 1;
+
   return (
     <div className="space-y-2">
       <Label htmlFor="district-picker">소속 구역</Label>
@@ -37,7 +40,9 @@ export default function DistrictPicker({ value, onChange }: DistrictPickerProps)
         </SelectTrigger>
         <SelectContent>
           {districts.map(d => (
-            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            <SelectItem key={d.id} value={d.id}>
+              {multiChurch ? `${d.name} (${d.churchName})` : d.name}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
