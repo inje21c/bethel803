@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount, getWeeklyChapterCount, getMyWeeklyPrayerCount } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount, getWeeklyChapterCount, getMyWeeklyPrayerCount, getLeaderWeeklyChecklist } from '@/lib/api';
 import type { Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -112,6 +112,13 @@ export default function Dashboard() {
     queryKey: ['today_active_count', currentDistrictId],
     queryFn: () => getTodayActiveCount(currentDistrictId),
     enabled: !!currentDistrictId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: leaderChecklist } = useQuery({
+    queryKey: ['leader_checklist', currentDistrictId],
+    queryFn: () => getLeaderWeeklyChecklist(currentDistrictId),
+    enabled: isLeader && !!currentDistrictId,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -256,6 +263,83 @@ export default function Dashboard() {
             )}
           </Link>
         </motion.div>
+
+        {/* 구역장: 이번 주 할 일 체크리스트 */}
+        {isLeader && leaderChecklist && (() => {
+          const items = [
+            leaderChecklist.bibleStudyRegistered,
+            leaderChecklist.scheduleRegistered,
+            leaderChecklist.qtExists,
+            ...(leaderChecklist.attendanceScheduleExists ? [leaderChecklist.attendanceChecked] : []),
+          ];
+          const total = items.length;
+          const done = items.filter(Boolean).length;
+          return (
+            <motion.div variants={item} initial="hidden" animate="show">
+              <div className="card-elevated p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+                    <CheckSquare2 className="w-4 h-4 text-primary" /> 이번 주 구역장 할 일
+                  </h2>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${done === total ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                    {done}/{total} 완료
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {/* 성경공부 등록 */}
+                  <Link to="/bible-study" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${leaderChecklist.bibleStudyRegistered ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent hover:bg-muted/60'}`}>
+                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                      <span className="text-base leading-none">📖</span>
+                      <span className="text-xs text-muted-foreground">성경공부 등록</span>
+                    </div>
+                    {leaderChecklist.bibleStudyRegistered
+                      ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                      : <Circle className="w-5 h-5 text-muted-foreground/25 shrink-0" />}
+                  </Link>
+                  {/* 모임일정 등록 */}
+                  <Link to="/schedule" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${leaderChecklist.scheduleRegistered ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent hover:bg-muted/60'}`}>
+                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                      <span className="text-base leading-none">📅</span>
+                      <span className="text-xs text-muted-foreground">모임일정 등록</span>
+                    </div>
+                    {leaderChecklist.scheduleRegistered
+                      ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                      : <Circle className="w-5 h-5 text-muted-foreground/25 shrink-0" />}
+                  </Link>
+                  {/* QT 배포 확인 */}
+                  <div className={`flex items-center gap-2.5 p-3 rounded-xl border ${leaderChecklist.qtExists ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                      <span className="text-base leading-none">✝️</span>
+                      <span className="text-xs text-muted-foreground">QT 배포 확인</span>
+                    </div>
+                    {leaderChecklist.qtExists
+                      ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                      : <Circle className="w-5 h-5 text-muted-foreground/25 shrink-0" />}
+                  </div>
+                  {/* 출석 확인 (출석체크 일정이 있는 경우만) */}
+                  {leaderChecklist.attendanceScheduleExists && (
+                    <Link to="/schedule" className={`flex items-center gap-2.5 p-3 rounded-xl border transition-colors ${leaderChecklist.attendanceChecked ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent hover:bg-muted/60'}`}>
+                      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                        <span className="text-base leading-none">👥</span>
+                        <span className="text-xs text-muted-foreground">출석 확인</span>
+                      </div>
+                      {leaderChecklist.attendanceChecked
+                        ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                        : <Circle className="w-5 h-5 text-muted-foreground/25 shrink-0" />}
+                    </Link>
+                  )}
+                </div>
+                {/* 진행 바 */}
+                <div className="mt-3 h-1 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-green-500 transition-all duration-500"
+                    style={{ width: `${Math.round((done / total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* 구역장: 우리 구역 활동 */}
         {isLeader && districtActivity.total > 1 && (

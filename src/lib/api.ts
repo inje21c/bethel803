@@ -3436,7 +3436,7 @@ export async function changeMasterSuperAdmin(churchId: string, newMasterId: stri
   if (error) throw error;
 }
 
-function getKSTWeekRange(): { weekStart: string; weekEnd: string } {
+export function getKSTWeekRange(): { weekStart: string; weekEnd: string } {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const day = kst.getUTCDay(); // 0=Sun
@@ -3605,4 +3605,78 @@ export async function getActivityCalendar(
     });
   }
   return days;
+}
+
+// ============================================================
+// 구역장 주간 체크리스트
+// ============================================================
+
+export interface LeaderChecklist {
+  bibleStudyRegistered: boolean;
+  scheduleRegistered: boolean;
+  qtExists: boolean;
+  attendanceScheduleExists: boolean;
+  attendanceChecked: boolean;
+  memberCount: number;
+}
+
+export async function getLeaderWeeklyChecklist(districtId: string): Promise<LeaderChecklist> {
+  const { weekStart, weekEnd } = getKSTWeekRange();
+  const today = getKSTDateString();
+
+  const [studyRes, scheduleRes, qtRes, memberRes] = await Promise.all([
+    withApiTimeout(
+      supabase.from('bible_studies')
+        .select('id', { count: 'exact', head: true })
+        .eq('district_id', districtId)
+        .gte('study_date', weekStart)
+        .lte('study_date', weekEnd),
+      '체크리스트 - 성경공부 등록'
+    ),
+    withApiTimeout(
+      supabase.from('schedules')
+        .select('id, attendance_check')
+        .eq('district_id', districtId)
+        .gte('schedule_date', weekStart)
+        .lte('schedule_date', weekEnd),
+      '체크리스트 - 일정 조회'
+    ),
+    withApiTimeout(
+      supabase.from('qt_contents')
+        .select('date', { count: 'exact', head: true })
+        .eq('date', today),
+      '체크리스트 - QT 배포 확인'
+    ),
+    withApiTimeout(
+      supabase.from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('district_id', districtId)
+        .eq('status', 'active'),
+      '체크리스트 - 구역원 수'
+    ),
+  ]);
+
+  const weekSchedules = (scheduleRes.data ?? []) as { id: string; attendance_check: boolean }[];
+  const attendanceSchedule = weekSchedules.find(s => s.attendance_check);
+
+  let attendanceChecked = false;
+  if (attendanceSchedule) {
+    const { count } = await withApiTimeout(
+      supabase.from('attendances')
+        .select('id', { count: 'exact', head: true })
+        .eq('schedule_id', attendanceSchedule.id)
+        .eq('status', 'attending'),
+      '체크리스트 - 출석 기록'
+    );
+    attendanceChecked = (count ?? 0) > 0;
+  }
+
+  return {
+    bibleStudyRegistered: (studyRes.count ?? 0) > 0,
+    scheduleRegistered: weekSchedules.length > 0,
+    qtExists: (qtRes.count ?? 0) > 0,
+    attendanceScheduleExists: !!attendanceSchedule,
+    attendanceChecked,
+    memberCount: memberRes.count ?? 0,
+  };
 }
