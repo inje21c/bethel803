@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getWeeklyChapterCount, getMyWeeklyPrayerCount, getLeaderWeeklyChecklist } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getWeeklyChapterCount, getMyWeeklyPrayerCount, getLeaderWeeklyChecklist, getWeeklyReports } from '@/lib/api';
 import type { Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -114,6 +114,14 @@ export default function Dashboard() {
     enabled: isLeader && !!currentDistrictId,
     staleTime: 1000 * 60 * 5,
   });
+
+  const { data: weeklyReports = [] } = useQuery({
+    queryKey: ['weekly_reports', currentDistrictId],
+    queryFn: () => getWeeklyReports(currentDistrictId),
+    enabled: !!currentDistrictId,
+    staleTime: 1000 * 60 * 10,
+  });
+  const lastLockedReport = weeklyReports.find(r => r.isLocked);
 
   const queryClient = useQueryClient();
   const intercessionMutation = useMutation({
@@ -257,6 +265,11 @@ export default function Dashboard() {
           </Link>
         </motion.div>
 
+        {/* 섹션: 구역 운영 (구역장 전용) */}
+        {isLeader && leaderChecklist && (
+          <p className="text-xs font-semibold text-muted-foreground tracking-widest uppercase px-0.5">구역 운영</p>
+        )}
+
         {/* 구역장: 이번 주 할 일 체크리스트 */}
         {isLeader && leaderChecklist && (() => {
           const items = [
@@ -335,6 +348,11 @@ export default function Dashboard() {
         })()}
 
 
+        {/* 섹션: 나의 활동 (구역장에게만 레이블 표시 — 구역원은 레이블 불필요) */}
+        {isLeader && (
+          <p className="text-xs font-semibold text-muted-foreground tracking-widest uppercase px-0.5">나의 활동</p>
+        )}
+
         {/* 이번 주 내가 한 일 (구역장/구역원 공통) */}
         <motion.div variants={item} initial="hidden" animate="show">
           <div className="card-elevated p-4">
@@ -394,6 +412,20 @@ export default function Dashboard() {
             </div>
           </div>
         </motion.div>
+
+        {/* 우리 구역은? — 지난주 주간보고 마감 집계 */}
+        {lastLockedReport && (
+          <motion.div variants={item} initial="hidden" animate="show">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/40">
+              <span className="text-xs font-semibold text-muted-foreground shrink-0">우리 구역은?</span>
+              <span className="text-muted-foreground/30 text-xs mx-0.5">|</span>
+              <span className="text-xs">📖 성경읽기 {lastLockedReport.bibleChaptersTotal}장</span>
+              <span className="text-muted-foreground/30 text-xs">·</span>
+              <span className="text-xs">👥 출석 {lastLockedReport.attendanceCount}명</span>
+              <span className="text-xs text-muted-foreground/50 ml-auto shrink-0">지난주</span>
+            </div>
+          </motion.div>
+        )}
 
         {/* 다가오는 일정 */}
         {upcomingSchedules.length > 0 && (
