@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, MapPin, Clock, X, HeartHandshake, BookHeart, Flame, Users, Send, CheckCircle2, Circle, CheckSquare2 } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, X, HeartHandshake, BookHeart, Flame, CheckCircle2, Circle, CheckSquare2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount, getWeeklyChapterCount, getMyWeeklyPrayerCount, getLeaderWeeklyChecklist } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getWeeklyChapterCount, getMyWeeklyPrayerCount, getLeaderWeeklyChecklist } from '@/lib/api';
 import type { Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -107,13 +107,6 @@ export default function Dashboard() {
   const attendanceDone = !!myAttendance && myAttendance.status !== 'pending';
   const studyDone = latestAnswer?.completed ?? false;
   const weekDoneCount = [studyDone, attendanceDone, weeklyChapters > 0, weeklyPrayerCount > 0].filter(Boolean).length;
-
-  const { data: districtActivity = { today: 0, total: 0 } } = useQuery({
-    queryKey: ['today_active_count', currentDistrictId],
-    queryFn: () => getTodayActiveCount(currentDistrictId),
-    enabled: !!currentDistrictId,
-    staleTime: 1000 * 60 * 5,
-  });
 
   const { data: leaderChecklist } = useQuery({
     queryKey: ['leader_checklist', currentDistrictId],
@@ -341,37 +334,6 @@ export default function Dashboard() {
           );
         })()}
 
-        {/* 구역장: 우리 구역 활동 */}
-        {isLeader && districtActivity.total > 1 && (
-          <motion.div variants={item} initial="hidden" animate="show">
-            <div className="card-elevated p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-display font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" /> 우리 구역
-                </h2>
-                <Link to="/prayer-requests" className="text-xs text-primary font-medium hover:underline">구역 탭 →</Link>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-                <div className="flex gap-1.5 items-center flex-wrap">
-                  {Array.from({ length: Math.min(districtActivity.total, 8) }).map((_, i) => (
-                    <div key={i} className={`w-2.5 h-2.5 rounded-full transition-colors ${i < districtActivity.today ? 'bg-primary' : 'bg-muted-foreground/20'}`} />
-                  ))}
-                </div>
-                <div>
-                  <p className="text-sm">오늘 <span className="font-semibold text-primary">{districtActivity.today}명</span>이 앱에 들어왔어요</p>
-                  <p className="text-xs text-muted-foreground">전체 {districtActivity.total}명 중</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {/* Sprint 3: 실제 푸시 연동 */}}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
-              >
-                <Send className="w-3.5 h-3.5" />
-                오늘 말씀 함께해요 — 보내기
-              </button>
-            </div>
-          </motion.div>
-        )}
 
         {/* 이번 주 내가 한 일 (구역장/구역원 공통) */}
         <motion.div variants={item} initial="hidden" animate="show">
