@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BellRing, ChevronRight, Link2, Lock, MessageCircleQuestion, Save, Smartphone, Trash2, User } from 'lucide-react';
+import { BellRing, ChevronRight, Link2, Lock, LogOut, MessageCircleQuestion, Moon, Save, Smartphone, Sun, Trash2, User, BookOpen } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -35,7 +36,8 @@ import { toast } from 'sonner';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, updatePassword, refreshProfile, linkGoogleAccount, linkKakaoAccount } = useAuth();
+  const { user, updatePassword, refreshProfile, linkGoogleAccount, linkKakaoAccount, logout } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
   const queryClient = useQueryClient();
 
   const [googleLinking, setGoogleLinking] = useState(false);
@@ -564,6 +566,60 @@ export default function Profile() {
                   <p className="text-xs text-muted-foreground">버그 신고, 기능 요청, 사용 문의</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* 사용 안내 */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+          <Card
+            className="cursor-pointer hover:bg-muted/40 transition-colors"
+            onClick={() => navigate('/manual')}
+          >
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-3">
+                <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">사용 안내</p>
+                  <p className="text-xs text-muted-foreground">앱 기능 가이드</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* 다크모드 */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card
+            className="cursor-pointer hover:bg-muted/40 transition-colors"
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          >
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-3">
+                {resolvedTheme === 'dark'
+                  ? <Sun className="w-4 h-4 text-muted-foreground shrink-0" />
+                  : <Moon className="w-4 h-4 text-muted-foreground shrink-0" />}
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{resolvedTheme === 'dark' ? '라이트 모드로 전환' : '야간 모드로 전환'}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* 로그아웃 */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+          <Card
+            className="cursor-pointer hover:bg-muted/40 transition-colors"
+            onClick={async () => { await logout(); navigate('/'); }}
+          >
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-3">
+                <LogOut className="w-4 h-4 text-muted-foreground shrink-0" />
+                <p className="text-sm font-medium">로그아웃</p>
               </div>
             </CardContent>
           </Card>

@@ -7,6 +7,7 @@ import { useDistrict } from '@/lib/districtContext';
 import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance } from '@/lib/api';
 import type { Schedule, Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
+import CommunitySubNav from '@/components/CommunitySubNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -258,6 +259,7 @@ export default function ScheduleManagement() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        <CommunitySubNav />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold">주요 일정</h1>

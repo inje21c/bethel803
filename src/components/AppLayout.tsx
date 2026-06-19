@@ -1,7 +1,7 @@
 import { lazy, ReactNode, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart, ShieldCheck } from 'lucide-react';
+import { BookOpen, Home, MessageSquareHeart, BookMarked, CalendarDays, LogOut, Menu, X, Settings, Sun, Moon, UserCircle, WifiOff, HelpCircle, Building2, Bell, Search, BookHeart, ShieldCheck, Users } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -26,11 +26,23 @@ const navItems = [
   { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
 
-const mobileTabItems = [
+type MobileTabItem = {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  matchPaths?: string[];
+};
+
+const mobileTabItems: MobileTabItem[] = [
   { path: '/dashboard', label: '홈', icon: Home },
-  { path: '/prayer-requests', label: '기도', icon: MessageSquareHeart },
-  { path: '/bible-study', label: '공부', icon: BookOpen },
   { path: '/qt', label: 'QT', icon: BookHeart },
+  {
+    path: '/prayer-requests',
+    label: '구역',
+    icon: Users,
+    matchPaths: ['/prayer-requests', '/bible-study', '/schedule'],
+  },
+  { path: '/profile', label: '나', icon: UserCircle },
 ];
 
 function isItemVisible(
@@ -142,13 +154,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const isMoreActive =
-    location.pathname === '/profile' ||
     location.pathname === '/manual' ||
     location.pathname === '/bible-reading' ||
     location.pathname === '/admin' ||
     location.pathname === '/districts' ||
-    location.pathname.startsWith('/leader/') ||
-    location.pathname === '/qt/complete';
+    location.pathname.startsWith('/leader/');
 
   return (
     <div className="min-h-screen bg-background">
@@ -451,11 +461,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden">
-        <div
-          className="grid grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1"
-        >
+        <div className="grid grid-cols-4 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1">
           {mobileTabItems.map(item => {
-            const active = location.pathname.startsWith(item.path);
+            const active = item.matchPaths
+              ? item.matchPaths.some(p => location.pathname.startsWith(p))
+              : location.pathname.startsWith(item.path);
             return (
               <Link
                 key={item.path}
@@ -469,15 +479,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
-          <button
-            className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium ${
-              mobileOpen ? 'text-primary' : isMoreActive ? 'text-primary' : 'text-muted-foreground'
-            }`}
-            onClick={() => setMobileOpen((prev) => !prev)}
-          >
-            <Menu className="h-5 w-5" />
-            <span>더보기</span>
-          </button>
         </div>
       </nav>
     </div>

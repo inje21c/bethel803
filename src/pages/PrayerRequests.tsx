@@ -24,6 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/AppLayout';
+import CommunitySubNav from '@/components/CommunitySubNav';
 import { toast } from 'sonner';
 
 export default function PrayerRequests() {
@@ -243,6 +244,7 @@ export default function PrayerRequests() {
   return (
     <AppLayout>
       <div className="space-y-5 max-w-2xl mx-auto">
+        <CommunitySubNav />
         <h1 className="font-display text-2xl font-bold">기도제목</h1>
 
         <Tabs defaultValue={initialTab} className="space-y-4">

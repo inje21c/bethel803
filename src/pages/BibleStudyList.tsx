@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
 import { getBibleStudies, getMyStudyCompletions } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
+import CommunitySubNav from '@/components/CommunitySubNav';
 
 function StudyItem({
   study,
@@ -60,6 +61,7 @@ export default function BibleStudyList() {
   return (
     <AppLayout>
       <div className="space-y-4">
+        <CommunitySubNav />
         <h1 className="font-display text-2xl font-bold">구역성경공부</h1>
         <p className="text-sm text-muted-foreground">주보에 수록된 구역성경공부 자료를 확인하고 스스로 공부하세요.</p>
 
