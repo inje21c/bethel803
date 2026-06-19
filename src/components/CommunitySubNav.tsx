@@ -12,20 +12,20 @@ export default function CommunitySubNav() {
   const { pathname } = useLocation();
 
   return (
-    <div className="flex gap-1 mb-5 border-b pb-0">
+    <div className="flex gap-1 bg-muted p-1 rounded-xl mb-5">
       {tabs.map(({ path, label, icon: Icon }) => {
         const active = pathname.startsWith(path);
         return (
           <Link
             key={path}
             to={path}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 px-2 py-2 text-sm font-medium rounded-lg transition-colors ${
               active
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground border border-border/40'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-3.5 h-3.5 shrink-0" />
             {label}
           </Link>
         );
