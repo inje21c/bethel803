@@ -21,7 +21,7 @@ const navItems = [
   { path: '/bible-study', label: '구역성경공부', icon: BookOpen },
   { path: '/schedule', label: '주요일정', icon: CalendarDays },
   { path: '/prayer-requests', label: '기도제목', icon: MessageSquareHeart },
-  { path: '/bible-reading', label: '성경', icon: BookMarked, simpleHide: true },
+  { path: '/bible-reading', label: '성경읽기', icon: BookMarked },
   { path: '/admin', label: '관리자', icon: Settings, leaderOnly: true },
   { path: '/districts', label: '구역 관리', icon: Building2, masterOnly: true },
 ];
@@ -37,10 +37,10 @@ const mobileTabItems: MobileTabItem[] = [
   { path: '/dashboard', label: '홈', icon: Home },
   { path: '/qt', label: 'QT', icon: BookHeart },
   {
-    path: '/prayer-requests',
+    path: '/bible-study',
     label: '구역',
     icon: Users,
-    matchPaths: ['/prayer-requests', '/bible-study', '/schedule'],
+    matchPaths: ['/bible-study', '/prayer-requests', '/bible-reading', '/schedule'],
   },
   { path: '/profile', label: '나', icon: UserCircle },
 ];
@@ -380,9 +380,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="mx-auto flex max-w-7xl md:px-6">
         {/* Tablet / desktop nav */}
-        <aside className="hidden w-52 shrink-0 md:block lg:w-56">
+        <aside className="hidden w-52 shrink-0 md:block lg:w-56 sticky top-16 self-start h-[calc(100vh-4rem)] overflow-y-auto">
           <nav
-            className="sticky top-20 flex flex-col gap-1 py-6 pr-4"
+            className="flex flex-col gap-1 py-6 pr-4"
             aria-label="주 메뉴"
           >
             {navItems.map(item => {

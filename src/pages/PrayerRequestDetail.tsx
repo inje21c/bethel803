@@ -146,7 +146,7 @@ export default function PrayerRequestDetail() {
   if (!prayer) {
     return (
       <AppLayout>
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="space-y-4">
           <button onClick={() => navigate('/prayer-requests')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4" /> 목록으로
           </button>
@@ -179,7 +179,7 @@ export default function PrayerRequestDetail() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-5">
+      <div className="space-y-5">
         <button onClick={() => navigate('/prayer-requests')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> 목록으로
         </button>

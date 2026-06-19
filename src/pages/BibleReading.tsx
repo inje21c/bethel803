@@ -53,6 +53,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/AppLayout';
+import CommunitySubNav from '@/components/CommunitySubNav';
 import { toast } from 'sonner';
 
 const FONT_SIZE_CLASSES = ['text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl'];
@@ -610,11 +611,12 @@ export default function BibleReading() {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-5xl space-y-5">
+      <div className="space-y-5">
+        <CommunitySubNav />
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">성경 본문과 개인 북마크</p>
             <h1 className="font-display text-2xl font-bold">성경</h1>
+            <p className="text-sm text-muted-foreground mt-1">성경 본문과 개인 북마크</p>
           </div>
           {activeTab === 'reader' && (
             <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">

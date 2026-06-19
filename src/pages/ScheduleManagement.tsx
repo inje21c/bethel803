@@ -4,7 +4,7 @@ import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, CheckCircle2, 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance } from '@/lib/api';
+import { getSchedules, addSchedule, updateSchedule, deleteSchedule, getAttendances, saveAttendance, getAllUsers } from '@/lib/api';
 import type { Schedule, Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import CommunitySubNav from '@/components/CommunitySubNav';
@@ -69,7 +69,7 @@ function ScheduleForm({ schedule, onSave, onClose }: { schedule?: Schedule; onSa
   );
 }
 
-function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
+function AttendanceStatus({ scheduleId, districtId }: { scheduleId: string; districtId: string }) {
   const { user, isLeader } = useAuth();
   const queryClient = useQueryClient();
 
@@ -78,21 +78,20 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
     queryFn: () => getAttendances(scheduleId),
   });
 
+  const { data: allMembers = [] } = useQuery({
+    queryKey: ['all_users', districtId],
+    queryFn: () => getAllUsers(districtId),
+    enabled: isLeader && !!districtId,
+  });
+  const activeMembers = allMembers.filter(m => m.status === 'active');
+
   const myAttendance = attendances.find((a: Attendance) => a.userId === user?.id);
 
   const attendanceMutation = useMutation({
-    mutationFn: (status: 'attending' | 'absent') => saveAttendance({
-      scheduleId,
-      userId: user!.id,
-      status,
-    }),
+    mutationFn: ({ userId, status }: { userId: string; status: 'attending' | 'absent' }) =>
+      saveAttendance({ scheduleId, userId, status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendances', scheduleId] }),
   });
-
-  const handleRespond = (status: 'attending' | 'absent') => {
-    if (!user) return;
-    attendanceMutation.mutate(status);
-  };
 
   const attendingCount = attendances.filter((a: Attendance) => a.status === 'attending').length;
   const absentCount = attendances.filter((a: Attendance) => a.status === 'absent').length;
@@ -106,34 +105,60 @@ function AttendanceStatus({ scheduleId }: { scheduleId: string }) {
           참석 {attendingCount} · 불참 {absentCount}
         </span>
       </div>
-      {!myAttendance || myAttendance.status === 'pending' ? (
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleRespond('attending')} disabled={attendanceMutation.isPending}>
-            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success" /> 참석
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleRespond('absent')} disabled={attendanceMutation.isPending}>
-            <XCircle className="w-3.5 h-3.5 mr-1 text-destructive" /> 불참
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-medium ${myAttendance.status === 'attending' ? 'text-success' : 'text-destructive'}`}>
-            {myAttendance.status === 'attending' ? '✓ 참석으로 응답함' : '✗ 불참으로 응답함'}
-          </span>
-          <Button size="sm" variant="ghost" className="text-xs ml-auto h-7" onClick={() => handleRespond(myAttendance.status === 'attending' ? 'absent' : 'attending')} disabled={attendanceMutation.isPending}>
-            변경
-          </Button>
-        </div>
+
+      {/* 구역원: 내 응답 */}
+      {!isLeader && (
+        !myAttendance || myAttendance.status === 'pending' ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => attendanceMutation.mutate({ userId: user!.id, status: 'attending' })} disabled={attendanceMutation.isPending}>
+              <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success" /> 참석
+            </Button>
+            <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => attendanceMutation.mutate({ userId: user!.id, status: 'absent' })} disabled={attendanceMutation.isPending}>
+              <XCircle className="w-3.5 h-3.5 mr-1 text-destructive" /> 불참
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-medium ${myAttendance.status === 'attending' ? 'text-success' : 'text-destructive'}`}>
+              {myAttendance.status === 'attending' ? '✓ 참석으로 응답함' : '✗ 불참으로 응답함'}
+            </span>
+            <Button size="sm" variant="ghost" className="text-xs ml-auto h-7"
+              onClick={() => attendanceMutation.mutate({ userId: user!.id, status: myAttendance.status === 'attending' ? 'absent' : 'attending' })}
+              disabled={attendanceMutation.isPending}>
+              변경
+            </Button>
+          </div>
+        )
       )}
-      {/* Show all responses for leader */}
-      {isLeader && attendances.length > 0 && (
-        <div className="mt-2 space-y-1">
-          {attendances.map((a: Attendance) => (
-            <div key={a.userId} className="flex items-center gap-2 text-xs">
-              {a.status === 'attending' ? <CheckCircle2 className="w-3 h-3 text-success" /> : a.status === 'absent' ? <XCircle className="w-3 h-3 text-destructive" /> : <HelpCircle className="w-3 h-3 text-muted-foreground" />}
-              <span>{a.userName}</span>
-            </div>
-          ))}
+
+      {/* 구역장: 전체 구역원 출석 직접 편집 */}
+      {isLeader && (
+        <div className="mt-1 space-y-0.5">
+          {activeMembers.map(member => {
+            const att = attendances.find((a: Attendance) => a.userId === member.id);
+            const status = att?.status;
+            return (
+              <button
+                key={member.id}
+                onClick={() => attendanceMutation.mutate({ userId: member.id, status: status === 'attending' ? 'absent' : 'attending' })}
+                disabled={attendanceMutation.isPending}
+                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-muted/50 transition-colors"
+              >
+                {status === 'attending'
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
+                  : status === 'absent'
+                  ? <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                  : <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />}
+                <span className={`text-xs ${status === 'attending' ? 'font-medium' : 'text-muted-foreground'}`}>
+                  {member.name}
+                </span>
+                {member.id === user?.id && <span className="text-[10px] text-muted-foreground ml-0.5">(나)</span>}
+              </button>
+            );
+          })}
+          {activeMembers.length === 0 && (
+            <p className="text-xs text-muted-foreground py-1">구역원이 없습니다.</p>
+          )}
         </div>
       )}
     </div>
@@ -252,7 +277,9 @@ export default function ScheduleManagement() {
           </div>
         )}
       </div>
-      {schedule.attendanceCheck && !isPast && <AttendanceStatus scheduleId={schedule.id} />}
+      {schedule.attendanceCheck && (!isPast || isLeader) && (
+        <AttendanceStatus scheduleId={schedule.id} districtId={currentDistrictId} />
+      )}
     </motion.div>
   );
 

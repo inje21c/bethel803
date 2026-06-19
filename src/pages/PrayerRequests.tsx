@@ -243,7 +243,7 @@ export default function PrayerRequests() {
 
   return (
     <AppLayout>
-      <div className="space-y-5 max-w-2xl mx-auto">
+      <div className="space-y-5">
         <CommunitySubNav />
         <h1 className="font-display text-2xl font-bold">기도제목</h1>
 

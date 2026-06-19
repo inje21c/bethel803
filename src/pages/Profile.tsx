@@ -1,19 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BellRing, ChevronRight, Link2, Lock, LogOut, MessageCircleQuestion, Moon, Save, Smartphone, Sun, Trash2, User, BookOpen } from 'lucide-react';
+import {
+  BellRing, BookMarked, BookOpen, ChevronLeft, ChevronRight,
+  Link2, Lock, LogOut, MessageCircleQuestion, Moon,
+  Save, Smartphone, Sun, Trash2, User,
+} from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
+import { useDistrict } from '@/lib/districtContext';
 import {
   deactivatePushSubscription,
   deleteMyAccount,
+  getActivityCalendar,
   getNotificationPreferences,
   getPushSubscriptions,
+  getYearlyChapterCount,
+  getYearlyPrayerCount,
+  getYearlyQTCount,
+  getYearlyStudyCompletedCount,
   saveNotificationPreferences,
   savePushSubscription,
   updateUserName,
+  type ActivityDay,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,8 +49,10 @@ export default function Profile() {
   const navigate = useNavigate();
   const { user, updatePassword, refreshProfile, linkGoogleAccount, linkKakaoAccount, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
+  const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
 
+  // ── 소셜 계정 연결 ─────────────────────────────────────────
   const [googleLinking, setGoogleLinking] = useState(false);
   const [kakaoLinking, setKakaoLinking] = useState(false);
   const { data: identities = [] } = useQuery({
@@ -54,132 +67,29 @@ export default function Profile() {
   const googleIdentity = identities.find(i => i.provider === 'google');
   const kakaoIdentity = identities.find(i => i.provider === 'kakao');
 
-  const linkErrorMessage = (err: unknown, providerLabel: string) => {
-    const message = err instanceof Error ? err.message : '';
-    return message.toLowerCase().includes('manual linking')
+  const linkErrorMessage = (err: unknown, label: string) => {
+    const msg = err instanceof Error ? err.message : '';
+    return msg.toLowerCase().includes('manual linking')
       ? '계정 연결 기능이 아직 활성화되지 않았습니다. 관리자에게 문의해주세요.'
-      : `${providerLabel} 계정 연결에 실패했습니다.`;
+      : `${label} 계정 연결에 실패했습니다.`;
   };
-
   const handleGoogleLink = async () => {
     setGoogleLinking(true);
-    try {
-      await linkGoogleAccount();
-      // 성공 시 구글 페이지로 리다이렉트됨
-    } catch (err: unknown) {
-      toast.error(linkErrorMessage(err, '구글'));
-      setGoogleLinking(false);
-    }
+    try { await linkGoogleAccount(); } catch (err) { toast.error(linkErrorMessage(err, '구글')); setGoogleLinking(false); }
   };
-
   const handleKakaoLink = async () => {
     setKakaoLinking(true);
-    try {
-      await linkKakaoAccount();
-      // 성공 시 카카오 페이지로 리다이렉트됨
-    } catch (err: unknown) {
-      toast.error(linkErrorMessage(err, '카카오'));
-      setKakaoLinking(false);
-    }
+    try { await linkKakaoAccount(); } catch (err) { toast.error(linkErrorMessage(err, '카카오')); setKakaoLinking(false); }
   };
 
+  // ── 이름/비밀번호 변경 ─────────────────────────────────────
   const [name, setName] = useState(user?.name ?? '');
   const [nameLoading, setNameLoading] = useState(false);
-
-  const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  async function handleDeleteAccount() {
-    if (deleteConfirm !== '탈퇴') return;
-    setDeleteLoading(true);
-    try {
-      const result = await deleteMyAccount();
-      if (result.error === 'master_has_members') {
-        toast.error(result.message ?? '다른 구성원이 있습니다. 먼저 권한을 이전해주세요.');
-        return;
-      }
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      await supabase.auth.signOut();
-      navigate('/login', { replace: true });
-    } finally {
-      setDeleteLoading(false);
-    }
-  }
-  const [permissionState, setPermissionState] = useState<NotificationPermission | 'unsupported'>(getPushPermissionState());
-  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
-  const pushSupported = isPushSupported();
-  const pushSetupMessage = getPushSetupMessage();
-  const isStandalone =
-    typeof window !== 'undefined'
-    && (
-      window.matchMedia('(display-mode: standalone)').matches
-      || ((navigator as Navigator & { standalone?: boolean }).standalone === true)
-    );
-
-  const { data: subscriptions = [] } = useQuery({
-    queryKey: ['push_subscriptions', user?.id],
-    queryFn: () => getPushSubscriptions(user!.id),
-    enabled: !!user,
-  });
-
-  const { data: preferences = {
-    scheduleEnabled: true,
-    studyEnabled: true,
-    devotionalEnabled: true,
-    prayerEnabled: true,
-    readingWeeklyEnabled: true,
-    serviceNoticeEnabled: true,
-    quietHoursStart: null,
-    quietHoursEnd: null,
-    digestMode: 'instant' as const,
-  } } = useQuery({
-    queryKey: ['notification_preferences', user?.id],
-    queryFn: () => getNotificationPreferences(user!.id),
-    enabled: !!user,
-  });
-
-  const activeSubscriptions = useMemo(
-    () => subscriptions.filter((item) => item.isActive),
-    [subscriptions],
-  );
-
-  const currentDeviceSubscription = useMemo(
-    () => activeSubscriptions.find((item) => item.endpoint === currentEndpoint) ?? null,
-    [activeSubscriptions, currentEndpoint],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const syncBrowserSubscription = async () => {
-      setPermissionState(getPushPermissionState());
-      if (!pushSupported) {
-        setCurrentEndpoint(null);
-        return;
-      }
-
-      try {
-        const subscription = await getCurrentBrowserSubscription();
-        if (!cancelled) {
-          setCurrentEndpoint(subscription?.endpoint ?? null);
-        }
-      } catch {
-        if (!cancelled) setCurrentEndpoint(null);
-      }
-    };
-
-    void syncBrowserSubscription();
-    return () => {
-      cancelled = true;
-    };
-  }, [pushSupported]);
 
   const handleNameSave = async () => {
     if (!name.trim() || name.trim() === user?.name) return;
@@ -188,482 +98,443 @@ export default function Profile() {
       await updateUserName(user!.id, name.trim());
       await refreshProfile();
       toast.success('이름이 변경되었습니다.');
-    } catch {
-      toast.error('이름 변경에 실패했습니다.');
-    } finally {
-      setNameLoading(false);
-    }
+    } catch { toast.error('이름 변경에 실패했습니다.'); }
+    finally { setNameLoading(false); }
   };
-
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPw !== confirmPw) {
-      toast.error('새 비밀번호가 일치하지 않습니다.');
-      return;
-    }
-    if (newPw.length < 6) {
-      toast.error('비밀번호는 6자 이상이어야 합니다.');
-      return;
-    }
+    if (newPw !== confirmPw) { toast.error('새 비밀번호가 일치하지 않습니다.'); return; }
+    if (newPw.length < 6) { toast.error('비밀번호는 6자 이상이어야 합니다.'); return; }
     setPwLoading(true);
     try {
       await updatePassword(newPw);
-      setCurrentPw('');
-      setNewPw('');
-      setConfirmPw('');
+      setNewPw(''); setConfirmPw('');
       toast.success('비밀번호가 변경되었습니다.');
-    } catch {
-      toast.error('비밀번호 변경에 실패했습니다. 다시 로그인 후 시도해 주세요.');
-    } finally {
-      setPwLoading(false);
-    }
+    } catch { toast.error('비밀번호 변경에 실패했습니다. 다시 로그인 후 시도해 주세요.'); }
+    finally { setPwLoading(false); }
   };
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== '탈퇴') return;
+    setDeleteLoading(true);
+    try {
+      const result = await deleteMyAccount();
+      if (result.error === 'master_has_members') { toast.error(result.message ?? '다른 구성원이 있습니다. 먼저 권한을 이전해주세요.'); return; }
+      if (result.error) { toast.error(result.error); return; }
+      await supabase.auth.signOut();
+      navigate('/login', { replace: true });
+    } finally { setDeleteLoading(false); }
+  }
+
+  // ── 알림/푸시 ──────────────────────────────────────────────
+  const [permissionState, setPermissionState] = useState<NotificationPermission | 'unsupported'>(getPushPermissionState());
+  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
+  const pushSupported = isPushSupported();
+  const pushSetupMessage = getPushSetupMessage();
+  const isStandalone = typeof window !== 'undefined' && (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ((navigator as Navigator & { standalone?: boolean }).standalone === true)
+  );
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ['push_subscriptions', user?.id],
+    queryFn: () => getPushSubscriptions(user!.id),
+    enabled: !!user,
+  });
+  const { data: preferences = {
+    scheduleEnabled: true, studyEnabled: true, devotionalEnabled: true,
+    prayerEnabled: true, readingWeeklyEnabled: true, serviceNoticeEnabled: true,
+    quietHoursStart: null, quietHoursEnd: null, digestMode: 'instant' as const,
+  } } = useQuery({
+    queryKey: ['notification_preferences', user?.id],
+    queryFn: () => getNotificationPreferences(user!.id),
+    enabled: !!user,
+  });
+  const activeSubscriptions = useMemo(() => subscriptions.filter(s => s.isActive), [subscriptions]);
+  const currentDeviceSubscription = useMemo(
+    () => activeSubscriptions.find(s => s.endpoint === currentEndpoint) ?? null,
+    [activeSubscriptions, currentEndpoint],
+  );
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setPermissionState(getPushPermissionState());
+      if (!pushSupported) { setCurrentEndpoint(null); return; }
+      try {
+        const sub = await getCurrentBrowserSubscription();
+        if (!cancelled) setCurrentEndpoint(sub?.endpoint ?? null);
+      } catch { if (!cancelled) setCurrentEndpoint(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [pushSupported]);
 
   const subscribeMutation = useMutation({
     mutationFn: async () => {
       if (!user?.districtId) throw new Error('소속 구역 정보가 없어 구독을 진행할 수 없습니다.');
-      const subscription = await subscribeBrowserPush();
-      await savePushSubscription({
-        userId: user.id,
-        districtId: user.districtId,
-        ...subscription,
-      });
-      return subscription.endpoint;
+      const sub = await subscribeBrowserPush();
+      await savePushSubscription({ userId: user.id, districtId: user.districtId, ...sub });
+      return sub.endpoint;
     },
     onSuccess: (endpoint) => {
-      setPermissionState(getPushPermissionState());
-      setCurrentEndpoint(endpoint);
+      setPermissionState(getPushPermissionState()); setCurrentEndpoint(endpoint);
       queryClient.invalidateQueries({ queryKey: ['push_subscriptions'] });
       toast.success('이 기기에서 알림 구독이 활성화되었습니다.');
     },
-    onError: (error) => {
-      const message = error instanceof Error ? error.message : '구독 설정에 실패했습니다.';
-      toast.error(message);
-    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '구독 설정에 실패했습니다.'),
   });
-
   const unsubscribeMutation = useMutation({
     mutationFn: async () => {
       const endpoint = await unsubscribeBrowserPush();
-      if (endpoint && user) {
-        await deactivatePushSubscription(user.id, endpoint);
-      }
+      if (endpoint && user) await deactivatePushSubscription(user.id, endpoint);
       return endpoint;
     },
     onSuccess: (endpoint) => {
-      setPermissionState(getPushPermissionState());
-      setCurrentEndpoint(null);
+      setPermissionState(getPushPermissionState()); setCurrentEndpoint(null);
       queryClient.invalidateQueries({ queryKey: ['push_subscriptions'] });
       toast.success(endpoint ? '현재 기기의 알림 구독을 해지했습니다.' : '이 기기에는 활성 구독이 없습니다.');
     },
-    onError: () => {
-      toast.error('구독 해지에 실패했습니다.');
-    },
+    onError: () => toast.error('구독 해지에 실패했습니다.'),
   });
-
   const preferenceMutation = useMutation({
     mutationFn: (patch: Partial<typeof preferences>) => saveNotificationPreferences(user!.id, patch),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notification_preferences'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notification_preferences'] }),
     onError: () => toast.error('알림 설정 저장에 실패했습니다.'),
   });
 
-  const handlePreferenceToggle = (
-    key: keyof typeof preferences,
-    value: boolean,
-  ) => {
-    preferenceMutation.mutate({ [key]: value });
-  };
+  // ── 나 탭 연간 통계 쿼리 ──────────────────────────────────
+  const thisYear = new Date().getFullYear();
+  const { data: yearlyQT = 0 } = useQuery({
+    queryKey: ['yearly_qt', user?.id, thisYear],
+    queryFn: () => getYearlyQTCount(user!.id, thisYear),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+  const { data: yearlyChapters = 0 } = useQuery({
+    queryKey: ['yearly_chapters', user?.id, thisYear],
+    queryFn: () => getYearlyChapterCount(user!.id, thisYear),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+  const { data: yearlyStudy = 0 } = useQuery({
+    queryKey: ['yearly_study', user?.id, thisYear],
+    queryFn: () => getYearlyStudyCompletedCount(user!.id, thisYear),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+  const { data: yearlyPrayer = 0 } = useQuery({
+    queryKey: ['yearly_prayer', user?.id, thisYear],
+    queryFn: () => getYearlyPrayerCount(user!.id, thisYear),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // ── 활동 캘린더 ────────────────────────────────────────────
+  const now = new Date();
+  const [calYear, setCalYear] = useState(now.getFullYear());
+  const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
+  const { data: activityDays = [] } = useQuery({
+    queryKey: ['activity_calendar', user?.id, currentDistrictId, calYear, calMonth],
+    queryFn: () => getActivityCalendar(user!.id, currentDistrictId, calYear, calMonth),
+    enabled: !!user && !!currentDistrictId,
+  });
+  const activityMap = useMemo(() => {
+    const m = new Map<string, ActivityDay>();
+    activityDays.forEach(d => m.set(d.date, d));
+    return m;
+  }, [activityDays]);
+  const firstDayOfWeek = new Date(calYear, calMonth - 1, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth() + 1;
+  const prevCal = () => { if (calMonth === 1) { setCalYear(y => y - 1); setCalMonth(12); } else setCalMonth(m => m - 1); };
+  const nextCal = () => { if (calMonth === 12) { setCalYear(y => y + 1); setCalMonth(1); } else setCalMonth(m => m + 1); };
+
+  const roleLabel = user?.role === 'master' ? '마스터구역장' : user?.role === 'leader' ? '구역장' : '구역원';
+
+  // ── 설정 섹션 토글 ─────────────────────────────────────────
+  const [showEditSection, setShowEditSection] = useState(false);
+  const [showNotifSection, setShowNotifSection] = useState(false);
 
   return (
     <AppLayout>
-      <div className="max-w-lg mx-auto space-y-6">
+      <div className="space-y-5">
+
+        {/* 프로필 헤더 */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="card-elevated p-5 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-primary font-bold text-xl">{user?.name?.slice(0, 1)}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-base">{user?.name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Badge variant={user?.role !== 'member' ? 'default' : 'secondary'} className="text-[10px] px-2 py-0.5">
+                  {roleLabel}
+                </Badge>
+                <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 연간 누적 현황 */}
         <div>
-          <h1 className="font-display text-2xl font-bold">내 프로필</h1>
-          <p className="text-sm text-muted-foreground mt-1">계정 정보를 확인하고 변경하세요.</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">{thisYear}년 누적 현황</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card-elevated p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <BookMarked className="w-4 h-4 text-[#4A7AB5]" />
+                <span className="text-xs text-muted-foreground">QT</span>
+              </div>
+              <p className="text-2xl font-bold">{yearlyQT}<span className="text-sm font-normal text-muted-foreground ml-1">일</span></p>
+            </div>
+            <div className="card-elevated p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <BookOpen className="w-4 h-4 text-[#5FAD2A]" />
+                <span className="text-xs text-muted-foreground">성경읽기</span>
+              </div>
+              <p className="text-2xl font-bold">{yearlyChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
+            </div>
+            <div className="card-elevated p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <BookOpen className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">성경공부</span>
+              </div>
+              <p className="text-2xl font-bold">{yearlyStudy}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+            </div>
+            <div className="card-elevated p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-base">🙏</span>
+                <span className="text-xs text-muted-foreground">기도하기</span>
+              </div>
+              <p className="text-2xl font-bold">{yearlyPrayer}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+            </div>
+          </div>
         </div>
 
-        {/* 계정 정보 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="w-4 h-4" />
-                계정 정보
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary font-bold text-sm">{user?.name?.slice(0, 1)}</span>
-                </div>
-                <div>
-                  <p className="font-medium">{user?.name}</p>
-                  <Badge variant={user?.role !== 'member' ? 'default' : 'secondary'} className="text-xs mt-0.5">
-                    {user?.role === 'master' ? '마스터구역장' : user?.role === 'leader' ? '구역장' : '구역원'}
-                  </Badge>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="name">이름 변경</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="변경할 이름"
-                    maxLength={20}
-                  />
-                  <Button
-                    size="sm"
-                    disabled={nameLoading || !name.trim() || name.trim() === user?.name}
-                    onClick={handleNameSave}
-                    className="shrink-0 gap-1"
-                  >
-                    {nameLoading
-                      ? <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                      : <Save className="w-4 h-4" />
-                    }
-                    저장
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label>소셜 계정 연결</Label>
-                {googleIdentity ? (
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">연결됨</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {(googleIdentity.identity_data?.email as string) ?? '구글 계정'}
-                      </p>
+        {/* 활동 캘린더 */}
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">활동 기록</p>
+          <div className="card-elevated p-4">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={prevCal} className="p-1 rounded-md hover:bg-muted transition-colors" aria-label="이전 달">
+                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <span className="text-sm font-medium">{calYear}년 {calMonth}월</span>
+              <button onClick={nextCal} disabled={isCurrentMonth} className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30" aria-label="다음 달">
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {['일','월','화','수','목','금','토'].map(d => (
+                <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                const act = activityMap.get(dateStr);
+                const isToday = dateStr === todayStr;
+                const isFuture = dateStr > todayStr;
+                const numCls = isToday
+                  ? 'text-[#4A7AB5] font-semibold'
+                  : isFuture
+                    ? 'text-muted-foreground/30'
+                    : 'text-foreground';
+                const off = 'rgba(140,140,140,0.2)';
+                return (
+                  <div key={day} className="flex flex-col items-center gap-[3px] pb-1">
+                    <span className={`text-[13px] leading-tight ${numCls}`}>{day}</span>
+                    <div className="w-full flex flex-col gap-[2px]">
+                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.qtDone) ? '#4A7AB5' : off }} />
+                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.readingDone) ? '#5FAD2A' : off }} />
+                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.hasSchedule) ? '#C8002A' : off }} />
                     </div>
-                    <Badge variant="secondary" className="shrink-0 text-xs">Google</Badge>
                   </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    disabled={googleLinking}
-                    onClick={handleGoogleLink}
-                  >
-                    <Link2 className="w-4 h-4" />
-                    {googleLinking ? '이동 중...' : '구글 계정 연결하기'}
-                  </Button>
-                )}
-                {kakaoIdentity ? (
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">연결됨</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {(kakaoIdentity.identity_data?.email as string) ?? '카카오 계정'}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="shrink-0 text-xs">Kakao</Badge>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-4 pt-2 border-t border-border/50">
+              {[['#4A7AB5','QT'],['#5FAD2A','성경읽기'],['#C8002A','일정']].map(([color, label]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div className="w-4 h-[3px] rounded-full" style={{ background: color }} />
+                  <span className="text-[10px] text-muted-foreground">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 설정 */}
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">설정</p>
+          <div className="card-elevated overflow-hidden">
+            {[
+              {
+                icon: <User className="w-4 h-4" />, label: '프로필 수정', iconBg: 'bg-primary/10 text-primary',
+                onClick: () => setShowEditSection(v => !v),
+                right: <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showEditSection ? 'rotate-90' : ''}`} />,
+              },
+              {
+                icon: resolvedTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />,
+                label: resolvedTheme === 'dark' ? '라이트 모드' : '다크 모드',
+                iconBg: 'bg-muted text-muted-foreground',
+                onClick: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'),
+                right: (
+                  <div className={`w-10 h-5 rounded-full relative transition-colors ${resolvedTheme === 'dark' ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${resolvedTheme === 'dark' ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </div>
-                ) : (
-                  <Button
-                    className="w-full gap-2 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90"
-                    disabled={kakaoLinking}
-                    onClick={handleKakaoLink}
-                  >
-                    <Link2 className="w-4 h-4" />
-                    {kakaoLinking ? '이동 중...' : '카카오 계정 연결하기'}
-                  </Button>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  연결해두면 비밀번호 없이 소셜 계정으로 로그인할 수 있습니다.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BellRing className="w-4 h-4" />
-                알림 설정
-              </CardTitle>
-              <CardDescription>
-                설치 후 구독하기를 켜면 새 일정, 성경공부, 기도제목 같은 알림을 이 기기에서 받을 수 있습니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-lg border bg-muted/40 p-3">
-                  <p className="text-xs text-muted-foreground">현재 기기 상태</p>
-                  <p className="mt-1 text-sm font-medium">
-                    {currentDeviceSubscription ? '구독됨' : '미구독'}
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-muted/40 p-3">
-                  <p className="text-xs text-muted-foreground">브라우저 권한</p>
-                  <p className="mt-1 text-sm font-medium">
-                    {permissionState === 'granted'
-                      ? '허용됨'
-                      : permissionState === 'denied'
-                        ? '차단됨'
-                        : permissionState === 'default'
-                          ? '아직 미선택'
-                          : '미지원'}
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-muted/40 p-3">
-                  <p className="text-xs text-muted-foreground">활성 기기 수</p>
-                  <p className="mt-1 text-sm font-medium">{activeSubscriptions.length}대</p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
-                    <Smartphone className="w-4 h-4" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">이 기기에서 알림 받기</p>
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {pushSetupMessage
-                        ? pushSetupMessage
-                        : permissionState === 'denied'
-                          ? '브라우저 설정에서 알림 차단을 해제한 뒤 다시 시도해 주세요.'
-                          : !isStandalone
-                            ? '홈 화면에 추가한 뒤 구독하면 더 설치형 앱처럼 안정적으로 사용할 수 있습니다.'
-                            : '현재 기기에서 바로 알림을 받을 수 있습니다.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    onClick={() => subscribeMutation.mutate()}
-                    disabled={
-                      subscribeMutation.isPending
-                      || !pushSupported
-                      || !hasPushSetupReady()
-                      || permissionState === 'denied'
-                      || !!currentDeviceSubscription
-                    }
-                  >
-                    {subscribeMutation.isPending ? '구독 설정 중...' : currentDeviceSubscription ? '현재 기기 구독됨' : '구독하기'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => unsubscribeMutation.mutate()}
-                    disabled={unsubscribeMutation.isPending || !currentDeviceSubscription}
-                  >
-                    {unsubscribeMutation.isPending ? '해지 중...' : '현재 기기 구독 해지'}
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium">받고 싶은 알림</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    구독을 켠 뒤에는 아래 항목별로 수신 범위를 조절할 수 있습니다.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {[
-                    ['scheduleEnabled', '일정 알림'],
-                    ['studyEnabled', '성경공부 알림'],
-                    ['devotionalEnabled', '오늘의 묵상'],
-                    ['prayerEnabled', '기도제목 알림'],
-                    ['readingWeeklyEnabled', '주간 성경읽기'],
-                    ['serviceNoticeEnabled', '서비스 공지'],
-                  ].map(([key, label]) => (
-                    <div key={key} className="flex items-center justify-between rounded-lg border px-3 py-2">
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
+                ),
+              },
+              {
+                icon: <BellRing className="w-4 h-4" />, label: '알림 설정', iconBg: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
+                onClick: () => setShowNotifSection(v => !v),
+                right: <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showNotifSection ? 'rotate-90' : ''}`} />,
+              },
+              {
+                icon: <BookOpen className="w-4 h-4" />, label: '사용 안내', iconBg: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600',
+                onClick: () => navigate('/manual'),
+                right: <ChevronRight className="w-4 h-4 text-muted-foreground" />,
+              },
+              {
+                icon: <MessageCircleQuestion className="w-4 h-4" />, label: '문의하기', iconBg: 'bg-muted text-muted-foreground',
+                onClick: () => navigate('/support'),
+                right: <ChevronRight className="w-4 h-4 text-muted-foreground" />,
+              },
+            ].map((row, i, arr) => (
+              <div key={row.label}>
+                <button onClick={row.onClick} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors text-left">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${row.iconBg}`}>{row.icon}</div>
+                  <span className="flex-1 text-sm font-medium">{row.label}</span>
+                  {row.right}
+                </button>
+                {/* 프로필 수정 확장 섹션 */}
+                {row.label === '프로필 수정' && showEditSection && (
+                  <div className="px-4 pb-4 space-y-4 border-t bg-muted/30">
+                    <div className="space-y-2 pt-4">
+                      <Label htmlFor="name" className="text-xs">이름 변경</Label>
+                      <div className="flex gap-2">
+                        <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="변경할 이름" maxLength={20} className="h-9 text-sm" />
+                        <Button size="sm" disabled={nameLoading || !name.trim() || name.trim() === user?.name} onClick={handleNameSave} className="shrink-0 gap-1 h-9">
+                          {nameLoading ? <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          저장
+                        </Button>
                       </div>
-                      <Switch
-                        checked={preferences[key as keyof typeof preferences] as boolean}
-                        onCheckedChange={(checked) => handlePreferenceToggle(key as keyof typeof preferences, checked)}
-                        disabled={preferenceMutation.isPending}
-                      />
                     </div>
-                  ))}
-                </div>
+                    <Separator />
+                    <form onSubmit={handlePasswordChange} className="space-y-2">
+                      <Label className="text-xs">비밀번호 변경</Label>
+                      <Input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="새 비밀번호 (6자 이상)" minLength={6} className="h-9 text-sm" />
+                      <Input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="새 비밀번호 확인" minLength={6} className="h-9 text-sm" />
+                      {confirmPw && newPw !== confirmPw && <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>}
+                      <Button type="submit" size="sm" className="w-full h-9" disabled={pwLoading || !newPw || newPw !== confirmPw}>
+                        {pwLoading && <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-1.5" />}
+                        비밀번호 변경
+                      </Button>
+                    </form>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-xs">소셜 계정 연결</Label>
+                      {googleIdentity ? (
+                        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+                          <div className="min-w-0"><p className="text-xs font-medium">Google 연결됨</p><p className="truncate text-[11px] text-muted-foreground">{(googleIdentity.identity_data?.email as string) ?? ''}</p></div>
+                          <Badge variant="secondary" className="text-[10px]">Google</Badge>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" className="w-full gap-2 h-9 text-sm" disabled={googleLinking} onClick={handleGoogleLink}>
+                          <Link2 className="w-3.5 h-3.5" />{googleLinking ? '이동 중...' : '구글 계정 연결하기'}
+                        </Button>
+                      )}
+                      {kakaoIdentity ? (
+                        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+                          <div className="min-w-0"><p className="text-xs font-medium">Kakao 연결됨</p><p className="truncate text-[11px] text-muted-foreground">{(kakaoIdentity.identity_data?.email as string) ?? ''}</p></div>
+                          <Badge variant="secondary" className="text-[10px]">Kakao</Badge>
+                        </div>
+                      ) : (
+                        <Button size="sm" className="w-full gap-2 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90 h-9 text-sm" disabled={kakaoLinking} onClick={handleKakaoLink}>
+                          <Link2 className="w-3.5 h-3.5" />{kakaoLinking ? '이동 중...' : '카카오 계정 연결하기'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* 알림 설정 확장 섹션 */}
+                {row.label === '알림 설정' && showNotifSection && (
+                  <div className="px-4 pb-4 space-y-4 border-t bg-muted/30">
+                    <div className="grid gap-2 sm:grid-cols-3 pt-4">
+                      {[
+                        { label: '현재 기기', value: currentDeviceSubscription ? '구독됨' : '미구독' },
+                        { label: '브라우저 권한', value: permissionState === 'granted' ? '허용됨' : permissionState === 'denied' ? '차단됨' : permissionState === 'default' ? '미선택' : '미지원' },
+                        { label: '활성 기기', value: `${activeSubscriptions.length}대` },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="rounded-lg border bg-muted/40 px-3 py-2">
+                          <p className="text-[10px] text-muted-foreground">{label}</p>
+                          <p className="mt-0.5 text-xs font-medium">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="mt-0.5 rounded-full bg-primary/10 p-1.5 text-primary shrink-0"><Smartphone className="w-3.5 h-3.5" /></div>
+                        <p className="text-xs text-muted-foreground leading-5">
+                          {pushSetupMessage ?? (permissionState === 'denied' ? '브라우저 설정에서 알림 차단을 해제한 뒤 다시 시도해 주세요.' : !isStandalone ? '홈 화면에 추가한 뒤 구독하면 더 안정적입니다.' : '현재 기기에서 바로 알림을 받을 수 있습니다.')}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => subscribeMutation.mutate()} disabled={subscribeMutation.isPending || !pushSupported || !hasPushSetupReady() || permissionState === 'denied' || !!currentDeviceSubscription}>
+                          {subscribeMutation.isPending ? '설정 중...' : currentDeviceSubscription ? '구독됨' : '구독하기'}
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => unsubscribeMutation.mutate()} disabled={unsubscribeMutation.isPending || !currentDeviceSubscription}>
+                          {unsubscribeMutation.isPending ? '해지 중...' : '구독 해지'}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        ['scheduleEnabled', '일정 알림'], ['studyEnabled', '성경공부 알림'],
+                        ['devotionalEnabled', '오늘의 묵상'], ['prayerEnabled', '기도제목 알림'],
+                        ['readingWeeklyEnabled', '주간 성경읽기'], ['serviceNoticeEnabled', '서비스 공지'],
+                      ].map(([key, label]) => (
+                        <div key={key} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                          <p className="text-xs font-medium">{label}</p>
+                          <Switch checked={preferences[key as keyof typeof preferences] as boolean} onCheckedChange={v => preferenceMutation.mutate({ [key]: v })} disabled={preferenceMutation.isPending} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {i < arr.length - 1 && <div className="border-t mx-4" />}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            ))}
+          </div>
+        </div>
 
-        {/* 비밀번호 변경 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                비밀번호 변경
-              </CardTitle>
-              <CardDescription>6자 이상의 새 비밀번호를 입력하세요.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="newPw">새 비밀번호</Label>
-                  <Input
-                    id="newPw"
-                    type="password"
-                    value={newPw}
-                    onChange={e => setNewPw(e.target.value)}
-                    placeholder="새 비밀번호 (6자 이상)"
-                    minLength={6}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPw">새 비밀번호 확인</Label>
-                  <Input
-                    id="confirmPw"
-                    type="password"
-                    value={confirmPw}
-                    onChange={e => setConfirmPw(e.target.value)}
-                    placeholder="새 비밀번호 재입력"
-                    minLength={6}
-                    required
-                  />
-                  {confirmPw && newPw !== confirmPw && (
-                    <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={pwLoading || !newPw || newPw !== confirmPw}>
-                  {pwLoading
-                    ? <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                    : null
-                  }
-                  비밀번호 변경
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 문의하기 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <Card
-            className="cursor-pointer hover:bg-muted/40 transition-colors"
-            onClick={() => navigate('/support')}
-          >
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center gap-3">
-                <MessageCircleQuestion className="w-4 h-4 text-muted-foreground shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">문의하기</p>
-                  <p className="text-xs text-muted-foreground">버그 신고, 기능 요청, 사용 문의</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 사용 안내 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
-          <Card
-            className="cursor-pointer hover:bg-muted/40 transition-colors"
-            onClick={() => navigate('/manual')}
-          >
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center gap-3">
-                <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">사용 안내</p>
-                  <p className="text-xs text-muted-foreground">앱 기능 가이드</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 다크모드 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card
-            className="cursor-pointer hover:bg-muted/40 transition-colors"
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-          >
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center gap-3">
-                {resolvedTheme === 'dark'
-                  ? <Sun className="w-4 h-4 text-muted-foreground shrink-0" />
-                  : <Moon className="w-4 h-4 text-muted-foreground shrink-0" />}
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{resolvedTheme === 'dark' ? '라이트 모드로 전환' : '야간 모드로 전환'}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 로그아웃 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
-          <Card
-            className="cursor-pointer hover:bg-muted/40 transition-colors"
-            onClick={async () => { await logout(); navigate('/'); }}
-          >
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center gap-3">
-                <LogOut className="w-4 h-4 text-muted-foreground shrink-0" />
-                <p className="text-sm font-medium">로그아웃</p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 회원탈퇴 */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card className="border-destructive/30">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base text-destructive">
-                <Trash2 className="w-4 h-4" /> 회원탈퇴
-              </CardTitle>
-              <CardDescription className="text-xs">
-                탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
-                {user?.role === 'master' && ' 교회의 모든 데이터가 함께 삭제됩니다.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        {/* 계정 관리 */}
+        <div className="card-elevated overflow-hidden">
+          <button onClick={async () => { await logout(); navigate('/'); }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors text-left">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-muted text-muted-foreground"><LogOut className="w-4 h-4" /></div>
+            <span className="text-sm font-medium">로그아웃</span>
+          </button>
+          <div className="border-t mx-4" />
+          <button onClick={() => setDeleteConfirm(v => v === '' ? 'show' : '')} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-destructive/5 transition-colors text-left">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></div>
+            <span className="text-sm font-medium text-destructive">회원 탈퇴</span>
+            <ChevronRight className="w-4 h-4 text-destructive ml-auto" />
+          </button>
+          {deleteConfirm !== '' && (
+            <div className="px-4 pb-4 space-y-3 border-t bg-destructive/5">
+              <p className="text-xs text-muted-foreground pt-3">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.{user?.role === 'master' && ' 교회의 모든 데이터가 함께 삭제됩니다.'}</p>
               <div className="space-y-1.5">
-                <Label htmlFor="deleteConfirm" className="text-sm">
-                  확인을 위해 <span className="font-bold text-destructive">탈퇴</span>를 입력하세요
-                </Label>
-                <Input
-                  id="deleteConfirm"
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  placeholder="탈퇴"
-                  className="border-destructive/30 focus-visible:ring-destructive/30"
-                />
+                <Label htmlFor="deleteConfirm" className="text-xs">확인을 위해 <span className="font-bold text-destructive">탈퇴</span>를 입력하세요</Label>
+                <Input id="deleteConfirm" value={deleteConfirm === 'show' ? '' : deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="탈퇴" className="border-destructive/30 h-9 text-sm focus-visible:ring-destructive/30" />
               </div>
-              <Button
-                variant="destructive"
-                className="w-full"
-                disabled={deleteConfirm !== '탈퇴' || deleteLoading}
-                onClick={handleDeleteAccount}
-              >
-                {deleteLoading
-                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  : null}
+              <Button variant="destructive" size="sm" className="w-full h-9" disabled={deleteConfirm !== '탈퇴' || deleteLoading} onClick={handleDeleteAccount}>
+                {deleteLoading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />}
                 계정 영구 삭제
               </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          )}
+        </div>
 
       </div>
     </AppLayout>
