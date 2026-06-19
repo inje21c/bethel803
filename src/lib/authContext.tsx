@@ -295,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
 
-      if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         updateLastLogin(session.user.id);
       }
     };

@@ -623,6 +623,26 @@ export async function getActiveMemberCount(districtId: string): Promise<number> 
   return count ?? 0;
 }
 
+export async function getTodayActiveCount(districtId: string): Promise<{ today: number; total: number }> {
+  const todayStart = `${getKSTDateString(new Date())}T00:00:00+09:00`;
+  const [totalResult, todayResult] = await Promise.all([
+    withApiTimeout(
+      supabase.from('users').select('id', { count: 'exact', head: true })
+        .eq('district_id', districtId).eq('status', 'active'),
+      '구역원 전체 수'
+    ),
+    withApiTimeout(
+      supabase.from('users').select('id', { count: 'exact', head: true })
+        .eq('district_id', districtId).eq('status', 'active')
+        .gte('last_login_at', todayStart),
+      '오늘 활성 구역원 수'
+    ),
+  ]);
+  if (totalResult.error) throw totalResult.error;
+  if (todayResult.error) throw todayResult.error;
+  return { today: todayResult.count ?? 0, total: totalResult.count ?? 0 };
+}
+
 export async function getPrayerRequest(id: string): Promise<PrayerRequest | null> {
   const { data, error } = await withApiTimeout(
     supabase
