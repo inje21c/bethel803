@@ -1,12 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, CalendarDays, MapPin, Clock, X, HeartHandshake, BookHeart, Flame, Users, Send } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, X, HeartHandshake, BookHeart, Flame, Users, Send, CheckCircle2, Circle, CheckSquare2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount } from '@/lib/api';
+import { getBibleStudies, getStudyAnswer, getAttendances, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount, getWeeklyChapterCount, getMyWeeklyPrayerCount } from '@/lib/api';
+import type { Attendance } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -77,6 +78,35 @@ export default function Dashboard() {
 
   const { settings: churchInfo } = useChurch();
   const isLeader = user?.role === 'leader' || user?.role === 'master';
+
+  // 구역원 "이번 주 내가 한 일" 카드용 쿼리
+  const { data: latestAnswer } = useQuery({
+    queryKey: ['study_answer_dashboard', latestStudy?.id, user?.id],
+    queryFn: () => getStudyAnswer(latestStudy!.id, user!.id),
+    enabled: !isLeader && !!latestStudy && !!user,
+  });
+  const { data: weeklyChapters = 0 } = useQuery({
+    queryKey: ['weekly_chapters', user?.id],
+    queryFn: () => getWeeklyChapterCount(user!.id),
+    enabled: !isLeader && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: weeklyPrayerCount = 0 } = useQuery({
+    queryKey: ['weekly_prayer_count', user?.id],
+    queryFn: () => getMyWeeklyPrayerCount(user!.id),
+    enabled: !isLeader && !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+  const attendanceSchedule = schedules.find(s => s.attendanceCheck);
+  const { data: attendances = [] } = useQuery({
+    queryKey: ['attendances_todo', attendanceSchedule?.id],
+    queryFn: () => getAttendances(attendanceSchedule!.id),
+    enabled: !isLeader && !!attendanceSchedule?.id,
+  });
+  const myAttendance = (attendances as Attendance[]).find(a => a.userId === user?.id);
+  const attendanceDone = !!myAttendance && myAttendance.status !== 'pending';
+  const studyDone = latestAnswer?.completed ?? false;
+  const weekDoneCount = [studyDone, attendanceDone, weeklyChapters > 0, weeklyPrayerCount > 0].filter(Boolean).length;
 
   const { data: districtActivity = { today: 0, total: 0 } } = useQuery({
     queryKey: ['today_active_count', currentDistrictId],
@@ -227,8 +257,8 @@ export default function Dashboard() {
           </Link>
         </motion.div>
 
-        {/* 우리 구역 활동 */}
-        {districtActivity.total > 1 && (
+        {/* 구역장: 우리 구역 활동 */}
+        {isLeader && districtActivity.total > 1 && (
           <motion.div variants={item} initial="hidden" animate="show">
             <div className="card-elevated p-5">
               <div className="flex items-center justify-between mb-3">
@@ -244,19 +274,70 @@ export default function Dashboard() {
                   ))}
                 </div>
                 <div>
-                  <p className="text-sm">오늘 <span className="font-semibold text-primary">{districtActivity.today}명</span>이 들어왔어요</p>
+                  <p className="text-sm">오늘 <span className="font-semibold text-primary">{districtActivity.today}명</span>이 앱에 들어왔어요</p>
                   <p className="text-xs text-muted-foreground">전체 {districtActivity.total}명 중</p>
                 </div>
               </div>
-              {isLeader && (
-                <button
-                  onClick={() => {/* Sprint 3: 실제 푸시 연동 */}}
-                  className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  오늘 말씀 함께해요 — 보내기
-                </button>
-              )}
+              <button
+                onClick={() => {/* Sprint 3: 실제 푸시 연동 */}}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" />
+                오늘 말씀 함께해요 — 보내기
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 구역원: 이번 주 내가 한 일 */}
+        {!isLeader && (
+          <motion.div variants={item} initial="hidden" animate="show">
+            <div className="card-elevated p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+                  <CheckSquare2 className="w-4 h-4 text-primary" /> 이번 주 내가 한 일
+                </h2>
+                <span className="text-xs text-muted-foreground">{weekDoneCount} / 4 완료</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {/* 성경공부 */}
+                <Link to="/bible-study" className={`p-3 rounded-xl border transition-colors ${studyDone ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+                  <p className="text-lg mb-2">📖</p>
+                  <p className="text-xs text-muted-foreground mb-2">성경공부</p>
+                  {studyDone
+                    ? <CheckCircle2 className="w-6 h-6 text-green-500" />
+                    : <Circle className="w-6 h-6 text-muted-foreground/30" />}
+                </Link>
+                {/* 모임출석 */}
+                {attendanceSchedule
+                  ? (
+                    <Link to="/schedule" className={`p-3 rounded-xl border transition-colors ${attendanceDone ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+                      <p className="text-lg mb-2">📋</p>
+                      <p className="text-xs text-muted-foreground mb-2">모임출석</p>
+                      {attendanceDone
+                        ? <CheckCircle2 className="w-6 h-6 text-green-500" />
+                        : <Circle className="w-6 h-6 text-muted-foreground/30" />}
+                    </Link>
+                  ) : (
+                    <div className="p-3 rounded-xl border border-transparent bg-muted/20">
+                      <p className="text-lg mb-2">📋</p>
+                      <p className="text-xs text-muted-foreground mb-2">모임출석</p>
+                      <p className="text-xs text-muted-foreground/50">일정 없음</p>
+                    </div>
+                  )}
+                {/* 성경읽기 */}
+                <Link to="/bible-reading" className={`p-3 rounded-xl border transition-colors ${weeklyChapters > 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+                  <p className="text-lg mb-2">📚</p>
+                  <p className="text-xs text-muted-foreground mb-2">성경읽기</p>
+                  <p className={`text-2xl font-bold ${weeklyChapters > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground/40'}`}>{weeklyChapters}</p>
+                </Link>
+                {/* 기도하기 */}
+                <Link to="/prayer-requests" className={`p-3 rounded-xl border transition-colors ${weeklyPrayerCount > 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-muted/40 border-transparent'}`}>
+                  <p className="text-lg mb-2">🙏</p>
+                  <p className="text-xs text-muted-foreground mb-2">기도하기</p>
+                  <p className={`text-2xl font-bold ${weeklyPrayerCount > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground/40'}`}>{weeklyPrayerCount}</p>
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}
@@ -334,29 +415,6 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* 성경공부 */}
-        {recentStudies.length > 0 && (
-          <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-display font-semibold flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-primary" /> 성경공부
-                </h2>
-                <Link to="/bible-study" className="text-xs text-primary font-medium hover:underline">전체보기 →</Link>
-              </div>
-              {recentStudies.map(s => (
-                <Link key={s.id} to={`/bible-study/${s.id}`} className="card-elevated p-5 block group">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-display font-semibold group-hover:text-primary transition-colors">{s.title}</h3>
-                    <span className="text-xs text-muted-foreground">{s.weekNumber}주차</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{s.scripture}</p>
-                  <p className="text-xs text-primary mt-2 font-medium">공부하러 가기 →</p>
-                </Link>
-              ))}
-            </div>
-          </motion.div>
-        )}
 
         {/* Schedule popup */}
         <AnimatePresence>

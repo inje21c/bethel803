@@ -3435,3 +3435,47 @@ export async function changeMasterSuperAdmin(churchId: string, newMasterId: stri
   });
   if (error) throw error;
 }
+
+function getKSTWeekRange(): { weekStart: string; weekEnd: string } {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const day = kst.getUTCDay(); // 0=Sun
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(kst);
+  monday.setUTCDate(kst.getUTCDate() + diffToMonday);
+  const fmt = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  return { weekStart: fmt(monday), weekEnd: fmt(sunday) };
+}
+
+export async function getWeeklyChapterCount(userId: string): Promise<number> {
+  const { weekStart, weekEnd } = getKSTWeekRange();
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_reading_logs')
+      .select('chapters')
+      .eq('user_id', userId)
+      .gte('log_date', weekStart)
+      .lte('log_date', weekEnd),
+    '이번 주 성경읽기 장수 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).reduce((sum, row) => sum + (Number(row.chapters) || 0), 0);
+}
+
+export async function getMyWeeklyPrayerCount(userId: string): Promise<number> {
+  const { weekStart, weekEnd } = getKSTWeekRange();
+  const { count, error } = await withApiTimeout(
+    supabase
+      .from('prayer_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', `${weekStart}T00:00:00+09:00`)
+      .lte('created_at', `${weekEnd}T23:59:59+09:00`),
+    '이번 주 내 기도제목 수 조회'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
