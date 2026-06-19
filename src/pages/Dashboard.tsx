@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, BookMarked, CheckCircle2, Circle, CalendarDays, MapPin, Clock, X, HeartHandshake, BookHeart, Flame, Users, Send } from 'lucide-react';
+import { BookOpen, CalendarDays, MapPin, Clock, X, HeartHandshake, BookHeart, Flame, Users, Send } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
-import { getBibleStudies, getStudyAnswer, getUnansweredPrayerCount, getTotalChapters, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount } from '@/lib/api';
+import { getBibleStudies, getUpcomingSchedules, getTodayQT, getMyStreak, getMyQTResponse, getKSTDateString, getGroupPrayerRequests, getMyIntercessions, getIntercessionCounts, toggleIntercession, getTodayActiveCount } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
@@ -26,23 +26,6 @@ export default function Dashboard() {
   const recentStudies = studies.slice(0, 2);
   const latestStudy = recentStudies[0];
 
-  const { data: latestAnswer } = useQuery({
-    queryKey: ['study_answer', latestStudy?.id, user?.id],
-    queryFn: () => getStudyAnswer(latestStudy!.id, user!.id),
-    enabled: !!latestStudy && !!user,
-  });
-
-  const { data: unansweredPrayerCount = 0 } = useQuery({
-    queryKey: ['prayer_requests', 'unanswered_count', currentDistrictId],
-    queryFn: () => getUnansweredPrayerCount(currentDistrictId),
-    enabled: !!currentDistrictId,
-  });
-
-  const { data: totalChapters = 0 } = useQuery({
-    queryKey: ['total_chapters', user?.id],
-    queryFn: () => getTotalChapters(user!.id),
-    enabled: !!user,
-  });
 
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules', 'upcoming', currentDistrictId],
@@ -111,7 +94,6 @@ export default function Dashboard() {
     },
   });
 
-  const studyCompleted = latestAnswer?.completed ?? false;
   const upcomingSchedules = schedules;
   const qtCompleted = myQTResponse?.isCompleted === true;
   const currentStreak = streak?.currentStreak ?? 0;
@@ -243,70 +225,6 @@ export default function Dashboard() {
               </div>
             )}
           </Link>
-        </motion.div>
-
-        {/* 요약 카드 4개 */}
-        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* QT 챌린지 */}
-          <motion.div variants={item}>
-            <Link to="/qt/complete" className={`stat-card block hover:shadow-lg transition-shadow ${currentStreak >= 3 ? 'border-orange-200 dark:border-orange-800' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Flame className={`w-4 h-4 ${currentStreak >= 1 ? 'text-orange-500' : 'text-muted-foreground'}`} />
-                <span className="text-xs text-muted-foreground">QT 챌린지</span>
-              </div>
-              {currentStreak > 0 ? (
-                <p className={`text-2xl font-bold ${currentStreak >= 3 ? 'text-orange-500' : ''}`}>
-                  {currentStreak}<span className="text-sm font-normal text-muted-foreground ml-1">일 연속</span>
-                </p>
-              ) : (
-                <p className="text-sm font-semibold text-muted-foreground">시작해볼까요?</p>
-              )}
-            </Link>
-          </motion.div>
-
-          {/* 성경읽기 챌린지 */}
-          <motion.div variants={item}>
-            <Link to="/bible-reading" className="stat-card block hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-2 mb-2">
-                <BookMarked className="w-4 h-4 text-gold" />
-                <span className="text-xs text-muted-foreground">성경읽기 챌린지</span>
-              </div>
-              <p className="text-2xl font-bold">{totalChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
-            </Link>
-          </motion.div>
-
-          {/* 이번 주 공부 */}
-          <motion.div variants={item}>
-            <Link to="/bible-study" className="stat-card block hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">이번 주 공부</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {studyCompleted ? (
-                  <CheckCircle2 className="w-8 h-8 text-success" />
-                ) : (
-                  <Circle className="w-8 h-8 text-muted-foreground" />
-                )}
-                <span className="text-sm font-semibold">{studyCompleted ? '완료' : '미완료'}</span>
-              </div>
-            </Link>
-          </motion.div>
-
-          {/* 함께기도 */}
-          <motion.div variants={item}>
-            <Link to="/prayer-requests?tab=intercession" className="stat-card block hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-2 mb-2">
-                <HeartHandshake className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">함께기도</span>
-              </div>
-              {myIntercessions.size > 0 ? (
-                <p className="text-2xl font-bold">{myIntercessions.size}<span className="text-sm font-normal text-muted-foreground ml-1">개</span></p>
-              ) : (
-                <p className="text-sm font-semibold text-muted-foreground">시작해볼까요?</p>
-              )}
-            </Link>
-          </motion.div>
         </motion.div>
 
         {/* 우리 구역 활동 */}
