@@ -8,6 +8,8 @@ import {
   updateBibleStudy, deleteBibleStudy, getStudyAnswersForStudy,
   getSchedules, addSchedule, updateSchedule, deleteSchedule,
   parseBulletin,
+  getBibleBooks, updateChurchQTSimpleBook,
+  createNotification, dispatchNotificationPush,
 } from '@/lib/api';
 import type { BibleStudy, Schedule, StudySource } from '@/lib/api';
 import BibleStudyForm from './BibleStudyForm';
@@ -20,10 +22,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Plus, Edit, Trash2, Copy, Download, RefreshCw, Link, Clock,
-  MapPin, Users, BookOpen, CalendarDays, MessageCircle,
+  MapPin, Users, BookOpen, CalendarDays, MessageCircle, BookHeart, Bell, Send,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -39,12 +44,15 @@ function TabFallback() {
 }
 
 export default function AdminPrepTab() {
-  const { user } = useAuth();
-  const { hasModule } = useChurch();
+  const { user, isMaster } = useAuth();
+  const { hasModule, settings: churchSettings, refresh: refetchChurchSettings } = useChurch();
   const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
 
   const [subTab, setSubTab] = useState('study');
+  const [pushTitle, setPushTitle] = useState('');
+  const [pushBody, setPushBody] = useState('');
+  const [pushSending, setPushSending] = useState(false);
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [editingStudy, setEditingStudy] = useState<BibleStudy | undefined>();
   const [deletingStudyId, setDeletingStudyId] = useState<string | null>(null);
@@ -55,6 +63,19 @@ export default function AdminPrepTab() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | undefined>();
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
+
+  const { data: bibleBooks = [] } = useQuery({
+    queryKey: ['bible_books'],
+    queryFn: getBibleBooks,
+    staleTime: Infinity,
+    enabled: subTab === 'qt' && isMaster,
+  });
+
+  const updateQTBookMutation = useMutation({
+    mutationFn: updateChurchQTSimpleBook,
+    onSuccess: () => { refetchChurchSettings(); toast.success('QT 말씀 책이 변경됐습니다.'); },
+    onError: () => toast.error('변경에 실패했습니다.'),
+  });
 
   const { data: bibleStudies = [], isLoading: studiesLoading } = useQuery({
     queryKey: ['all_bible_studies', currentDistrictId],
@@ -190,14 +211,17 @@ export default function AdminPrepTab() {
     <div className="space-y-5">
       <Tabs value={subTab} onValueChange={setSubTab}>
         <TabsList className="w-full">
-          <TabsTrigger value="study" className="flex-1 gap-1.5 text-[13px]">
+          <TabsTrigger value="study" className="flex-1 gap-1 text-[12px] px-1.5">
             <BookOpen className="w-3.5 h-3.5" />성경공부
           </TabsTrigger>
-          <TabsTrigger value="schedule" className="flex-1 gap-1.5 text-[13px]">
+          <TabsTrigger value="qt" className="flex-1 gap-1 text-[12px] px-1.5">
+            <BookHeart className="w-3.5 h-3.5" />QT 말씀
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="flex-1 gap-1 text-[12px] px-1.5">
             <CalendarDays className="w-3.5 h-3.5" />일정
           </TabsTrigger>
-          <TabsTrigger value="kakao" className="flex-1 gap-1.5 text-[13px]">
-            <MessageCircle className="w-3.5 h-3.5" />공지 생성
+          <TabsTrigger value="notice" className="flex-1 gap-1 text-[12px] px-1.5">
+            <Bell className="w-3.5 h-3.5" />공지/알림
           </TabsTrigger>
         </TabsList>
 
@@ -504,14 +528,148 @@ export default function AdminPrepTab() {
           </AlertDialog>
         </TabsContent>
 
-        {/* 공지 생성 */}
-        <TabsContent value="kakao" className="space-y-4 mt-4">
-          <p className="text-[13px] text-muted-foreground">
-            모임 일정과 성경공부 진도를 요약한 공지 문자를 자동으로 만들어 줍니다. 복사해서 카카오톡에 붙여넣기 하세요.
+        {/* QT 말씀 */}
+        <TabsContent value="qt" className="space-y-4 mt-4">
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
+            구역원들이 매일 묵상할 QT 말씀을 설정합니다.
+            앞으로 직접 만든 묵상 자료를 등록하거나, 교회 자료를 스크랩해오는 기능도 추가될 예정입니다.
           </p>
-          <Suspense fallback={<TabFallback />}>
-            <KakaoNoticeGenerator />
-          </Suspense>
+
+          {isMaster && churchSettings?.qtMode === 'simple' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">QT 말씀 책 설정</CardTitle>
+                <CardDescription className="text-xs">
+                  매일 1장씩 순서대로 묵상합니다. 책을 바꾸면 다음 날 QT부터 적용됩니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 items-center">
+                  <Select
+                    value={churchSettings.qtSimpleBook}
+                    onValueChange={val => updateQTBookMutation.mutate(val)}
+                    disabled={updateQTBookMutation.isPending}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bibleBooks.map(b => (
+                        <SelectItem key={b.id} value={b.koreanName}>{b.koreanName} ({b.chapterCount}장)</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">현재: {churchSettings.qtSimpleBook}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!isMaster && (
+            <div className="rounded-xl border border-dashed py-8 text-center text-[13px] text-muted-foreground">
+              QT 말씀 설정은 마스터만 변경할 수 있습니다.
+            </div>
+          )}
+
+          <Card className="border-dashed opacity-60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">곧 추가될 기능</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 text-[12px] text-muted-foreground">
+              <p>· 구역장이 직접 QT 자료 작성</p>
+              <p>· 교회 주보 묵상 자료 자동 스크랩</p>
+              <p>· 묵상 진도 자동화 (날짜 기반 스케줄링)</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 공지/알림 */}
+        <TabsContent value="notice" className="space-y-5 mt-4">
+          {/* 카카오 공지 생성 */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-[#FEE500]" />
+              <p className="text-[14px] font-semibold">카카오 공지 생성</p>
+            </div>
+            <p className="text-[13px] text-muted-foreground">
+              일정·성경공부 진도를 요약한 문자를 자동으로 만들어 줍니다. 복사해서 단체 카카오톡에 붙여넣기 하세요.
+            </p>
+            <Suspense fallback={<TabFallback />}>
+              <KakaoNoticeGenerator />
+            </Suspense>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* 웹푸시 알림 발송 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-primary" />
+              <p className="text-[14px] font-semibold">웹푸시 알림 발송</p>
+            </div>
+            <p className="text-[13px] text-muted-foreground">
+              앱 알림 수신을 허용한 구역원 전체에게 푸시 알림을 보냅니다.
+              구성원이 앱을 열지 않아도 기기 잠금화면에 바로 도착합니다.
+            </p>
+            <Card>
+              <CardContent className="pt-4 space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="push-title" className="text-[13px]">제목</Label>
+                  <Input
+                    id="push-title"
+                    value={pushTitle}
+                    onChange={e => setPushTitle(e.target.value)}
+                    placeholder="예: 이번 주 구역 모임 안내"
+                    maxLength={60}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="push-body" className="text-[13px]">내용</Label>
+                  <Textarea
+                    id="push-body"
+                    value={pushBody}
+                    onChange={e => setPushBody(e.target.value)}
+                    placeholder="예: 이번 주 모임은 토요일 오후 2시 교회 3층에서 진행됩니다."
+                    rows={3}
+                    maxLength={200}
+                  />
+                </div>
+                <Button
+                  className="w-full gap-2"
+                  disabled={!pushTitle.trim() || !pushBody.trim() || pushSending}
+                  onClick={async () => {
+                    if (!user) return;
+                    setPushSending(true);
+                    try {
+                      const { id } = await createNotification({
+                        title: pushTitle.trim(),
+                        body: pushBody.trim(),
+                        createdBy: user.id,
+                        districtId: currentDistrictId,
+                        scopeType: 'district',
+                        notificationType: 'announcement',
+                      });
+                      const result = await dispatchNotificationPush(id);
+                      toast.success(`발송 완료 — ${result.sentCount ?? result.targetCount}명에게 전송됨`);
+                      setPushTitle('');
+                      setPushBody('');
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : '발송에 실패했습니다.');
+                    } finally {
+                      setPushSending(false);
+                    }
+                  }}
+                >
+                  <Send className="w-4 h-4" />
+                  {pushSending ? '발송 중...' : '전체 발송'}
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  알림을 끈 구성원에게는 전송되지 않습니다.
+                  향후 구성원별 발송 및 예약 발송 기능이 추가될 예정입니다.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

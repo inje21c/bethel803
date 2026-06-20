@@ -1,17 +1,15 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
-import { useChurch } from '@/lib/churchContext';
 import { useDistrict } from '@/lib/districtContext';
 import {
   getSharedPrayerRequests, updatePrayerRequest,
   getAccessInfo, getWeeklyReports, triggerWeeklyClose, unlockWeeklyReport,
   getQTDistrictSummary, getTodayQT, updateQTLeaderComment,
   getAllBibleReadingSummaries, getBibleReadingSummariesByRange,
-  getBibleBooks, updateChurchQTSimpleBook,
   getKSTDateString,
 } from '@/lib/api';
-import type { AccessInfo, WeeklyReport } from '@/lib/api';
+import type { AccessInfo } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,7 +17,6 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   CheckCircle2, Circle, AlertTriangle, Flame, TrendingUp,
   Users, Save, BookHeart, BookMarked, MessageSquareHeart, FileText,
@@ -40,8 +37,7 @@ function Spinner() {
 }
 
 export default function AdminStatsTab() {
-  const { isMaster, user } = useAuth();
-  const { settings: churchSettings, hasModule, refresh: refetchChurchSettings } = useChurch();
+  const { user } = useAuth();
   const { currentDistrictId } = useDistrict();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -62,13 +58,6 @@ export default function AdminStatsTab() {
     enabled: subTab === 'qt',
   });
 
-  const { data: bibleBooks = [] } = useQuery({
-    queryKey: ['bible_books'],
-    queryFn: getBibleBooks,
-    staleTime: Infinity,
-    enabled: subTab === 'qt' && isMaster,
-  });
-
   const { data: qtMembers = [], isLoading: qtMembersLoading } = useQuery({
     queryKey: ['qt_district_summary', currentDistrictId, today],
     queryFn: () => getQTDistrictSummary(currentDistrictId, today),
@@ -84,12 +73,6 @@ export default function AdminStatsTab() {
     mutationFn: () => updateQTLeaderComment(today, qtComment),
     onSuccess: () => toast.success('코멘트가 저장되었습니다.'),
     onError: () => toast.error('저장에 실패했습니다.'),
-  });
-
-  const updateQTBookMutation = useMutation({
-    mutationFn: updateChurchQTSimpleBook,
-    onSuccess: () => { refetchChurchSettings(); toast.success('QT 말씀 책이 변경됐습니다.'); },
-    onError: () => toast.error('변경에 실패했습니다.'),
   });
 
   /* Access */
@@ -179,30 +162,6 @@ export default function AdminStatsTab() {
 
         {/* QT 현황 */}
         <TabsContent value="qt" className="space-y-4 mt-4">
-          {isMaster && churchSettings?.qtMode === 'simple' && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">QT 말씀 설정</CardTitle>
-                <CardDescription className="text-xs">매일 묵상할 성경 책을 선택합니다. day-of-year 순서로 1장씩 순환합니다.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2 items-center">
-                  <Select value={churchSettings.qtSimpleBook} onValueChange={val => updateQTBookMutation.mutate(val)} disabled={updateQTBookMutation.isPending}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bibleBooks.map(b => (
-                        <SelectItem key={b.id} value={b.koreanName}>{b.koreanName} ({b.chapterCount}장)</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-xs text-muted-foreground">현재: {churchSettings.qtSimpleBook}</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           <div className="grid grid-cols-3 gap-3">
             <Card>
               <CardContent className="pt-4 text-center">
