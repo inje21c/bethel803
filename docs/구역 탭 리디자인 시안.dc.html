@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;}body{margin:0;}
+.sans{font-family:'Noto Sans KR',sans-serif;}
+.serif{font-family:'Noto Serif KR',serif;}
+.fs::-webkit-scrollbar{height:8px;}
+.fs::-webkit-scrollbar-thumb{background:#c9c3b6;border-radius:4px;}
+</style>
+</helmet>
+<div class="sans" style="min-width:100%;min-height:100vh;background:#e3e0d8;padding:52px 44px 110px;-webkit-font-smoothing:antialiased;color:#1c2a44;width:max-content;box-sizing:border-box;">
+
+  <!-- HEADER -->
+  <div style="max-width:1280px;margin:0 auto 8px;">
+    <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#8c877d;margin-bottom:14px;">구역 탭 리디자인 · 4 Sub-tabs + 하위 메뉴</div>
+    <h1 class="serif" style="margin:0;font-size:38px;line-height:1.14;font-weight:700;letter-spacing:-.01em;color:#1c3568;">구역 탭 리디자인 시안</h1>
+    <p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#54514a;max-width:820px;">상단 4탭(성경공부·기도제목·일정·성경읽기) + 기도제목 내부 2탭 + 성경읽기 내부 4탭. <strong style="color:#1c3568;">2단계 탭 구조의 정보 위계를 정리하고</strong> 역할 분기·데이터 연결(홈 출석약속)·타입·여백을 통일합니다.</p>
+  </div>
+
+  <!-- DIAGNOSIS -->
+  <div style="max-width:1280px;margin:26px auto 0;display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #c0392b;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:4px;">진단 1 · 서브탭 줄바꿈</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;"><code style="background:#f3f0ea;padding:1px 5px;border-radius:3px;font-size:12px;">CommunitySubNav</code> 아이콘+텍스트 4개가 360px에서 줄바꿈. → <strong>nowrap + overflow-x-auto</strong>, 패딩 축소.</div>
+    </div>
+    <div style="flex:1;min-width:200px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #c0392b;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:4px;">진단 2 · 2단계 탭 혼잡</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;">성경읽기 내 4탭이 상위 탭과 구분 안 됨. → <strong>상위=세그먼트(pill), 하위=라인탭</strong>으로 시각 레벨 분리.</div>
+    </div>
+    <div style="flex:1;min-width:200px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #b06f1d;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#b06f1d;margin-bottom:4px;">진단 3 · 역할 미노출</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;">구역장 전용 기능(일정 등록·출석 편집·성경공부 등록)이 맥락 없이 나타남. → <strong>구역장 배지·역할 라벨</strong>로 명시.</div>
+    </div>
+    <div style="flex:1;min-width:200px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #29a356;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#29a356;margin-bottom:4px;">유지 · 강점</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;">중보기도 Heart 토글, 참석 RSVP(홈 출석약속 소스), 성경 이어읽기(localStorage), 읽기표+기록 — 모두 살리고 다듬음.</div>
+    </div>
+  </div>
+
+  <!-- IA MAP -->
+  <div style="max-width:1280px;margin:38px auto 22px;">
+    <h2 class="serif" style="margin:0 0 14px;font-size:24px;font-weight:700;color:#1c3568;">탭 구조 맵</h2>
+    <div style="background:#fff;border:1px solid #e7e3da;border-radius:12px;padding:22px 24px;display:flex;gap:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><div style="width:10px;height:10px;border-radius:3px;background:#1c3568;"></div><span style="font-size:13px;font-weight:700;color:#1c3568;">성경공부</span></div>
+        <div style="font-size:12px;color:#6d685e;line-height:1.7;padding-left:16px;">주차별 자료 리스트<br/>→ 상세 보기<br/><span style="color:#1c3568;font-size:11px;">구역장: 자료 등록</span></div>
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><div style="width:10px;height:10px;border-radius:3px;background:#1c3568;"></div><span style="font-size:13px;font-weight:700;color:#1c3568;">기도제목 <span style="font-size:10px;font-weight:400;color:#8c877d;">(내부 2탭)</span></span></div>
+        <div style="font-size:12px;color:#6d685e;line-height:1.7;padding-left:16px;"><strong>기도제목</strong> — 내 기도 + 구역 기도<br/>&nbsp;&nbsp;&nbsp;└ 등록·수정·삭제<br/>&nbsp;&nbsp;&nbsp;└ 구역장 공유 토글<br/>&nbsp;&nbsp;&nbsp;└ 잠금 상태<br/><strong>함께기도</strong> — 참여/미참여</div>
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><div style="width:10px;height:10px;border-radius:3px;background:#1c3568;"></div><span style="font-size:13px;font-weight:700;color:#1c3568;">일정</span></div>
+        <div style="font-size:12px;color:#6d685e;line-height:1.7;padding-left:16px;">다가오는 일정<br/>지난 일정(최근 5건)<br/>참석 RSVP (구역원)<br/><span style="color:#1c3568;font-size:11px;">구역장: 등록·편집·출석직접편집</span><br/><span style="color:#e8a530;font-size:11px;font-weight:700;">↔ 홈 출석약속 소스</span></div>
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><div style="width:10px;height:10px;border-radius:3px;background:#1c3568;"></div><span style="font-size:13px;font-weight:700;color:#1c3568;">성경읽기 <span style="font-size:10px;font-weight:400;color:#8c877d;">(내부 4탭)</span></span></div>
+        <div style="font-size:12px;color:#6d685e;line-height:1.7;padding-left:16px;"><strong>본문읽기</strong> — 권·장·절 + 이어읽기<br/><strong>북마크</strong> — 절 저장<br/><strong>읽기표</strong> — 계획(전체/구약/신약)<br/><strong>읽기기록</strong> — 수동 장수 기록</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENS ROW -->
+  <div style="max-width:1280px;margin:0 auto 22px;">
+    <h2 class="serif" style="margin:0 0 4px;font-size:24px;font-weight:700;color:#1c3568;">화면별 리디자인</h2>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#7a756b;">각 탭의 대표 화면 + 주요 개선점</p>
+  </div>
+
+  <div class="fs" style="display:flex;gap:36px;align-items:flex-start;padding-bottom:18px;">
+
+    <!-- 1. 서브탭 개선 + 성경공부 -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 9px;">성경공부</span>
+        <span style="font-size:13px;font-weight:600;color:#1c3568;">서브탭 고정 + 리스트</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <div style="height:30px;background:#f9f6f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#1c2a44;"><span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span></div>
+        <div style="padding:4px 16px 8px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:15px;font-weight:700;color:#1c3568;">킨텍스장성남 구역</div>
+          <div style="width:28px;height:28px;border-radius:8px;background:#eef0f4;display:flex;align-items:center;justify-content:center;font-size:14px;">🔔</div>
+        </div>
+        <!-- 서브탭 개선: nowrap + scroll -->
+        <div style="padding:0 12px 12px;">
+          <div style="display:flex;gap:4px;background:#eef0f4;border-radius:12px;padding:4px;overflow-x:auto;">
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;background:#1c3568;color:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap;">📖 성경공부</div>
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;color:#8c877d;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:500;white-space:nowrap;">🙏 기도제목</div>
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;color:#8c877d;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:500;white-space:nowrap;">📅 일정</div>
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;color:#8c877d;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:500;white-space:nowrap;">✝ 성경읽기</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;">
+            <div class="serif" style="font-size:22px;font-weight:700;color:#1c2a44;">구역성경공부</div>
+            <div style="font-size:11.5px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:2px 8px;">구역장 등록</div>
+          </div>
+          <div style="font-size:13px;color:#8c877d;">주보에 수록된 자료를 확인하고 스스로 공부하세요.</div>
+          <!-- 리스트 -->
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:14px;display:flex;align-items:center;gap:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:#eef0f4;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px;">📖</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:11px;color:#8c877d;">24주차 · 6/15</div>
+                <div style="font-size:14px;font-weight:700;color:#1c2a44;margin-top:1px;">한 몸의 다양한 지체</div>
+                <div style="font-size:12px;color:#8c877d;margin-top:1px;">고린도전서 12:12–31</div>
+              </div>
+              <div style="width:22px;height:22px;border-radius:50%;background:#29a356;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;flex:none;">✓</div>
+            </div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:14px;display:flex;align-items:center;gap:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:#eef0f4;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px;">📖</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:11px;color:#8c877d;">25주차 · 6/22</div>
+                <div style="font-size:14px;font-weight:700;color:#1c2a44;margin-top:1px;">사랑의 더 좋은 길</div>
+                <div style="font-size:12px;color:#8c877d;margin-top:1px;">고린도전서 13:1–13</div>
+              </div>
+              <div style="width:22px;height:22px;border-radius:50%;background:#eef0f4;display:flex;align-items:center;justify-content:center;color:#c4beb2;font-size:11px;flex:none;">○</div>
+            </div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:14px;display:flex;align-items:center;gap:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:#eef0f4;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px;">📖</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:11px;color:#8c877d;">26주차 · 6/29</div>
+                <div style="font-size:14px;font-weight:700;color:#1c2a44;margin-top:1px;">부활의 증거와 소망</div>
+                <div style="font-size:12px;color:#8c877d;margin-top:1px;">고린도전서 15:1–28</div>
+              </div>
+              <div style="width:22px;height:22px;border-radius:50%;background:#eef0f4;display:flex;align-items:center;justify-content:center;color:#c4beb2;font-size:11px;flex:none;">○</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">⌂</div><div style="font-size:11px;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">❤</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;"><div style="font-size:17px;color:#1c3568;">◎</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">○</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:14px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>서브탭 nowrap + 가로스크롤 — 줄바꿈 완전 차단</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>완료=success 체크원, 미완료=중립 원</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>구역장 등록 배지 명시</span></li>
+      </ul>
+    </div>
+
+    <!-- arrow -->
+    <div style="flex:none;align-self:center;font-size:20px;color:#b3ada1;margin-top:-80px;">→</div>
+
+    <!-- 2. 기도제목 -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 9px;">기도제목</span>
+        <span style="font-size:13px;font-weight:600;color:#1c3568;">2단계 탭 분리</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <div style="height:30px;background:#f9f6f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#1c2a44;"><span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span></div>
+        <div style="padding:4px 16px 8px;"><div style="font-size:15px;font-weight:700;color:#1c3568;">킨텍스장성남 구역</div></div>
+        <!-- 상위 세그먼트 탭 -->
+        <div style="padding:0 12px 10px;">
+          <div style="display:flex;gap:4px;background:#eef0f4;border-radius:12px;padding:4px;overflow-x:auto;">
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;color:#8c877d;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:500;white-space:nowrap;">📖 성경공부</div>
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;background:#1c3568;color:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap;">🙏 기도제목</div>
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;color:#8c877d;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:500;white-space:nowrap;">📅 일정</div>
+            <div style="flex:none;display:flex;align-items:center;justify-content:center;gap:4px;color:#8c877d;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:500;white-space:nowrap;">✝ 성경읽기</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:11px;">
+          <div class="serif" style="font-size:22px;font-weight:700;color:#1c2a44;">기도제목</div>
+          <!-- 하위 라인탭 (다른 스타일로 레벨 분리) -->
+          <div style="display:flex;border-bottom:2px solid #ece7dc;gap:0;">
+            <div style="padding:8px 16px;font-size:13px;font-weight:700;color:#1c3568;border-bottom:2px solid #1c3568;margin-bottom:-2px;white-space:nowrap;">기도제목</div>
+            <div style="padding:8px 14px;font-size:13px;font-weight:500;color:#8c877d;white-space:nowrap;">함께기도 <span style="font-size:10px;font-weight:700;color:#fff;background:#1c3568;border-radius:20px;padding:1px 5px;">3</span></div>
+          </div>
+          <!-- 입력폼 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;display:flex;flex-direction:column;gap:9px;">
+            <div style="background:#f4f1ea;border-radius:9px;padding:11px 13px;font-size:13px;color:#b0a99e;">새 기도제목을 입력하세요…</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:7px;"><div style="width:30px;height:17px;border-radius:9px;background:#eef0f4;border:1px solid #d2cdc1;"></div><span style="font-size:12px;color:#8c877d;">구역장에게 공유</span></div>
+              <div style="background:#1c3568;color:#fff;font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:8px;">등록</div>
+            </div>
+          </div>
+          <!-- 내 기도제목 -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#8c877d;margin-bottom:7px;">내 기도제목</div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;">
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="width:18px;height:18px;border-radius:50%;border:2px solid #c4beb2;flex:none;margin-top:2px;"></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;"><span style="font-size:12px;font-weight:700;color:#1c2a44;">나</span><span style="font-size:11px;color:#8c877d;">오늘</span><span style="font-size:10px;font-weight:700;color:#2b4a8b;background:#eef0f4;border-radius:4px;padding:1px 5px;">구역장공유</span></div>
+                  <div style="font-size:13.5px;color:#33373f;line-height:1.55;">기도 생활이 규칙적으로 이어지도록 인도해 주세요.</div>
+                  <div style="display:flex;gap:10px;margin-top:7px;"><span style="font-size:11.5px;color:#1c3568;">수정</span><span style="color:#d2cdc1;">|</span><span style="font-size:11.5px;color:#c0392b;">삭제</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 구역 기도제목 -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#8c877d;margin-bottom:7px;display:flex;align-items:center;gap:5px;">구역 기도제목</div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;">
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="width:18px;height:18px;border-radius:50%;border:2px solid #c4beb2;flex:none;margin-top:2px;"></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;"><span style="font-size:12px;font-weight:700;color:#1c2a44;">이은혜</span><span style="font-size:11px;color:#8c877d;">어제</span></div>
+                  <div style="font-size:13.5px;color:#33373f;line-height:1.55;">남편의 건강 회복과 평강을 위해 기도 부탁드립니다.</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:8px;">
+                    <div style="display:flex;align-items:center;gap:4px;background:#eef0f4;border-radius:20px;padding:5px 10px;"><span style="font-size:12px;">🤝</span><span style="font-size:12px;font-weight:600;color:#1c3568;">함께 기도합니다</span></div>
+                    <span style="font-size:11.5px;color:#8c877d;">4명 참여</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">⌂</div><div style="font-size:11px;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">❤</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;"><div style="font-size:17px;color:#1c3568;">◎</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">○</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:14px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>하위탭 = 라인탭으로 상위 세그먼트와 레벨 분리</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>함께기도 배지 카운트 명시</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>구역장공유 뱃지 + 중보기도 토글 통일</span></li>
+      </ul>
+    </div>
+
+    <!-- arrow -->
+    <div style="flex:none;align-self:center;font-size:20px;color:#b3ada1;margin-top:-80px;">→</div>
+
+    <!-- 3. 일정 + RSVP -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 9px;">일정</span>
+        <span style="font-size:13px;font-weight:600;color:#1c3568;">RSVP 강조 ↔ 홈 출석약속</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <div style="height:30px;background:#f9f6f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#1c2a44;"><span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span></div>
+        <div style="padding:4px 16px 8px;"><div style="font-size:15px;font-weight:700;color:#1c3568;">킨텍스장성남 구역</div></div>
+        <div style="padding:0 12px 10px;">
+          <div style="display:flex;gap:4px;background:#eef0f4;border-radius:12px;padding:4px;overflow-x:auto;">
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">📖 성경공부</div>
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">🙏 기도제목</div>
+            <div style="flex:none;display:flex;align-items:center;background:#1c3568;color:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap;">📅 일정</div>
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">✝ 성경읽기</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="serif" style="font-size:22px;font-weight:700;color:#1c2a44;">주요 일정</div>
+            <div style="font-size:11.5px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 8px;">구역장 등록</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#8c877d;display:flex;align-items:center;gap:5px;">다가오는 일정</div>
+          <!-- 일정 카드 with RSVP -->
+          <div style="background:#1c3568;border-radius:14px;padding:16px;color:#fff;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-15px;top:-15px;width:70px;height:70px;border-radius:50%;background:rgba(232,165,48,.16);"></div>
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+              <div style="width:44px;height:44px;background:rgba(255,255,255,.12);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span style="font-size:9px;opacity:.7;line-height:1;">JUN</span><span class="serif" style="font-size:18px;font-weight:700;line-height:1.1;">22</span></div>
+              <div style="flex:1;"><div class="serif" style="font-size:17px;font-weight:600;">구역모임</div><div style="font-size:12.5px;color:#c4cee0;margin-top:3px;">일요일 오후 2시 · 은혜집사 가정</div></div>
+            </div>
+            <!-- RSVP 핵심 강조 -->
+            <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:11px 13px;">
+              <div style="font-size:12px;font-weight:700;color:#e8a530;margin-bottom:8px;display:flex;align-items:center;gap:5px;">참석 여부 <span style="font-size:10px;background:#e8a530;color:#1c2a44;border-radius:4px;padding:1px 5px;">홈 출석약속 집계</span></div>
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;background:#29a356;color:#fff;font-size:13px;font-weight:700;text-align:center;padding:9px;border-radius:9px;">✓ 참석</div>
+                <div style="flex:1;background:rgba(255,255,255,.1);color:#c4cee0;font-size:13px;font-weight:600;text-align:center;padding:9px;border-radius:9px;">✗ 불참</div>
+              </div>
+              <div style="font-size:11.5px;color:#c4cee0;margin-top:8px;text-align:center;">현재 6/8명 참석 응답</div>
+            </div>
+          </div>
+          <!-- 일반 일정 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;display:flex;align-items:center;gap:11px;">
+            <div style="width:42px;height:42px;border-radius:10px;background:#eef0f4;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span style="font-size:9px;color:#8c877d;line-height:1;">JUL</span><span class="serif" style="font-size:17px;font-weight:700;color:#1c3568;line-height:1.1;">6</span></div>
+            <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#1c2a44;">여름 수련회</div><div style="font-size:12px;color:#8c877d;">토요일 · 청심대 수양관</div></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#8c877d;margin-bottom:7px;">지난 일정</div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;display:flex;align-items:center;gap:11px;opacity:.55;">
+              <div style="width:42px;height:42px;border-radius:10px;background:#eef0f4;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span style="font-size:9px;color:#8c877d;line-height:1;">JUN</span><span class="serif" style="font-size:17px;font-weight:700;color:#8c877d;line-height:1.1;">15</span></div>
+              <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:#8c877d;">구역모임</div><div style="font-size:12px;color:#a8a297;">일요일 오후 2시</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">⌂</div><div style="font-size:11px;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">❤</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;"><div style="font-size:17px;color:#1c3568;">◎</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">○</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:14px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>참석여부 RSVP를 Hero로 — 홈 출석약속 소스 명시</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>다가오는(강조) / 지난(흐리게) 시각 위계</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>6/8명 참석 — 홈 통계와 동일 수치 연결</span></li>
+      </ul>
+    </div>
+
+    <!-- arrow -->
+    <div style="flex:none;align-self:center;font-size:20px;color:#b3ada1;margin-top:-80px;">→</div>
+
+    <!-- 4. 성경읽기 본문탭 -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 9px;">성경읽기</span>
+        <span style="font-size:13px;font-weight:600;color:#1c3568;">내부 4탭 · 본문읽기</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <div style="height:30px;background:#f9f6f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#1c2a44;"><span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span></div>
+        <div style="padding:4px 16px 8px;"><div style="font-size:15px;font-weight:700;color:#1c3568;">킨텍스장성남 구역</div></div>
+        <div style="padding:0 12px 10px;">
+          <div style="display:flex;gap:4px;background:#eef0f4;border-radius:12px;padding:4px;overflow-x:auto;">
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">📖 성경공부</div>
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">🙏 기도제목</div>
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">📅 일정</div>
+            <div style="flex:none;display:flex;align-items:center;background:#1c3568;color:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap;">✝ 성경읽기</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:11px;">
+          <!-- 하위 라인탭 4개 -->
+          <div style="display:flex;border-bottom:2px solid #ece7dc;gap:0;overflow-x:auto;">
+            <div style="padding:8px 11px;font-size:12px;font-weight:700;color:#1c3568;border-bottom:2px solid #1c3568;margin-bottom:-2px;white-space:nowrap;">본문읽기</div>
+            <div style="padding:8px 11px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">북마크</div>
+            <div style="padding:8px 11px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">읽기표</div>
+            <div style="padding:8px 11px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">읽기기록</div>
+          </div>
+          <!-- 이어읽기 배너 -->
+          <div style="background:#fdf3e0;border:1px solid #f3e1bd;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;">
+            <div style="font-size:18px;flex:none;">🔖</div>
+            <div style="flex:1;"><div style="font-size:12.5px;font-weight:700;color:#1c2a44;">이어 읽기</div><div style="font-size:11.5px;color:#8a6d3b;margin-top:1px;">창세기 28장 · 마지막 위치</div></div>
+            <div style="font-size:13px;font-weight:700;color:#b06f1d;white-space:nowrap;">바로가기 →</div>
+          </div>
+          <!-- 권/장 선택 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:8px;">
+              <div style="flex:2;background:#f4f1ea;border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13.5px;font-weight:600;color:#1c2a44;">창세기</span><span style="color:#8c877d;font-size:11px;">▾</span></div>
+              <div style="flex:1;background:#f4f1ea;border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13.5px;font-weight:600;color:#1c2a44;">28장</span><span style="color:#8c877d;font-size:11px;">▾</span></div>
+            </div>
+            <div style="background:#1c3568;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:11px;border-radius:10px;">바로 보기 →</div>
+          </div>
+          <!-- 본문 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;overflow:hidden;">
+            <div style="padding:10px 13px;border-bottom:1px solid #ece7dc;display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:5px;"><span style="font-size:11.5px;color:#8c877d;">‹</span><div class="serif" style="font-size:15px;font-weight:600;color:#1c2a44;">창세기 28장</div><span style="font-size:11.5px;color:#8c877d;">›</span></div><div style="font-size:11px;color:#8c877d;">22절</div></div>
+            <div style="padding:12px 13px;font-size:14px;line-height:1.75;color:#33373f;"><strong style="color:#1c3568;">10</strong> 야곱이 브엘세바에서 떠나 하란으로 향하여 가더니 <strong style="color:#1c3568;">11</strong> 한 곳에 이르러는 해가 진지라 거기서 유숙하려고 그 곳의 한 돌을 가져다가…</div>
+            <div style="padding:0 13px 12px;display:flex;gap:8px;">
+              <div style="flex:1;border:1px solid #d2cdc1;color:#1c3568;font-size:13px;font-weight:600;text-align:center;padding:9px;border-radius:9px;">‹ 이전</div>
+              <div style="flex:none;background:#29a356;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;border-radius:9px;white-space:nowrap;">✓ 완료</div>
+              <div style="flex:1;background:#1c3568;color:#fff;font-size:13px;font-weight:600;text-align:center;padding:9px;border-radius:9px;">다음 ›</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">⌂</div><div style="font-size:11px;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">❤</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;"><div style="font-size:17px;color:#1c3568;">◎</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">○</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:14px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>이어읽기 배너 — localStorage 마지막 위치 강조</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>권/장 2단 선택 (절 드롭다운 제거로 단순화)</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>하위탭 라인 스타일로 상위와 레벨 분리</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>본문 완료버튼 = success — 홈 나의성경읽기 연결</span></li>
+      </ul>
+    </div>
+
+    <!-- arrow -->
+    <div style="flex:none;align-self:center;font-size:20px;color:#b3ada1;margin-top:-80px;">→</div>
+
+    <!-- 5. 성경읽기 읽기표 탭 -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 9px;">성경읽기</span>
+        <span style="font-size:13px;font-weight:600;color:#1c3568;">읽기표 + 읽기기록</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <div style="height:30px;background:#f9f6f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#1c2a44;"><span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span></div>
+        <div style="padding:4px 16px 8px;"><div style="font-size:15px;font-weight:700;color:#1c3568;">킨텍스장성남 구역</div></div>
+        <div style="padding:0 12px 10px;">
+          <div style="display:flex;gap:4px;background:#eef0f4;border-radius:12px;padding:4px;overflow-x:auto;">
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">📖 성경공부</div>
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">🙏 기도제목</div>
+            <div style="flex:none;padding:7px 10px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">📅 일정</div>
+            <div style="flex:none;display:flex;align-items:center;background:#1c3568;color:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap;">✝ 성경읽기</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;border-bottom:2px solid #ece7dc;gap:0;overflow-x:auto;">
+            <div style="padding:8px 11px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">본문읽기</div>
+            <div style="padding:8px 11px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">북마크</div>
+            <div style="padding:8px 11px;font-size:12px;font-weight:700;color:#1c3568;border-bottom:2px solid #1c3568;margin-bottom:-2px;white-space:nowrap;">읽기표</div>
+            <div style="padding:8px 11px;font-size:12px;font-weight:500;color:#8c877d;white-space:nowrap;">읽기기록</div>
+          </div>
+          <!-- 읽기표 진행 카드 -->
+          <div style="background:#1c3568;border-radius:14px;padding:16px;color:#fff;">
+            <div style="font-size:12px;color:#c4cee0;margin-bottom:5px;">말씀을 읽는 기쁨 · 성경전체</div>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <div class="serif" style="font-size:26px;font-weight:700;">20%</div>
+              <div style="font-size:13px;color:#c4cee0;">240 / 1189장</div>
+            </div>
+            <div style="height:7px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden;margin:11px 0;"><div style="width:20%;height:100%;background:#e8a530;"></div></div>
+            <div style="font-size:12.5px;color:#e8a530;font-weight:600;">오늘 분량: 창세기 28–30장</div>
+          </div>
+          <!-- 오늘 분량 체크 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;">
+            <div style="font-size:13px;font-weight:700;color:#1c2a44;margin-bottom:9px;">오늘 읽을 분량</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <div style="display:flex;align-items:center;gap:9px;"><div style="width:18px;height:18px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex:none;">✓</div><span style="font-size:13.5px;color:#a8b0bd;text-decoration:line-through;">창세기 28장</span></div>
+              <div style="display:flex;align-items:center;gap:9px;"><div style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;flex:none;"></div><span style="font-size:13.5px;color:#1c2a44;font-weight:500;">창세기 29장</span></div>
+              <div style="display:flex;align-items:center;gap:9px;"><div style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;flex:none;"></div><span style="font-size:13.5px;color:#1c2a44;font-weight:500;">창세기 30장</span></div>
+            </div>
+          </div>
+          <!-- 수기 기록 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:13px;">
+            <div style="font-size:13px;font-weight:700;color:#1c2a44;margin-bottom:9px;">읽기 기록 <span style="font-size:11px;font-weight:400;color:#8c877d;">(수동)</span></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div style="flex:1;background:#f4f1ea;border-radius:9px;padding:10px 12px;font-size:13.5px;color:#b0a99e;">읽은 장수 입력</div>
+              <div style="background:#1c3568;color:#fff;font-size:13px;font-weight:700;padding:10px 14px;border-radius:9px;white-space:nowrap;">기록</div>
+            </div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;"><span style="color:#8c877d;">6/20</span><span style="font-weight:600;color:#1c2a44;">3장</span><span style="font-size:11px;color:#8c877d;">수정 삭제</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;"><span style="color:#8c877d;">6/19</span><span style="font-weight:600;color:#1c2a44;">5장</span><span style="font-size:11px;color:#8c877d;">수정 삭제</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">⌂</div><div style="font-size:11px;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">❤</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;"><div style="font-size:17px;color:#1c3568;">◎</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:17px;">○</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:14px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>읽기표 진행률 navy 카드 + 골드 진행바</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>오늘 분량 체크리스트 — 홈 나의성경읽기 이어 연결</span></li>
+        <li style="font-size:12px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>수동 기록 리스트 콤팩트화</span></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- PRINCIPLES -->
+  <div style="max-width:1280px;margin:54px auto 0;padding-top:30px;border-top:1px solid #d2cec5;">
+    <h2 class="serif" style="margin:0 0 18px;font-size:24px;font-weight:700;color:#1c3568;">구역 탭 리디자인 원칙</h2>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:10px;padding:18px;">
+        <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#1c3568;margin-bottom:8px;">01 · 탭 레벨 분리</div>
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5b574e;"><strong>상위 = 세그먼트(pill)</strong>, 하위 = 라인탭. 각 레벨이 시각적으로 구분돼 혼잡 제거.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:10px;padding:18px;">
+        <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#1c3568;margin-bottom:8px;">02 · 데이터 연결</div>
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5b574e;">일정 RSVP → 홈 출석약속, 성경읽기 완료 → 홈 나의성경읽기 진도. <strong>단일 소스 원칙</strong>.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:10px;padding:18px;">
+        <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#1c3568;margin-bottom:8px;">03 · 역할 명시</div>
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5b574e;">구역장 전용 기능에 <strong>[구역장] 배지</strong> 명시. 구역원에겐 보이지 않는 버튼.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:10px;padding:18px;">
+        <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#1c3568;margin-bottom:8px;">04 · 홈과 한 시스템</div>
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5b574e;">타입·여백·아이콘 기준 동일. <strong>success는 완료에만</strong>. 이어읽기 배너는 골드 톤.</p>
+      </div>
+    </div>
+    <p style="margin:14px 2px 0;font-size:12.5px;color:#7a756b;">대상 파일 — <code style="background:#fff;padding:1px 6px;border-radius:4px;">CommunitySubNav.tsx</code> · <code style="background:#fff;padding:1px 6px;border-radius:4px;">BibleStudyList.tsx</code> · <code style="background:#fff;padding:1px 6px;border-radius:4px;">PrayerRequests.tsx</code> · <code style="background:#fff;padding:1px 6px;border-radius:4px;">ScheduleManagement.tsx</code> · <code style="background:#fff;padding:1px 6px;border-radius:4px;">BibleReading.tsx</code></p>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

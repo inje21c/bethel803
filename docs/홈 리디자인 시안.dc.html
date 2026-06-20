@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;}
+.sans{font-family:'Noto Sans KR',sans-serif;}
+.serif{font-family:'Noto Serif KR',serif;}
+.frame-scroll::-webkit-scrollbar{height:8px;}
+.frame-scroll::-webkit-scrollbar-thumb{background:#c9c3b6;border-radius:4px;}
+</style>
+</helmet>
+<div class="sans" style="min-width:100%;min-height:100vh;background:#e3e0d8;padding:52px 44px 110px;font-family:'Noto Sans KR',sans-serif;-webkit-font-smoothing:antialiased;color:#1c2a44;width:max-content;box-sizing:border-box;">
+
+  <!-- HEADER -->
+  <div style="max-width:1180px;margin:0 auto 8px;">
+    <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#8c877d;margin-bottom:14px;">STEP 1 · 홈 리디자인 · 모바일 / 태블릿 / PC</div>
+    <h1 class="serif" style="margin:0;font-size:40px;line-height:1.14;font-weight:700;letter-spacing:-.01em;color:#1c3568;">홈 화면 리디자인 시안</h1>
+    <p style="margin:15px 0 0;font-size:15px;line-height:1.7;color:#54514a;max-width:760px;">실제 코드 토큰(네이비 <code style="background:#fff;padding:1px 6px;border-radius:4px;font-size:13px;">#1c3568</code> · 골드 <code style="background:#fff;padding:1px 6px;border-radius:4px;font-size:13px;">#e8a530</code> · Noto Serif/Sans KR)과 공식 UX 설계서(6/18) 방향을 반영했습니다. <strong style="color:#1c3568;">타입 스케일 상향 · 거터 단일화 · 세그먼트 줄바꿈 차단 · 반응형 재배치</strong>가 핵심.</p>
+  </div>
+
+  <!-- DIAGNOSIS STRIP -->
+  <div style="max-width:1180px;margin:26px auto 0;display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #c0392b;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:4px;">진단 1 · 글씨가 작다</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;">라벨 12px·마이크로 10px가 본문 기본. → <strong>본문 15·라벨 13·마이크로 12</strong>로 +1단계 상향.</div>
+    </div>
+    <div style="flex:1;min-width:220px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #c0392b;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:4px;">진단 2 · 박스 안 박스 (당신 가설 ✓)</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;">거터(16)+카드(20)+내부카드 중첩으로 폭 288px↓. → <strong>가로 거터 16px 한 곳만</strong>, 카드-인-카드 제거.</div>
+    </div>
+    <div style="flex:1;min-width:220px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #b06f1d;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#b06f1d;margin-bottom:4px;">진단 3 · 세그먼트 줄바꿈</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;">4탭이 좁아 줄바꿈. → <strong>nowrap + 넘치면 가로 스크롤</strong>, 좌우 패딩 축소.</div>
+    </div>
+    <div style="flex:1;min-width:220px;background:#fff;border:1px solid #e1ddd3;border-left:3px solid #29a356;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#29a356;margin-bottom:4px;">확인 · viewport ✓ 정상</div>
+      <div style="font-size:13px;line-height:1.55;color:#5b574e;"><code style="font-size:12px;">width=device-width</code> 설정됨 → 축소렌더 아님. 위 3개가 진짜 원인.</div>
+    </div>
+  </div>
+
+  <!-- ROLE NOTE -->
+  <div style="max-width:1180px;margin:22px auto 0;background:#1c3568;border-radius:12px;padding:18px 22px;display:flex;gap:16px;align-items:flex-start;color:#fff;">
+    <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#1c3568;background:#e8a530;border-radius:5px;padding:4px 9px;margin-top:1px;white-space:nowrap;">역할 기준</span>
+    <p style="margin:0;font-size:13.5px;line-height:1.65;color:#dfe4ee;">이 시안은 <strong style="color:#fff;">일반 구역장</strong> 화면 기준입니다. 상단 <strong style="color:#e8a530;">구역 전환 드롭다운은 교회 마스터 계정에만</strong> 노출되고, 구역장·구역원은 소속 구역명이 고정 표시됩니다. 대다수 사용자인 구역장은 <strong style="color:#fff;">'나의 신앙생활'(구역원으로서 QT·성경읽기)</strong>과 <strong style="color:#fff;">'구역 운영'(구역장으로서 할 일)</strong>을 한 화면에서 함께 수행하도록 두 묶음으로 구분했습니다. <span style="color:#aab4c8;">(기존 스크린샷은 마스터·구역장·구역원을 겸한 특수 계정 화면)</span></p>
+  </div>
+
+  <!-- SECTION: MOBILE 3-UP -->
+  <div style="max-width:1180px;margin:60px auto 0;">
+    <h2 class="serif" style="margin:0 0 4px;font-size:25px;font-weight:700;color:#1c3568;">모바일 — 기존 vs 안 A vs 안 B</h2>
+    <p style="margin:0 0 26px;font-size:13.5px;color:#7a756b;">갤럭시 S25 기준 폭(360px)에서 나란히 비교</p>
+  </div>
+  <div class="frame-scroll" style="display:flex;gap:40px;align-items:flex-start;padding-bottom:18px;justify-content:center;min-width:min-content;">
+
+    <!-- EXISTING -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#8c877d;background:#d8d3c8;border-radius:5px;padding:3px 9px;">기존</span>
+        <span style="font-size:13px;font-weight:600;color:#6d685e;">현재 배포본</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#000;">
+        <img src="app/01-home.jpg" style="display:block;width:100%;height:auto;"/>
+      </div>
+      <ul style="margin:16px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:7px;">
+        <li style="font-size:12.5px;color:#a0392b;display:flex;gap:7px;"><span>✕</span><span>라벨·메타 10~12px로 작게 느껴짐</span></li>
+        <li style="font-size:12.5px;color:#a0392b;display:flex;gap:7px;"><span>✕</span><span>카드-인-카드로 본문 폭 좁음</span></li>
+        <li style="font-size:12.5px;color:#a0392b;display:flex;gap:7px;"><span>✕</span><span>카드 6개 같은 무게 — 위계 약함</span></li>
+        <li style="font-size:12.5px;color:#a0392b;display:flex;gap:7px;"><span>✕</span><span>구역장/구역원 역할 구분 약함</span></li>
+      </ul>
+    </div>
+
+    <!-- PLAN A : 정돈형 -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:3px 9px;">안 A</span>
+        <span style="font-size:13px;font-weight:600;color:#1c3568;">정돈형 — 구조 유지 + 정리</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <!-- status bar -->
+        <div style="height:30px;background:#f9f6f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#1c2a44;">
+          <span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span>
+        </div>
+        <!-- app header -->
+        <div style="padding:6px 16px 12px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:15px;font-weight:700;color:#1c3568;">킨텍스장성남 구역</div>
+          <div style="width:30px;height:30px;border-radius:50%;background:#eef0f4;display:flex;align-items:center;justify-content:center;font-size:14px;">🔔</div>
+        </div>
+        <!-- body : single 16px gutter -->
+        <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:14px;">
+          <!-- greeting -->
+          <div>
+            <div class="serif" style="font-size:19px;font-weight:600;color:#1c2a44;line-height:1.3;">김은혜 집사님,<br/>오늘도 평안하세요</div>
+            <div style="font-size:13px;color:#8c877d;margin-top:4px;">2026년 6월 20일 금요일</div>
+          </div>
+          <!-- section: 나의 신앙생활 -->
+          <div style="font-size:13px;font-weight:700;color:#6b7280;margin:2px 0 -3px;">나의 신앙생활</div>
+          <!-- QT HERO -->
+          <div style="background:#1c3568;border-radius:16px;padding:18px;color:#fff;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-20px;top:-20px;width:90px;height:90px;border-radius:50%;background:rgba(232,165,48,.16);"></div>
+            <div style="font-size:13px;font-weight:700;color:#e8a530;letter-spacing:.02em;">오늘의 QT</div>
+            <div class="serif" style="font-size:21px;font-weight:600;margin-top:7px;line-height:1.3;">시편 23편</div>
+            <div style="font-size:13.5px;color:#c4cee0;margin-top:5px;line-height:1.5;">여호와는 나의 목자시니<br/>내게 부족함이 없으리로다</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:15px;">
+              <div style="flex:1;background:#e8a530;color:#1c2a44;font-size:14px;font-weight:700;text-align:center;padding:11px;border-radius:11px;">QT 시작하기</div>
+              <div style="font-size:13px;font-weight:700;color:#e8a530;white-space:nowrap;">🔥 5일</div>
+            </div>
+          </div>
+          <!-- 나의 성경읽기 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:15px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+              <div style="font-size:14px;font-weight:700;color:#1c2a44;">나의 성경읽기</div>
+              <div style="font-size:12.5px;color:#8c877d;">창세기 28장</div>
+            </div>
+            <div style="height:7px;background:#eef0f4;border-radius:4px;overflow:hidden;margin-bottom:9px;"><div style="width:24%;height:100%;background:#1c3568;"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:#8c877d;">올해 240 / 1189장</span>
+              <span style="font-size:13px;font-weight:700;color:#1c3568;">이어 읽기 →</span>
+            </div>
+          </div>
+          <!-- section: 구역 운영 -->
+          <div style="font-size:13px;font-weight:700;color:#6b7280;margin:6px 0 -3px;display:flex;align-items:center;gap:6px;">구역 운영 <span style="font-size:10px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:2px 6px;">구역장</span></div>
+          <!-- 이번 주 할 일 (구역장) -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:15px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+              <div style="font-size:14px;font-weight:700;color:#1c2a44;">이번 주 할 일</div>
+              <div style="font-size:13px;font-weight:700;color:#8c877d;">2/4</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;align-items:center;gap:9px;font-size:14px;color:#a8b0bd;"><span style="width:18px;height:18px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</span><span style="text-decoration:line-through;">성경공부 자료 등록</span></div>
+              <div style="display:flex;align-items:center;gap:9px;font-size:14px;color:#a8b0bd;"><span style="width:18px;height:18px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</span><span style="text-decoration:line-through;">구역모임 일정 등록</span></div>
+              <div style="display:flex;align-items:center;gap:9px;font-size:14px;color:#1c2a44;font-weight:500;"><span style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>QT 본문 배포</span></div>
+              <div style="display:flex;align-items:center;gap:9px;font-size:14px;color:#1c2a44;font-weight:500;"><span style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>주일 출석 체크</span></div>
+            </div>
+          </div>
+          <!-- 우리구역 통계 strip -->
+          <div style="font-size:12px;color:#8c877d;margin:2px 0 -7px 2px;">우리 구역 이번 주</div>
+          <div style="display:flex;gap:10px;">
+            <div style="flex:1;background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:13px;text-align:center;">
+              <div class="serif" style="font-size:22px;font-weight:700;color:#1c3568;">115</div>
+              <div style="font-size:12px;color:#8c877d;margin-top:2px;">성경읽기 (장)</div>
+            </div>
+            <div style="flex:1;background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:13px;text-align:center;">
+              <div class="serif" style="font-size:22px;font-weight:700;color:#1c3568;">6<span style="font-size:14px;color:#8c877d;">/8</span></div>
+              <div style="font-size:12px;color:#8c877d;margin-top:2px;">출석 약속 (명)</div>
+            </div>
+          </div>
+          <!-- 일정 1줄 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:14px 15px;display:flex;align-items:center;gap:12px;">
+            <div style="width:42px;height:42px;border-radius:11px;background:#eef0f4;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span style="font-size:10px;color:#8c877d;line-height:1;">JUN</span><span class="serif" style="font-size:17px;font-weight:700;color:#1c3568;line-height:1.1;">22</span></div>
+            <div style="min-width:0;flex:1;"><div style="font-size:14px;font-weight:700;color:#1c2a44;">구역모임</div><div style="font-size:12.5px;color:#8c877d;">일요일 오후 2시 · 은혜집사 가정</div></div>
+            <div style="flex:none;text-align:center;"><div style="font-size:14px;font-weight:700;color:#29a356;">6/8</div><div style="font-size:10px;color:#8c877d;">참여</div></div>
+          </div>
+        </div>
+        <!-- bottom tab -->
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;"><div style="font-size:18px;">🏠</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:18px;">📖</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:18px;">👥</div><div style="font-size:11px;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:18px;">👤</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:16px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:7px;">
+        <li style="font-size:12.5px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>본문 15·라벨 13·마이크로 12 상향</span></li>
+        <li style="font-size:12.5px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>거터 16px 단일 · 카드인카드 제거</span></li>
+        <li style="font-size:12.5px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>'나의 신앙생활'·'구역 운영' 역할 분리</span></li>
+        <li style="font-size:12.5px;color:#1c6b3a;display:flex;gap:7px;"><span>✓</span><span>기존 카드 순서·기능 그대로 — 안전</span></li>
+      </ul>
+    </div>
+
+    <!-- PLAN B : 포커스형 -->
+    <div style="flex:none;width:300px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:#fff;background:#e8a530;border-radius:5px;padding:3px 9px;">안 B</span>
+        <span style="font-size:13px;font-weight:600;color:#b06f1d;">포커스형 — QT 집중 + 통합</span>
+      </div>
+      <div style="width:300px;border-radius:30px;border:9px solid #11151c;overflow:hidden;box-shadow:0 16px 40px rgba(20,30,60,.18);background:#f9f6f0;">
+        <div style="height:30px;background:#1c3568;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:700;color:#fff;">
+          <span>9:41</span><span style="letter-spacing:2px;">●●● ▮</span>
+        </div>
+        <!-- QT full-bleed hero -->
+        <div style="background:#1c3568;color:#fff;padding:14px 18px 22px;position:relative;overflow:hidden;">
+          <div style="position:absolute;right:-30px;top:10px;width:130px;height:130px;border-radius:50%;background:rgba(232,165,48,.14);"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;">킨텍스장성남 구역</div>
+            <div style="font-size:13px;font-weight:700;color:#e8a530;white-space:nowrap;">🔥 5일</div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#e8a530;">오늘의 QT · 6월 20일</div>
+          <div class="serif" style="font-size:27px;font-weight:600;margin-top:9px;line-height:1.25;">시편 23편</div>
+          <div style="font-size:14px;color:#c4cee0;margin-top:9px;line-height:1.6;">여호와는 나의 목자시니<br/>내게 부족함이 없으리로다<br/>그가 나를 푸른 풀밭에 누이시며…</div>
+          <div style="background:#e8a530;color:#1c2a44;font-size:15px;font-weight:700;text-align:center;padding:13px;border-radius:12px;margin-top:18px;">QT 묵상 시작하기</div>
+        </div>
+        <!-- 오늘 할 일 통합 -->
+        <div style="padding:16px 16px 14px;display:flex;flex-direction:column;gap:13px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#1c2a44;margin-bottom:11px;">오늘 우리 구역</div>
+            <!-- 구역원 현황 inline -->
+            <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:12px 14px;">
+              <div style="display:flex;">
+                <div style="width:30px;height:30px;border-radius:50%;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;">김</div>
+                <div style="width:30px;height:30px;border-radius:50%;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;margin-left:-8px;">이</div>
+                <div style="width:30px;height:30px;border-radius:50%;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;margin-left:-8px;">박</div>
+                <div style="width:30px;height:30px;border-radius:50%;background:#eef0f4;color:#a8b0bd;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;margin-left:-8px;">+5</div>
+              </div>
+              <div style="min-width:0;"><div style="font-size:14px;font-weight:700;color:#1c2a44;">QT 5/8 완료</div><div style="font-size:12px;color:#8c877d;">3명 아직 안 했어요</div></div>
+            </div>
+          </div>
+          <!-- 구역장 통합 액션 -->
+          <div style="background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+              <div style="font-size:14px;font-weight:700;color:#1c2a44;">구역장 할 일</div>
+              <div style="font-size:12px;font-weight:700;color:#fff;background:#e8a530;border-radius:20px;padding:3px 10px;">2건 남음</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;align-items:center;gap:9px;font-size:14px;color:#1c2a44;font-weight:500;"><span style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>QT 본문 배포</span></div>
+              <div style="display:flex;align-items:center;gap:9px;font-size:14px;color:#1c2a44;font-weight:500;"><span style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>주일 출석 체크</span></div>
+            </div>
+          </div>
+          <!-- 소식 압축 칩 -->
+          <div style="display:flex;gap:9px;">
+            <div style="flex:1;background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:12px;display:flex;align-items:center;gap:9px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#eef0f4;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span class="serif" style="font-size:15px;font-weight:700;color:#1c3568;line-height:1;">22</span><span style="font-size:9px;color:#8c877d;">일</span></div>
+              <div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1c2a44;">구역모임</div><div style="font-size:11.5px;color:#8c877d;">오후 2시</div></div>
+            </div>
+            <div style="flex:1;background:#fff;border:1px solid #ece7dc;border-radius:13px;padding:12px;display:flex;align-items:center;gap:9px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#fdf3e0;display:flex;align-items:center;justify-content:center;flex:none;font-size:16px;">🙏</div>
+              <div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1c2a44;">중보기도</div><div style="font-size:11.5px;color:#8c877d;">새 글 3</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;border-top:1px solid #ece7dc;background:#fff;padding:8px 0 11px;">
+          <div style="flex:1;text-align:center;"><div style="font-size:18px;">🏠</div><div style="font-size:11px;font-weight:700;color:#1c3568;margin-top:1px;">홈</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:18px;">📖</div><div style="font-size:11px;margin-top:1px;">QT</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:18px;">👥</div><div style="font-size:11px;margin-top:1px;">구역</div></div>
+          <div style="flex:1;text-align:center;opacity:.45;"><div style="font-size:18px;">👤</div><div style="font-size:11px;margin-top:1px;">나</div></div>
+        </div>
+      </div>
+      <ul style="margin:16px 0 0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:7px;">
+        <li style="font-size:12.5px;color:#b06f1d;display:flex;gap:7px;"><span>◆</span><span>QT 풀블리드 히어로 — '오늘 한 가지' 집중</span></li>
+        <li style="font-size:12.5px;color:#b06f1d;display:flex;gap:7px;"><span>◆</span><span>구역장 할일 = 남은 것만 노출(2건)</span></li>
+        <li style="font-size:12.5px;color:#b06f1d;display:flex;gap:7px;"><span>◆</span><span>통계·일정·기도 → 압축 칩으로</span></li>
+        <li style="font-size:12.5px;color:#b06f1d;display:flex;gap:7px;"><span>◆</span><span>스크롤 짧음 · 변화 큼(구조 변경)</span></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div style="max-width:1180px;margin:14px auto 0;font-size:12.5px;color:#8c877d;text-align:center;">↑ 안 A는 기존 구조를 지키며 '정리'에 집중(저위험), 안 B는 위계를 바꿔 'QT 집중'으로 재구성(고임팩트).</div>
+
+  <!-- SECTION: TABLET -->
+  <div style="max-width:1180px;margin:64px auto 0;">
+    <h2 class="serif" style="margin:0 0 4px;font-size:25px;font-weight:700;color:#1c3568;">태블릿 — 안 A (가로 · 834px)</h2>
+    <p style="margin:0 0 26px;font-size:13.5px;color:#7a756b;">같은 카드가 <strong style="color:#1c3568;">좌측 사이드바 내비 + 본문 2컬럼</strong>으로 재배치. 모바일의 세로 스택이 넓은 폭을 활용해 한눈에.</p>
+  </div>
+  <div style="display:flex;justify-content:center;padding-bottom:8px;">
+    <div style="flex:none;width:834px;border-radius:20px;border:11px solid #11151c;overflow:hidden;box-shadow:0 20px 50px rgba(20,30,60,.2);background:#f9f6f0;display:flex;">
+      <!-- sidebar -->
+      <div style="width:84px;flex:none;background:#1c3568;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:4px;">
+        <div class="serif" style="color:#e8a530;font-size:13px;font-weight:700;writing-mode:horizontal-tb;margin-bottom:18px;text-align:center;line-height:1.2;">벧엘<br/>구역</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;width:100%;background:rgba(255,255,255,.12);border-left:3px solid #e8a530;"><span style="font-size:19px;">🏠</span><span style="font-size:11px;color:#fff;font-weight:700;">홈</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;width:100%;opacity:.6;"><span style="font-size:19px;">📖</span><span style="font-size:11px;color:#fff;">QT</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;width:100%;opacity:.6;"><span style="font-size:19px;">👥</span><span style="font-size:11px;color:#fff;">구역</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;width:100%;opacity:.6;"><span style="font-size:19px;">👤</span><span style="font-size:11px;color:#fff;">나</span></div>
+      </div>
+      <!-- content -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <!-- topbar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 26px;border-bottom:1px solid #ece7dc;background:#fff;">
+          <div>
+            <div class="serif" style="font-size:20px;font-weight:600;color:#1c2a44;">김은혜 집사님, 오늘도 평안하세요</div>
+            <div style="font-size:13px;color:#8c877d;margin-top:2px;">2026년 6월 20일 금요일 · 킨텍스장성남 구역</div>
+          </div>
+          <div style="width:40px;height:40px;border-radius:50%;background:#eef0f4;display:flex;align-items:center;justify-content:center;font-size:16px;">🔔</div>
+        </div>
+        <!-- 2-col grid -->
+        <div style="padding:24px;display:grid;grid-template-columns:1.45fr 1fr;gap:18px;align-items:start;">
+          <!-- left col : 나의 신앙생활 -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="font-size:13px;font-weight:700;color:#6b7280;">나의 신앙생활</div>
+            <div style="background:#1c3568;border-radius:16px;padding:24px;color:#fff;position:relative;overflow:hidden;">
+              <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(232,165,48,.16);"></div>
+              <div style="font-size:13px;font-weight:700;color:#e8a530;">오늘의 QT</div>
+              <div class="serif" style="font-size:26px;font-weight:600;margin-top:8px;">시편 23편 · 여호와는 나의 목자시니</div>
+              <div style="font-size:14px;color:#c4cee0;margin-top:8px;line-height:1.6;">내게 부족함이 없으리로다. 그가 나를 푸른 풀밭에 누이시며 쉴 만한 물 가로 인도하시는도다…</div>
+              <div style="display:flex;align-items:center;gap:14px;margin-top:18px;">
+                <div style="background:#e8a530;color:#1c2a44;font-size:15px;font-weight:700;padding:12px 26px;border-radius:11px;">QT 시작하기</div>
+                <div style="font-size:14px;font-weight:700;color:#e8a530;">🔥 5일 연속</div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;">
+                <div style="font-size:15px;font-weight:700;color:#1c2a44;">나의 성경읽기</div>
+                <div style="font-size:13px;color:#8c877d;">창세기 28장 이어 읽기</div>
+              </div>
+              <div style="height:9px;background:#eef0f4;border-radius:5px;overflow:hidden;margin-bottom:11px;"><div style="width:24%;height:100%;background:#1c3568;"></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:#8c877d;">올해 240 / 1189장 · 20%</span><span style="font-size:14px;font-weight:700;color:#1c3568;">이어 읽기 →</span></div>
+            </div>
+          </div>
+          <!-- right col : 구역 운영 -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="font-size:13px;font-weight:700;color:#6b7280;display:flex;align-items:center;gap:6px;">구역 운영 <span style="font-size:10px;font-weight:700;color:#fff;background:#1c3568;border-radius:5px;padding:2px 6px;">구역장</span></div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;">
+                <div style="font-size:15px;font-weight:700;color:#1c2a44;">이번 주 할 일</div>
+                <div style="font-size:14px;font-weight:700;color:#8c877d;">2/4</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:11px;">
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#a8b0bd;"><span style="width:19px;height:19px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</span><span style="text-decoration:line-through;">성경공부 자료 등록</span></div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#a8b0bd;"><span style="width:19px;height:19px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</span><span style="text-decoration:line-through;">구역모임 일정 등록</span></div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1c2a44;font-weight:500;"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>QT 본문 배포</span></div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1c2a44;font-weight:500;"><span style="width:19px;height:19px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>주일 출석 체크</span></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:16px;text-align:center;"><div class="serif" style="font-size:24px;font-weight:700;color:#1c3568;">115</div><div style="font-size:12px;color:#8c877d;margin-top:3px;">성경읽기(장)</div></div>
+              <div style="flex:1;background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:16px;text-align:center;"><div class="serif" style="font-size:24px;font-weight:700;color:#1c3568;">6<span style="font-size:15px;color:#8c877d;">/8</span></div><div style="font-size:12px;color:#8c877d;margin-top:3px;">출석 약속(명)</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:16px;display:flex;align-items:center;gap:13px;">
+              <div style="width:46px;height:46px;border-radius:12px;background:#eef0f4;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span style="font-size:10px;color:#8c877d;line-height:1;">JUN</span><span class="serif" style="font-size:18px;font-weight:700;color:#1c3568;line-height:1.1;">22</span></div>
+              <div style="flex:1;"><div style="font-size:14px;font-weight:700;color:#1c2a44;">구역모임</div><div style="font-size:12.5px;color:#8c877d;">일요일 오후 2시 · 은혜집사 가정</div></div>
+              <div style="flex:none;text-align:center;"><div style="font-size:15px;font-weight:700;color:#29a356;">6/8</div><div style="font-size:10px;color:#8c877d;">참여</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: PC -->
+  <div style="max-width:1180px;margin:64px auto 0;">
+    <h2 class="serif" style="margin:0 0 4px;font-size:25px;font-weight:700;color:#1c3568;">PC — 안 A (1180px)</h2>
+    <p style="margin:0 0 26px;font-size:13.5px;color:#7a756b;">사이드바 <strong style="color:#1c3568;">라벨형(240px)</strong> + QT 히어로 풀폭 + 하단 <strong style="color:#1c3568;">3컬럼</strong>. 본문은 max-width로 묶어 초광폭에서도 줄 길이가 폭주하지 않게.</p>
+  </div>
+  <div style="display:flex;justify-content:center;">
+    <div style="flex:none;width:1180px;border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(20,30,60,.22);border:1px solid #d2cdc1;background:#f9f6f0;">
+      <!-- browser chrome -->
+      <div style="height:38px;background:#e9e5dc;display:flex;align-items:center;gap:7px;padding:0 16px;border-bottom:1px solid #d8d3c8;">
+        <span style="width:11px;height:11px;border-radius:50%;background:#e0655a;"></span>
+        <span style="width:11px;height:11px;border-radius:50%;background:#e3b04b;"></span>
+        <span style="width:11px;height:11px;border-radius:50%;background:#4caf6d;"></span>
+        <div style="flex:1;max-width:420px;margin-left:14px;background:#fff;border-radius:7px;font-size:12px;color:#8c877d;padding:5px 12px;">bethel803.app</div>
+      </div>
+      <div style="display:flex;min-height:560px;">
+        <!-- sidebar -->
+        <div style="width:240px;flex:none;background:#1c3568;padding:24px 16px;display:flex;flex-direction:column;gap:5px;">
+          <div class="serif" style="color:#e8a530;font-size:19px;font-weight:700;padding:0 10px 22px;">벧엘구역</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;background:rgba(255,255,255,.13);"><span style="font-size:18px;">🏠</span><span style="font-size:14px;color:#fff;font-weight:700;">홈</span></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;opacity:.6;"><span style="font-size:18px;">📖</span><span style="font-size:14px;color:#fff;">QT 묵상</span></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;opacity:.6;"><span style="font-size:18px;">👥</span><span style="font-size:14px;color:#fff;">구역</span></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;opacity:.6;"><span style="font-size:18px;">👤</span><span style="font-size:14px;color:#fff;">나</span></div>
+          <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid rgba(255,255,255,.12);"><div style="width:32px;height:32px;border-radius:50%;background:#e8a530;color:#1c2a44;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">김</div><div><div style="font-size:13px;color:#fff;font-weight:700;">김은혜</div><div style="font-size:11px;color:#9aa6bd;">구역장</div></div></div>
+        </div>
+        <!-- main : max-width content -->
+        <div style="flex:1;min-width:0;padding:30px 36px;">
+          <div style="max-width:880px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+              <div>
+                <div class="serif" style="font-size:24px;font-weight:600;color:#1c2a44;">김은혜 집사님, 오늘도 평안하세요</div>
+                <div style="font-size:13px;color:#8c877d;margin-top:3px;">2026년 6월 20일 금요일</div>
+              </div>
+              <div style="width:38px;height:38px;border-radius:50%;background:#eef0f4;display:flex;align-items:center;justify-content:center;font-size:16px;">🔔</div>
+            </div>
+            <!-- hero full width -->
+            <div style="background:#1c3568;border-radius:16px;padding:28px;color:#fff;position:relative;overflow:hidden;display:flex;align-items:center;gap:28px;">
+              <div style="position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(232,165,48,.14);"></div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:700;color:#e8a530;">오늘의 QT</div>
+                <div class="serif" style="font-size:28px;font-weight:600;margin-top:8px;">시편 23편 · 여호와는 나의 목자시니</div>
+                <div style="font-size:14.5px;color:#c4cee0;margin-top:9px;line-height:1.65;max-width:520px;">내게 부족함이 없으리로다. 그가 나를 푸른 풀밭에 누이시며 쉴 만한 물 가로 인도하시는도다…</div>
+              </div>
+              <div style="flex:none;text-align:center;">
+                <div style="background:#e8a530;color:#1c2a44;font-size:15px;font-weight:700;padding:14px 30px;border-radius:12px;white-space:nowrap;">QT 시작하기</div>
+                <div style="font-size:14px;font-weight:700;color:#e8a530;margin-top:12px;">🔥 5일 연속</div>
+              </div>
+            </div>
+            <!-- 3 columns -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:18px;">
+              <!-- col1 나의 성경읽기 -->
+              <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:20px;">
+                <div style="font-size:14px;font-weight:700;color:#1c2a44;margin-bottom:12px;">나의 성경읽기</div>
+                <div style="font-size:13px;color:#8c877d;margin-bottom:9px;">창세기 28장 이어 읽기</div>
+                <div style="height:8px;background:#eef0f4;border-radius:5px;overflow:hidden;"><div style="width:24%;height:100%;background:#1c3568;"></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:11px;"><span style="font-size:12px;color:#8c877d;">240 / 1189장</span><span style="font-size:13px;font-weight:700;color:#1c3568;">이어 읽기 →</span></div>
+              </div>
+              <!-- col2 할일 -->
+              <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><div style="font-size:14px;font-weight:700;color:#1c2a44;">이번 주 할 일</div><div style="font-size:13px;font-weight:700;color:#8c877d;">2/4</div></div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#a8b0bd;"><span style="width:18px;height:18px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</span><span style="text-decoration:line-through;">성경공부 등록</span></div>
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#a8b0bd;"><span style="width:18px;height:18px;border-radius:5px;background:#29a356;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</span><span style="text-decoration:line-through;">일정 등록</span></div>
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#1c2a44;font-weight:500;"><span style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>QT 본문 배포</span></div>
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#1c2a44;font-weight:500;"><span style="width:18px;height:18px;border-radius:5px;border:2px solid #d2cdc1;"></span><span>출석 체크</span></div>
+                </div>
+              </div>
+              <!-- col3 통계+일정 -->
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:16px;display:flex;gap:10px;">
+                  <div style="flex:1;text-align:center;"><div class="serif" style="font-size:21px;font-weight:700;color:#1c3568;">115</div><div style="font-size:11px;color:#8c877d;">읽기(장)</div></div>
+                  <div style="width:1px;background:#ece7dc;"></div>
+                  <div style="flex:1;text-align:center;"><div class="serif" style="font-size:21px;font-weight:700;color:#1c3568;">6<span style="font-size:13px;color:#8c877d;">/8</span></div><div style="font-size:11px;color:#8c877d;">출석약속</div></div>
+                </div>
+                <div style="background:#fff;border:1px solid #ece7dc;border-radius:14px;padding:16px;display:flex;align-items:center;gap:11px;">
+                  <div style="width:42px;height:42px;border-radius:11px;background:#eef0f4;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><span style="font-size:9px;color:#8c877d;line-height:1;">JUN</span><span class="serif" style="font-size:16px;font-weight:700;color:#1c3568;line-height:1.1;">22</span></div>
+                  <div style="min-width:0;flex:1;"><div style="font-size:13.5px;font-weight:700;color:#1c2a44;">구역모임</div><div style="font-size:12px;color:#8c877d;">일 오후 2시</div></div>
+                  <div style="flex:none;text-align:center;"><div style="font-size:13.5px;font-weight:700;color:#29a356;">6/8</div><div style="font-size:10px;color:#8c877d;">참여</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARISON TABLE -->
+  <div style="max-width:1180px;margin:64px auto 0;">
+    <h2 class="serif" style="margin:0 0 18px;font-size:25px;font-weight:700;color:#1c3568;">한눈에 비교</h2>
+    <div style="background:#fff;border:1px solid #e1ddd3;border-radius:12px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <thead><tr style="background:#f1eee7;">
+          <th style="text-align:left;padding:14px 18px;font-weight:700;color:#46433c;border-bottom:1px solid #e1ddd3;width:24%;">항목</th>
+          <th style="text-align:left;padding:14px 18px;font-weight:700;color:#8c877d;border-bottom:1px solid #e1ddd3;">기존</th>
+          <th style="text-align:left;padding:14px 18px;font-weight:700;color:#1c3568;border-bottom:1px solid #e1ddd3;">안 A · 정돈형</th>
+          <th style="text-align:left;padding:14px 18px;font-weight:700;color:#b06f1d;border-bottom:1px solid #e1ddd3;">안 B · 포커스형</th>
+        </tr></thead>
+        <tbody style="color:#46433c;">
+          <tr><td style="padding:13px 18px;font-weight:700;border-bottom:1px solid #f0ede6;">본문 타입</td><td style="padding:13px 18px;color:#a0392b;border-bottom:1px solid #f0ede6;">10~12px</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">15 / 라벨13 / 마이크로12</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">15 / 히어로 27</td></tr>
+          <tr><td style="padding:13px 18px;font-weight:700;border-bottom:1px solid #f0ede6;">가로 거터</td><td style="padding:13px 18px;color:#a0392b;border-bottom:1px solid #f0ede6;">중첩(카드인카드)</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">16px 단일</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">16px 단일</td></tr>
+          <tr><td style="padding:13px 18px;font-weight:700;border-bottom:1px solid #f0ede6;">홈 위계</td><td style="padding:13px 18px;color:#a0392b;border-bottom:1px solid #f0ede6;">평면(6카드 동일)</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">QT 히어로 강조 유지</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">QT 풀블리드 집중</td></tr>
+          <tr><td style="padding:13px 18px;font-weight:700;border-bottom:1px solid #f0ede6;">역할 표현</td><td style="padding:13px 18px;color:#a0392b;border-bottom:1px solid #f0ede6;">혼재(겸직 계정)</td><td style="padding:13px 18px;color:#1c6b3a;border-bottom:1px solid #f0ede6;">나의 신앙 / 구역 운영 분리 ✓</td><td style="padding:13px 18px;color:#1c6b3a;border-bottom:1px solid #f0ede6;">QT 집중 + 운영 통합</td></tr>
+          <tr><td style="padding:13px 18px;font-weight:700;border-bottom:1px solid #f0ede6;">구역 전환</td><td style="padding:13px 18px;color:#8c877d;border-bottom:1px solid #f0ede6;">모두 노출(겸직)</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">마스터만 · 그 외 고정</td><td style="padding:13px 18px;border-bottom:1px solid #f0ede6;">동일</td></tr>
+          <tr><td style="padding:13px 18px;font-weight:700;border-bottom:1px solid #f0ede6;">변경 위험</td><td style="padding:13px 18px;color:#8c877d;border-bottom:1px solid #f0ede6;">—</td><td style="padding:13px 18px;color:#1c6b3a;border-bottom:1px solid #f0ede6;">낮음(구조 유지)</td><td style="padding:13px 18px;color:#b06f1d;border-bottom:1px solid #f0ede6;">중간(구조 변경)</td></tr>
+          <tr><td style="padding:13px 18px;font-weight:700;">반응형</td><td style="padding:13px 18px;color:#8c877d;">단일폭 가정</td><td style="padding:13px 18px;">모바일1 / 태블릿2 / PC3 컬럼</td><td style="padding:13px 18px;">동일 재배치 적용</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin:16px 2px 0;font-size:13px;line-height:1.6;color:#7a756b;"><strong style="color:#1c3568;">추천</strong> — 1차로 <strong>안 A(정돈형)</strong>로 타입·여백·구역원현황을 먼저 반영(저위험·즉시 체감)하고, 홈 위계 개편은 <strong>안 B</strong> 요소를 단계적으로 흡수하는 방식을 권합니다.</p>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
