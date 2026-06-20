@@ -85,23 +85,21 @@ export default function ChurchSignup() {
         {/* 히어로 헤더 */}
         <div className="rounded-2xl bg-primary p-6 relative overflow-hidden text-center">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
-          <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-3" style={{ }}>
+          <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-3">
             <Building2 className="w-6 h-6" style={{ color: '#1c2a44' }} />
           </div>
-          <h1 className="font-display text-[22px] font-bold text-primary-foreground">교회 등록하기</h1>
-          <span className="inline-flex items-center mt-1.5 rounded-full bg-accent/20 px-3 py-0.5 text-[12px] font-bold text-accent">
-            30일 무료 체험
-          </span>
+          <h1 className="font-display text-[22px] font-bold text-primary-foreground">구역 시작하기</h1>
+          <p className="text-[13px] text-primary-foreground/60 mt-1">교회 · 구역 · 소모임을 위한 공간</p>
         </div>
 
         {/* 오진입 방지 안내 */}
         <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 flex gap-3">
           <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="text-[13px] text-amber-800 dark:text-amber-300 space-y-1">
-            <p className="font-semibold">이미 다른 구역장이 교회를 등록했나요?</p>
+            <p className="font-semibold">구역장에게 초대 링크를 받으셨나요?</p>
             <p className="leading-relaxed">
-              같은 교회의 다른 구역·소모임이라면 <span className="font-medium">교회를 새로 등록하지 마세요</span>.
-              구역장에게 <span className="font-medium">초대 링크</span>를 요청하면 기존 교회에 합류할 수 있습니다.
+              이미 구역이 만들어져 있다면 여기서 새로 만들지 마세요.
+              구역장의 <span className="font-medium">초대 링크</span>로 바로 참여할 수 있습니다.
             </p>
           </div>
         </div>
@@ -138,7 +136,7 @@ export default function ChurchSignup() {
                 <Input
                   value={churchName}
                   onChange={(e) => setChurchName(e.target.value)}
-                  placeholder="예: 한빛교회"
+                  placeholder="예: 한빛교회, 청년부, 구역모임"
                   autoFocus
                 />
               </div>
@@ -323,10 +321,10 @@ export default function ChurchSignup() {
               <>
                 <div className="space-y-2">
                   <h2 className="font-display font-bold text-[18px] text-primary-foreground">
-                    {churchName} 등록 완료!
+                    {churchName} 구역이 만들어졌습니다
                   </h2>
                   <p className="text-[13px] text-primary-foreground/70 leading-relaxed">
-                    30일 무료 체험이 시작되었습니다.<br />지금 바로 구역 앱을 사용해보세요.
+                    혼자 먼저 써보고, 괜찮으면 구역원을 초대하면 됩니다.
                   </p>
                 </div>
                 <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold" size="lg" onClick={() => navigate('/onboarding')}>
