@@ -216,28 +216,29 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-primary/5 flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-500">
-        {/* 로고 */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-primary mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <BookOpen className="w-8 h-8 text-primary-foreground" />
+        {/* 로고 히어로 */}
+        <div className="rounded-2xl bg-primary p-6 mb-5 relative overflow-hidden text-center">
+          <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
+          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-3 shadow-lg">
+            <BookOpen className="w-7 h-7" style={{ color: '#1c2a44' }} />
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground">벧엘구역</h1>
-          <p className="text-muted-foreground text-sm mt-1">소모임 커뮤니티</p>
+          <h1 className="font-display text-[22px] font-bold text-primary-foreground">벧엘구역</h1>
+          <p className="text-[13px] text-primary-foreground/60 mt-0.5">소모임 커뮤니티</p>
         </div>
 
         <Tabs defaultValue="login" className="card-elevated p-6">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="login">로그인</TabsTrigger>
-            <TabsTrigger value="register">회원가입</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-5">
+            <TabsTrigger value="login" className="text-[14px] font-semibold">로그인</TabsTrigger>
+            <TabsTrigger value="register" className="text-[14px] font-semibold">회원가입</TabsTrigger>
           </TabsList>
 
           {/* 로그인 탭 */}
           <TabsContent value="login">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-email">이메일</Label>
+                <Label htmlFor="login-email" className="text-[14px] font-medium">이메일</Label>
                 <Input
                   id="login-email"
                   type="email"
@@ -248,7 +249,7 @@ export default function Login() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">비밀번호</Label>
+                <Label htmlFor="login-password" className="text-[14px] font-medium">비밀번호</Label>
                 <Input
                   id="login-password"
                   type="password"

@@ -80,23 +80,26 @@ export default function ChurchSignup() {
   const stepLabels = ['교회 정보', '대표자 정보', '완료'];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
-        {/* 헤더 */}
-        <div className="text-center space-y-1">
-          <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-6 h-6 text-primary-foreground" />
+    <div className="min-h-screen bg-primary/5 flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md space-y-6">
+        {/* 히어로 헤더 */}
+        <div className="rounded-2xl bg-primary p-6 relative overflow-hidden text-center">
+          <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
+          <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-3" style={{ }}>
+            <Building2 className="w-6 h-6" style={{ color: '#1c2a44' }} />
           </div>
-          <h1 className="font-display text-2xl font-bold">교회 등록하기</h1>
-          <p className="text-sm text-muted-foreground">30일 무료 체험</p>
+          <h1 className="font-display text-[22px] font-bold text-primary-foreground">교회 등록하기</h1>
+          <span className="inline-flex items-center mt-1.5 rounded-full bg-accent/20 px-3 py-0.5 text-[12px] font-bold text-accent">
+            30일 무료 체험
+          </span>
         </div>
 
         {/* 오진입 방지 안내 */}
         <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 flex gap-3">
           <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-800 dark:text-amber-300 space-y-1">
+          <div className="text-[13px] text-amber-800 dark:text-amber-300 space-y-1">
             <p className="font-semibold">이미 다른 구역장이 교회를 등록했나요?</p>
-            <p className="text-xs leading-relaxed">
+            <p className="leading-relaxed">
               같은 교회의 다른 구역·소모임이라면 <span className="font-medium">교회를 새로 등록하지 마세요</span>.
               구역장에게 <span className="font-medium">초대 링크</span>를 요청하면 기존 교회에 합류할 수 있습니다.
             </p>
@@ -108,14 +111,14 @@ export default function ChurchSignup() {
           <div className="flex items-center justify-center gap-2">
             {([1, 2] as Step[]).map((s) => (
               <div key={s} className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors
-                  ${step === s ? 'bg-primary text-primary-foreground' : step > s ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                  {step > s ? <Check className="w-3.5 h-3.5" /> : s}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors
+                  ${step === s ? 'bg-primary text-primary-foreground' : step > s ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  {step > s ? <Check className="w-4 h-4" /> : s}
                 </div>
-                <span className={`text-xs ${step === s ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                <span className={`text-[13px] ${step === s ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
                   {stepLabels[s - 1]}
                 </span>
-                {s < 2 && <div className="w-8 h-px bg-border" />}
+                {s < 2 && <div className="w-10 h-px bg-border mx-1" />}
               </div>
             ))}
           </div>
@@ -124,14 +127,14 @@ export default function ChurchSignup() {
         {/* Step 1: 교회 정보 */}
         {step === 1 && (
           <div className="rounded-2xl border bg-card p-6 space-y-5">
-            <div className="space-y-1">
-              <h2 className="font-semibold">교회 정보</h2>
-              <p className="text-xs text-muted-foreground">나중에 설정에서 변경할 수 있습니다.</p>
+            <div className="space-y-0.5">
+              <h2 className="font-display font-semibold text-[16px]">교회 정보</h2>
+              <p className="text-[13px] text-muted-foreground">나중에 설정에서 변경할 수 있습니다.</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">교회 이름 *</label>
+                <label className="text-[14px] font-medium">교회 이름 *</label>
                 <Input
                   value={churchName}
                   onChange={(e) => setChurchName(e.target.value)}
@@ -141,18 +144,19 @@ export default function ChurchSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">첫 구역 이름</label>
+                <label className="text-[14px] font-medium">첫 구역 이름</label>
                 <Input
                   value={districtName}
                   onChange={(e) => setDistrictName(e.target.value)}
                   placeholder="예: 1구역"
                 />
-                <p className="text-xs text-muted-foreground">구역은 나중에 추가/수정할 수 있습니다.</p>
+                <p className="text-[12px] text-muted-foreground">구역은 나중에 추가/수정할 수 있습니다.</p>
               </div>
             </div>
 
             <Button
               className="w-full"
+              size="lg"
               disabled={!churchName.trim()}
               onClick={() => setStep(2)}
             >
@@ -164,14 +168,14 @@ export default function ChurchSignup() {
         {/* Step 2: 대표자 정보 */}
         {step === 2 && (
           <div className="rounded-2xl border bg-card p-6 space-y-5">
-            <div className="space-y-1">
-              <h2 className="font-semibold">대표자 계정</h2>
-              <p className="text-xs text-muted-foreground">이 계정은 교회 전체를 관리하는 master 계정입니다.</p>
+            <div className="space-y-0.5">
+              <h2 className="font-display font-semibold text-[16px]">대표자 계정</h2>
+              <p className="text-[13px] text-muted-foreground">교회 전체를 관리하는 마스터 계정입니다.</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium flex items-center gap-1.5">
+                <label className="text-[14px] font-medium flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-muted-foreground" /> 이름 *
                 </label>
                 <Input
@@ -183,7 +187,7 @@ export default function ChurchSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium flex items-center gap-1.5">
+                <label className="text-[14px] font-medium flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-muted-foreground" /> 이메일 *
                 </label>
                 <Input
@@ -195,7 +199,7 @@ export default function ChurchSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">비밀번호 *</label>
+                <label className="text-[14px] font-medium">비밀번호 *</label>
                 <Input
                   type="password"
                   value={password}
@@ -205,7 +209,7 @@ export default function ChurchSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">비밀번호 확인 *</label>
+                <label className="text-[14px] font-medium">비밀번호 확인 *</label>
                 <Input
                   type="password"
                   value={passwordConfirm}
@@ -296,35 +300,36 @@ export default function ChurchSignup() {
 
         {/* Step 3: 완료 */}
         {step === 3 && (
-          <div className="rounded-2xl border bg-card p-6 text-center space-y-5">
-            <div className="w-14 h-14 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto">
-              <Check className="w-7 h-7 text-success" />
+          <div className="rounded-2xl bg-primary p-7 text-center space-y-5 relative overflow-hidden">
+            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center mx-auto">
+              <Check className="w-7 h-7 text-accent" />
             </div>
 
             {emailConfirmRequired ? (
               <>
                 <div className="space-y-2">
-                  <h2 className="font-semibold text-lg">이메일을 확인해주세요</h2>
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{email}</span>로 확인 링크를 보냈습니다.
+                  <h2 className="font-display font-bold text-[18px] text-primary-foreground">이메일을 확인해주세요</h2>
+                  <p className="text-[13px] text-primary-foreground/70 leading-relaxed">
+                    <span className="font-medium text-primary-foreground">{email}</span>로 확인 링크를 보냈습니다.
                     이메일에서 링크를 클릭하면 교회 대시보드로 이동합니다.
                   </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[12px] text-primary-foreground/50">
                   이메일이 오지 않으면 스팸 폴더를 확인해주세요.
                 </p>
               </>
             ) : (
               <>
                 <div className="space-y-2">
-                  <h2 className="font-semibold text-lg">
+                  <h2 className="font-display font-bold text-[18px] text-primary-foreground">
                     {churchName} 등록 완료!
                   </h2>
-                  <p className="text-sm text-muted-foreground">
-                    30일 무료 체험이 시작되었습니다. 지금 바로 구역 앱을 사용해보세요.
+                  <p className="text-[13px] text-primary-foreground/70 leading-relaxed">
+                    30일 무료 체험이 시작되었습니다.<br />지금 바로 구역 앱을 사용해보세요.
                   </p>
                 </div>
-                <Button className="w-full" onClick={() => navigate('/onboarding')}>
+                <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold" size="lg" onClick={() => navigate('/onboarding')}>
                   시작하기 <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </>
@@ -332,9 +337,9 @@ export default function ChurchSignup() {
           </div>
         )}
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-[13px] text-muted-foreground">
           이미 초대를 받으셨나요?{' '}
-          <Link to="/login" className="text-primary underline underline-offset-2">
+          <Link to="/login" className="text-primary underline underline-offset-2 font-medium">
             로그인
           </Link>
         </p>
