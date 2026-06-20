@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, MessageCircleQuestion, Heart, Flag, ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Pencil } from 'lucide-react';
+import { Search, MessageCircleQuestion, Heart, Flag, ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Pencil, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/authContext';
+import { useChurch } from '@/lib/churchContext';
 import {
   getTodayQT,
   getDeepMeditation,
@@ -35,8 +36,32 @@ const STEP_INFO: Record<string, { no: number; icon: typeof Search; label: string
 export default function QTDeepMeditation() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasModule } = useChurch();
   const queryClient = useQueryClient();
   const today = getKSTDateString(new Date());
+
+  if (!hasModule('deep_meditation')) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center py-20 gap-5 text-center px-4">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Lock className="w-7 h-7 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-display text-lg font-bold">깊은 묵상을 이용할 수 없습니다</p>
+            <p className="text-[13px] text-muted-foreground mt-1">30일 체험 기간이 종료되었습니다.</p>
+            <p className="text-[13px] text-muted-foreground">도입 문의는 [나] → [문의하기]로 연락해 주세요.</p>
+          </div>
+          <button
+            onClick={() => navigate('/qt')}
+            className="text-[14px] font-semibold text-primary underline underline-offset-2"
+          >
+            QT로 돌아가기
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const { data: qt, isLoading: qtLoading } = useQuery({
     queryKey: ['qt_content', today],

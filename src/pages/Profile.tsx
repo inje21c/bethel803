@@ -268,84 +268,42 @@ export default function Profile() {
 
         {/* 프로필 히어로 */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="rounded-2xl bg-primary p-5 space-y-4">
+          <div className="rounded-2xl bg-primary p-5 space-y-4 relative overflow-hidden">
+            {/* 데코 원 */}
+            <div className="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
             {/* 아바타 + 이름 + 역할 */}
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0">
-                <span className="text-primary-foreground font-bold text-xl">{user?.name?.slice(0, 1)}</span>
+              <div className="w-[50px] h-[50px] rounded-full bg-accent flex items-center justify-center shrink-0">
+                <span className="font-bold text-xl" style={{ color: '#1c2a44' }}>{user?.name?.slice(0, 1)}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-[15px] text-primary-foreground">{user?.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[13px] font-medium text-accent">{roleLabel}</span>
+                <p className="font-display font-bold text-[17px] text-primary-foreground">{user?.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {(user?.role === 'master') && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent" style={{ color: '#1c2a44' }}>마스터</span>
+                  )}
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary-foreground/20 text-primary-foreground">{roleLabel}</span>
                   <span className="text-[13px] text-primary-foreground/60 truncate">{user?.districtName}</span>
                 </div>
               </div>
             </div>
-            {/* streak 요약 */}
-            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-primary-foreground/20">
-              <div className="text-center">
-                <p className="font-display text-2xl font-bold text-accent flex items-center justify-center gap-1">
-                  <Flame className="w-5 h-5" />{streak?.currentStreak ?? 0}
-                </p>
-                <p className="text-[13px] text-primary-foreground/70 mt-0.5">QT 연속</p>
+            {/* streak 3종 패널 */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-primary-foreground/10 rounded-xl py-2.5 text-center">
+                <p className="font-display text-[18px] font-bold text-accent">{streak?.currentStreak ?? 0}</p>
+                <p className="text-[10px] text-primary-foreground/60 mt-0.5">QT일</p>
               </div>
-              <div className="text-center">
-                <p className="font-display text-2xl font-bold text-accent">{yearlyChapters}</p>
-                <p className="text-[13px] text-primary-foreground/70 mt-0.5">성경읽기(장)</p>
+              <div className="bg-primary-foreground/10 rounded-xl py-2.5 text-center">
+                <p className="font-display text-[18px] font-bold text-accent">{yearlyChapters}</p>
+                <p className="text-[10px] text-primary-foreground/60 mt-0.5">읽기장</p>
               </div>
-              <div className="text-center">
-                <p className="font-display text-2xl font-bold text-accent">{yearlyPrayer}</p>
-                <p className="text-[13px] text-primary-foreground/70 mt-0.5">기도하기</p>
+              <div className="bg-primary-foreground/10 rounded-xl py-2.5 text-center">
+                <p className="font-display text-[18px] font-bold text-accent">{yearlyPrayer}</p>
+                <p className="text-[10px] text-primary-foreground/60 mt-0.5">기도건</p>
               </div>
             </div>
           </div>
         </motion.div>
-
-        {/* 연간 누적 현황 (0건 제외) */}
-        {[yearlyQT, yearlyChapters, yearlyStudy, yearlyPrayer].some(v => v > 0) && (
-        <div>
-          <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">{thisYear}년 누적</p>
-          <div className="grid grid-cols-2 gap-3">
-            {yearlyQT > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <BookMarked className="w-4 h-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground">QT</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyQT}<span className="text-[13px] font-normal text-muted-foreground ml-1">일</span></p>
-            </div>
-            )}
-            {yearlyChapters > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <BookOpen className="w-4 h-4 text-success" />
-                <span className="text-[13px] text-muted-foreground">성경읽기</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyChapters}<span className="text-[13px] font-normal text-muted-foreground ml-1">장</span></p>
-            </div>
-            )}
-            {yearlyStudy > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <BookOpen className="w-4 h-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground">성경공부</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyStudy}<span className="text-[13px] font-normal text-muted-foreground ml-1">건</span></p>
-            </div>
-            )}
-            {yearlyPrayer > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Heart className="w-4 h-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground">기도하기</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyPrayer}<span className="text-[13px] font-normal text-muted-foreground ml-1">건</span></p>
-            </div>
-            )}
-          </div>
-        </div>
-        )}
 
         {/* 활동 캘린더 */}
         <div>
@@ -389,7 +347,7 @@ export default function Profile() {
                     : 'text-foreground';
                 const off = 'rgba(140,140,140,0.2)';
                 return (
-                  <div key={day} className={`flex flex-col items-center gap-[3px] pb-1 ${isToday ? 'ring-2 ring-accent rounded-lg' : ''}`}>
+                  <div key={day} className={`flex flex-col items-center gap-[3px] pb-1 ${isToday ? 'border-2 border-accent rounded-md' : ''}`}>
                     <span className={`text-[13px] leading-tight ${numCls}`}>{day}</span>
                     <div className="w-full flex flex-col gap-[2px]">
                       <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.qtDone) ? '#4A7AB5' : off }} />

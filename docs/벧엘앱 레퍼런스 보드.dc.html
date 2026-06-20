@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;}
+::selection{background:#cdeceb;}
+</style>
+</helmet>
+<div style="min-width:100%;min-height:100vh;background:#e7e4dd;padding:56px 40px 96px;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;color:#26241f;">
+<div style="max-width:1320px;margin:0 auto;">
+
+  <!-- HEADER -->
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;margin-bottom:14px;">
+    <div style="max-width:760px;">
+      <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#8c877d;margin-bottom:14px;">Reference Board · 유사 서비스 정리</div>
+      <h1 style="margin:0;font-size:42px;line-height:1.12;font-weight:800;letter-spacing:-.02em;color:#1d1b16;">벧엘구역 앱 — 레퍼런스 보드</h1>
+      <p style="margin:16px 0 0;font-size:15.5px;line-height:1.7;color:#56524a;">개발 참고용으로 수집한 QT·성경·교회 앱 <strong style="color:#1d1b16;">6종 · 화면 91컷</strong>을 앱별로 분류하고, 기능 구조와 벧엘 구역 앱에 대한 시사점을 정리했습니다.</p>
+    </div>
+    <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#8c877d;text-align:right;line-height:1.9;">
+      <div>SCREENS&nbsp;&nbsp;<span style="color:#1d1b16;font-weight:600;">91</span></div>
+      <div>APPS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#1d1b16;font-weight:600;">06</span></div>
+      <div>CAPTURED&nbsp;<span style="color:#1d1b16;font-weight:600;">2026.06.20</span></div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin:28px 0 40px;padding-top:24px;border-top:1px solid #d2cec5;">
+    <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e4e0d7;border-radius:999px;padding:8px 15px 8px 11px;">
+      <span style="width:13px;height:13px;border-radius:4px;background:#14b5c0;flex:none;"></span><span style="font-size:13px;font-weight:600;">생명의삶 QT</span><span style="font-size:11.5px;color:#9a958c;">묵상지 표준형</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e4e0d7;border-radius:999px;padding:8px 15px 8px 11px;">
+      <span style="width:13px;height:13px;border-radius:4px;background:#9b3d8f;flex:none;"></span><span style="font-size:13px;font-weight:600;">Qt Notes</span><span style="font-size:11.5px;color:#9a958c;">개인 노트 톤</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e4e0d7;border-radius:999px;padding:8px 15px 8px 11px;">
+      <span style="width:13px;height:13px;border-radius:4px;background:#2e57bf;flex:none;"></span><span style="font-size:13px;font-weight:600;">THE QT</span><span style="font-size:11.5px;color:#9a958c;">교회 목장형</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e4e0d7;border-radius:999px;padding:8px 15px 8px 11px;">
+      <span style="width:13px;height:13px;border-radius:4px;background:#2b4a8b;flex:none;"></span><span style="font-size:13px;font-weight:600;">큐티인 QTIN</span><span style="font-size:11.5px;color:#9a958c;">묵상지 + 콘텐츠</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e4e0d7;border-radius:999px;padding:8px 15px 8px 11px;">
+      <span style="width:13px;height:13px;border-radius:4px;background:#20201c;flex:none;"></span><span style="font-size:13px;font-weight:600;">데일리 성경</span><span style="font-size:11.5px;color:#9a958c;">미니멀 데일리</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e4e0d7;border-radius:999px;padding:8px 15px 8px 11px;">
+      <span style="width:13px;height:13px;border-radius:4px;background:#2e6049;flex:none;"></span><span style="font-size:13px;font-weight:600;">AMERITH</span><span style="font-size:11.5px;color:#9a958c;">AI·커뮤니티 통합</span>
+    </div>
+  </div>
+
+  <!-- APP SECTIONS -->
+  <sc-for list="{{ apps }}" as="app" hint-placeholder-count="5">
+    <section style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:6px;overflow:hidden;margin-bottom:26px;">
+      <div style="display:flex;gap:26px;padding:26px 28px;border-bottom:1px solid #efece5;flex-wrap:wrap;">
+        <div style="flex:1;min-width:300px;display:flex;gap:18px;align-items:flex-start;">
+          <div style="width:46px;height:46px;border-radius:11px;flex:none;background:{{ app.color }};"></div>
+          <div style="min-width:0;">
+            <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#a39e94;">{{ app.eng }}</div>
+            <h2 style="margin:3px 0 0;font-size:24px;font-weight:800;letter-spacing:-.01em;color:#1d1b16;">{{ app.name }}</h2>
+            <div style="margin-top:4px;font-size:13px;font-weight:700;color:{{ app.color }};">{{ app.role }}</div>
+            <p style="margin:11px 0 0;font-size:13.5px;line-height:1.68;color:#5b574e;max-width:520px;">{{ app.desc }}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;">
+              <span style="font-size:10.5px;font-family:ui-monospace,'SF Mono',monospace;color:#a39e94;align-self:center;margin-right:2px;">NAV</span>
+              <sc-for list="{{ app.nav }}" as="t" hint-placeholder-count="5">
+                <span style="font-size:11.5px;font-weight:600;color:#56524a;background:#f0ede6;border:1px solid #e6e2d9;border-radius:6px;padding:4px 9px;">{{ t }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="width:262px;flex:none;background:#f6f4ef;border:1px solid #ece8e0;border-radius:8px;padding:16px 18px;">
+          <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#a39e94;margin-bottom:10px;">핵심 기능</div>
+          <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ app.features }}" as="f" hint-placeholder-count="5">
+              <li style="font-size:12.5px;line-height:1.45;color:#46433c;display:flex;gap:8px;"><span style="color:{{ app.color }};flex:none;">▪</span><span>{{ f }}</span></li>
+            </sc-for>
+          </ul>
+        </div>
+      </div>
+      <div style="padding:22px 28px 28px;">
+        <div style="display:flex;flex-wrap:wrap;gap:15px;">
+          <sc-for list="{{ app.shots }}" as="shot" hint-placeholder-count="8">
+            <figure style="margin:0;width:128px;">
+              <div style="border-radius:13px;overflow:hidden;border:1px solid #e4e0d7;box-shadow:0 1px 5px rgba(0,0,0,.07);background:#efece6;aspect-ratio:1080/2340;">
+                <img src="{{ shot.src }}" loading="lazy" style="display:block;width:100%;height:100%;object-fit:cover;object-position:top;"/>
+              </div>
+              <figcaption style="margin-top:8px;display:flex;gap:5px;align-items:baseline;line-height:1.3;">
+                <span style="font-family:ui-monospace,'SF Mono',monospace;font-size:9.5px;font-weight:700;flex:none;color:{{ app.color }};">{{ shot.n }}</span>
+                <span style="font-size:10.5px;color:#6d685e;">{{ shot.label }}</span>
+              </figcaption>
+            </figure>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+  </sc-for>
+
+  <!-- FEATURE MATRIX -->
+  <div style="margin-top:52px;padding-top:30px;border-top:1px solid #d2cec5;">
+    <h2 style="margin:0 0 4px;font-size:26px;font-weight:800;letter-spacing:-.01em;color:#1d1b16;">기능 매트릭스</h2>
+    <p style="margin:0 0 20px;font-size:13.5px;color:#7a756b;">앱별 기능 강도 비교 &nbsp;·&nbsp; <span style="color:#2b2a26;font-weight:700;">●</span> 핵심 &nbsp; <span style="color:#b0a99c;font-weight:700;">◐</span> 부분 &nbsp; <span style="color:#d3cdc2;font-weight:700;">○</span> 없음</p>
+    <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:6px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f3f0ea;">
+            <th style="text-align:left;padding:13px 16px;font-weight:700;color:#46433c;border-bottom:1px solid #e7e3da;">앱</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">오늘의 말씀</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">읽기·듣기</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">캘린더·기록</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">나눔·기도</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">소모임·구역</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">콘텐츠·영상</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">AI</th>
+            <th style="padding:13px 6px;font-weight:600;color:#56524a;border-bottom:1px solid #e7e3da;">구독·결제</th>
+          </tr>
+        </thead>
+        <tbody style="text-align:center;font-size:15px;color:#2b2a26;">
+          <tr>
+            <td style="text-align:left;padding:12px 16px;border-bottom:1px solid #efece5;"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#14b5c0;margin-right:8px;"></span><span style="font-size:13px;font-weight:600;">생명의삶 QT</span></td>
+            <td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;">●</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;padding:12px 16px;border-bottom:1px solid #efece5;"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#9b3d8f;margin-right:8px;"></span><span style="font-size:13px;font-weight:600;">Qt Notes</span></td>
+            <td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;padding:12px 16px;border-bottom:1px solid #efece5;"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#2e57bf;margin-right:8px;"></span><span style="font-size:13px;font-weight:600;">THE QT</span></td>
+            <td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;padding:12px 16px;border-bottom:1px solid #efece5;"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#2b4a8b;margin-right:8px;"></span><span style="font-size:13px;font-weight:600;">큐티인 QTIN</span></td>
+            <td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;">●</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;padding:12px 16px;border-bottom:1px solid #efece5;"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#20201c;margin-right:8px;"></span><span style="font-size:13px;font-weight:600;">데일리 성경</span></td>
+            <td style="border-bottom:1px solid #efece5;">●</td><td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#b0a99c;">◐</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td><td style="border-bottom:1px solid #efece5;color:#d3cdc2;">○</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;padding:12px 16px;"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#2e6049;margin-right:8px;"></span><span style="font-size:13px;font-weight:600;">AMERITH</span></td>
+            <td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td style="color:#b0a99c;">◐</td><td>●</td><td style="color:#b0a99c;">◐</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin:14px 2px 0;font-size:12.5px;line-height:1.6;color:#8a857b;">공통 패턴 — 스플래시 → 소셜/계정 로그인 → 온보딩 캐러셀 → <strong style="color:#56524a;">하단 5탭</strong>(홈·읽기·나눔·소모임·내정보) 구조가 사실상 표준. 모든 앱이 "오늘의 말씀"을 홈 진입점으로 사용.</p>
+  </div>
+
+  <!-- TAKEAWAYS -->
+  <div style="margin-top:52px;padding-top:30px;border-top:1px solid #d2cec5;">
+    <h2 style="margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:-.01em;color:#1d1b16;">벧엘 구역 앱 시사점</h2>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#7a756b;">레퍼런스에서 끌어낸 방향성 — 다음 단계 논의용 출발점</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:8px;padding:22px;">
+        <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#2e6049;font-weight:700;margin-bottom:10px;">01</div>
+        <h3 style="margin:0 0 7px;font-size:16px;font-weight:700;color:#1d1b16;">구역(소모임)이 중심축</h3>
+        <p style="margin:0;font-size:13px;line-height:1.62;color:#5b574e;">AMERITH 소모임(이야기·하루기도·함께묵상·모임)과 THE QT 목장 구조가 벧엘 '구역' 모델에 가장 가깝다. 여기서 출발.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:8px;padding:22px;">
+        <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#2e6049;font-weight:700;margin-bottom:10px;">02</div>
+        <h3 style="margin:0 0 7px;font-size:16px;font-weight:700;color:#1d1b16;">말씀 → 묵상 → 나눔 루프</h3>
+        <p style="margin:0;font-size:13px;line-height:1.62;color:#5b574e;">홈 진입 즉시 '오늘의 말씀'과 한 번의 행동(묵상 작성/나눔)으로 연결하는 짧은 일일 루프가 핵심 동선.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:8px;padding:22px;">
+        <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#2e6049;font-weight:700;margin-bottom:10px;">03</div>
+        <h3 style="margin:0 0 7px;font-size:16px;font-weight:700;color:#1d1b16;">기도 나눔이 공동체 엔진</h3>
+        <p style="margin:0;font-size:13px;line-height:1.62;color:#5b574e;">제목·카테고리·"함께 기도" 반응(AMERITH 2,416명 참여)이 사용 빈도를 만든다. 구역 단위 기도방으로 응용.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:8px;padding:22px;">
+        <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#2e6049;font-weight:700;margin-bottom:10px;">04</div>
+        <h3 style="margin:0 0 7px;font-size:16px;font-weight:700;color:#1d1b16;">캘린더·기록으로 지속성</h3>
+        <p style="margin:0;font-size:13px;line-height:1.62;color:#5b574e;">개인 묵상 연속성 + 구역 모임 일정/출석을 한 곳에서. 기록이 쌓일수록 이탈이 줄어든다.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:8px;padding:22px;">
+        <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#2e6049;font-weight:700;margin-bottom:10px;">05</div>
+        <h3 style="margin:0 0 7px;font-size:16px;font-weight:700;color:#1d1b16;">AI는 차별화 옵션</h3>
+        <p style="margin:0;font-size:13px;line-height:1.62;color:#5b574e;">AI 해설·성경 대화·퀴즈(AMERITH)는 최신 트렌드지만 필수는 아님. 핵심 기능 안정화 후 다음 단계로.</p>
+      </div>
+      <div style="background:#fdfcfa;border:1px solid #e7e3da;border-radius:8px;padding:22px;">
+        <div style="font-family:ui-monospace,'SF Mono',monospace;font-size:12px;color:#2e6049;font-weight:700;margin-bottom:10px;">06</div>
+        <h3 style="margin:0 0 7px;font-size:16px;font-weight:700;color:#1d1b16;">결제보다 '교회 무료'</h3>
+        <p style="margin:0;font-size:13px;line-height:1.62;color:#5b574e;">상용 앱의 이용권/구독 모델은 교회 자체 앱엔 불필요. 무료 + 구역 인증(가입 승인) 중심으로 단순화.</p>
+      </div>
+    </div>
+    <div style="margin-top:16px;background:#f3f0ea;border:1px solid #e7e3da;border-radius:8px;padding:18px 22px;display:flex;gap:14px;align-items:flex-start;">
+      <span style="font-size:13px;font-family:ui-monospace,'SF Mono',monospace;color:#2e6049;font-weight:700;margin-top:1px;">TONE</span>
+      <p style="margin:0;font-size:13px;line-height:1.62;color:#56524a;">비주얼은 차분한 단색 배경 + 1 포인트 컬러(생명의삶 teal / AMERITH green)가 신뢰감을 준다. Qt Notes 같은 과한 일러스트 톤보다 절제된 타이포·여백 중심이 교회 전 연령대에 적합.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:44px;text-align:center;font-family:ui-monospace,'SF Mono',monospace;font-size:11px;letter-spacing:.1em;color:#a8a297;">벧엘구역 앱 서비스 리디자인 · 레퍼런스 정리</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const 테스터A = (start, labels) => labels.map((l, i) => {
+      const n = String(start + i).padStart(2, '0');
+      return { src: `refs/${n}.jpg`, n, label: l };
+    });
+    const apps = [
+      {
+        key: 'living', name: '생명의삶 QT', eng: 'Duranno · Living Life',
+        color: '#14b5c0', role: '두란노 정기 묵상지 앱 (표준형)',
+        desc: '전통 묵상지를 그대로 옮긴 구조. 월간 표지 · 오디오/영상 QT · 자료실 · 나눔방 · 이용권 결제까지, 국내 QT 앱의 기본 골격을 보여준다.',
+        nav: ['캘린더', '자료실', 'Q.T', '나눔방', '내정보'],
+        features: ['오디오·영상 QT 듣기', '화면 설정(역본·글씨·배경색)', 'QT 캘린더', '나눔방 / 다이어리 / 카드', '이용권(구독) 결제'],
+        shots: 테스터A(1, ['스플래시', '홈 (비로그인)', '로그인', '온보딩 · 모바일 QT', '온보딩 · 오늘의 QT', '온보딩 · QT 캘린더', '온보딩 · 화면 설정', '온보딩 · 자료실', '온보딩 · 나눔방', '온보딩 · 내정보', '온보딩 · 이용권', '두란노 가입 · 약관', '가입 · 휴대폰 인증', '가입 · 검증 중', '가입 · 인증번호', '가입 · 정보 입력', '가입 · 완료', '두란노 계정 메뉴', '홈 (로그인)', '내정보', '홈'])
+      },
+      {
+        key: 'qtnotes', name: 'Qt Notes', eng: 'Personal Notes',
+        color: '#9b3d8f', role: '개인 묵상 노트 앱 (톤 참고용)',
+        desc: '성경 콘텐츠는 없고 메모·할일 중심의 개인 기록 앱. 기능보다 파스텔 일러스트·감성 표지 톤만 참고 대상.',
+        nav: ['메뉴', '추가'],
+        features: ['노트북별 분류', '메모 / 할일', '커스텀 표지', '감성 일러스트 톤'],
+        shots: 테스터A(22, ['스플래시', '첫 노트북 추가', '노트북 라이브러리', '새 노트북', '노트북 (감사)', '노트 추가 메뉴', '메모 / 할일'])
+      },
+      {
+        key: 'theqt', name: 'THE QT', eng: '한소망교회 · The Q.T.',
+        color: '#2e57bf', role: '교회 자체 QT (목장 공동체형)',
+        desc: '교회가 직접 만든 앱. "목장 인증 · 그 교회되기" 등 공동체 실천 구조와 SNS 연계가 벧엘 구역 모델과 가장 닮아 있다.',
+        nav: ['홈', '안내', '오늘의 QT'],
+        features: ['오늘의 QT 카드 (날짜·키워드)', '본문 절별 보기', '찬양 영상 임베드', '목장 인증 / 실천 목표', 'SNS(인스타) 연계'],
+        shots: 테스터A(29, ['카메라 권한', 'THE QT 안내', '오늘의 QT 목록', 'QT 카드 상세', '본문 절별 보기', '찬양 영상 · 댓글', '인스타그램 (한소망)'])
+      },
+      {
+        key: 'qtin', name: '큐티인 QTIN', eng: 'QTIN · QTM',
+        color: '#2b4a8b', role: '격월간 묵상지 큐티인 앱',
+        desc: '구속사적 본문 해설 + 평신도 묵상 간증이 강점. 설교·큐티노트·OST·찬양 콘텐츠와 다양한 정기구독/이용권 선물 모델을 갖췄다.',
+        nav: ['큐티인', '나눔방', '캘린더', '콘텐츠', '내정보'],
+        features: ['오늘의 묵상 (월간 표지)', 'GQS · 잡지 · 책 선택', '나눔방 (날짜별)', '설교 / 큐티노트 / OST / 찬양', '정기구독 · 이용권 선물'],
+        shots: 테스터A(36, ['온보딩 · 해설', '온보딩 · 캘린더', '온보딩 · 정기구독', '이용권 구매 안내', '이용권 선물', '개인정보 동의', '정보 수집 안내', '온보딩', '홈 · 권한 안내', '이용권 안내', '구독 페이지', '구매 페이지', '정기구독 상품', '나눔방', '스토어', '홈 · 오늘의 묵상', '콘텐츠', '콘텐츠 목록', '큐티인', '정기구독', '콘텐츠'])
+      },
+      {
+        key: 'daily', name: '데일리 성경', eng: 'Daily Bible',
+        color: '#20201c', role: '초미니멀 데일리 말씀 앱',
+        desc: '오늘의 말씀 → 묵상 → 기분 체크 → 짧은 생각 기록의 가벼운 일일 루프. 기도 음악까지. 절제된 크림 톤 + 블랙 버튼의 미니멀 UI.',
+        nav: ['오늘', '음악', '더보기'],
+        features: ['오늘의 말씀 카드', '말씀 묵상 · 아멘', '기분(감정) 체크', '짧은 생각 저널', '기도 음악 플레이어'],
+        shots: 테스터A(57, ['스플래시', '오늘의 말씀', '오늘의 말씀', '말씀 묵상', '묵상 · 아멘', '기분 체크', '기분 체크', '생각 기록', '생각 기록', '기도 음악', '기도 음악', '더보기'])
+      },
+      {
+        key: 'amerith', name: 'AMERITH', eng: 'AMERITH',
+        color: '#2e6049', role: 'AI · 커뮤니티 통합형 (가장 발전형)',
+        desc: '오늘의 말씀 · AI 성경 대화 · 성경 읽기/듣기 · 게임형 퀴즈 · 기도 나눔 · 소모임까지 통합한 최신형. 벧엘 구역 앱이 지향할 방향에 가장 근접하다.',
+        nav: ['성경', '기도나눔', '선물', '소모임', '큐티'],
+        features: ['AI 성경 대화 · AI 도우미 해설', '성경 읽기 / 듣기', '게임형 성경 퀴즈', '기도 나눔 (카테고리·함께 기도)', '소모임 (이야기·하루기도·함께묵상·모임)'],
+        shots: 테스터A(69, ['온보딩 · 성경', '온보딩 · 성경공부', '온보딩 · 선물', '온보딩 · 함께 기도', '소셜 로그인', '홈 · 오늘의 말씀', 'AI 코치 팁', 'AI 성경 대화', '성경 읽기', '창세기 장 목록', 'AI 도우미 해설', '성경 듣기', '성경 퀴즈', '기도 나눔', '소모임 (빈)', '소모임 만들기', '소모임 · 이야기', '소모임 · 이야기', '소모임 · 하루 기도', '소모임 · 함께 묵상', '소모임 · 모임', '큐티 · 오늘 말씀', '큐티 기록'])
+      }
+    ];
+    return { apps };
+  }
+}
+</script>
+</body>
+</html>
