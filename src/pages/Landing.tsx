@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, MessageSquareHeart, BookMarked, ChevronRight, CheckCircle2, Flame, Link2, Building2, Users, CalendarDays } from 'lucide-react';
+import { BookOpen, MessageSquareHeart, BookMarked, ChevronRight, CheckCircle2, Flame, Building2, Users, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const FEATURES = [
@@ -56,38 +56,12 @@ export default function Landing() {
             <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-[15px]" asChild>
               <Link to="/signup/church">우리 교회 무료 등록 <ChevronRight className="w-4 h-4 ml-1" /></Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-              <Link to="/login">로그인 / 구역원 가입</Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* 두 가지 진입 경로 */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 rounded-2xl border-2 border-primary/30 bg-primary/5 p-5 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <p className="font-display font-semibold text-[15px]">교회 처음 도입하는 경우</p>
-              <p className="text-[13px] text-muted-foreground mt-1 leading-relaxed">구역장·담당자가 교회를 등록하고 구성원을 초대 링크로 불러오세요.</p>
-            </div>
-            <Button className="w-full" asChild>
-              <Link to="/signup/church">교회 등록하기 →</Link>
-            </Button>
-          </div>
-
-          <div className="flex-1 rounded-2xl border-2 border-border bg-card p-5 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-              <Link2 className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-display font-semibold text-[15px]">초대 링크를 받은 경우</p>
-              <p className="text-[13px] text-muted-foreground mt-1 leading-relaxed">구역장에게 받은 초대 링크로 바로 가입하세요. 교회 등록은 필요 없습니다.</p>
-            </div>
-            <Button variant="outline" className="w-full" asChild>
-              <Link to="/login">로그인 / 가입</Link>
-            </Button>
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl border border-white/30 bg-white/10 text-primary-foreground text-[15px] font-semibold hover:bg-white/20 transition-colors"
+            >
+              로그인 / 구역원 가입
+            </Link>
           </div>
         </div>
       </section>
