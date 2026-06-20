@@ -12,14 +12,14 @@ export default function CommunitySubNav() {
   const { pathname } = useLocation();
 
   return (
-    <div className="flex gap-1 bg-muted p-1 rounded-xl mb-5">
+    <div className="flex gap-1 bg-muted p-1 rounded-xl mb-5 overflow-x-auto scrollbar-none">
       {tabs.map(({ path, label, icon: Icon }) => {
         const active = pathname.startsWith(path);
         return (
           <Link
             key={path}
             to={path}
-            className={`flex flex-1 items-center justify-center gap-1.5 px-2 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`flex flex-1 shrink-0 items-center justify-center gap-1 px-2.5 py-2 text-[13px] font-medium rounded-lg transition-colors whitespace-nowrap ${
               active
                 ? 'bg-background text-foreground border border-border/40'
                 : 'text-muted-foreground hover:text-foreground'

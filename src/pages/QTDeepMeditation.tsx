@@ -181,16 +181,24 @@ export default function QTDeepMeditation() {
           )}
         </div>
 
-        {/* 단계 표시 */}
+        {/* 단계 진행바 */}
         {session && session.state !== 'DONE' && step && (
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4].map(n => (
-              <div
-                key={n}
-                className={`h-1.5 flex-1 rounded-full ${n <= step.no ? 'bg-primary' : 'bg-muted'}`}
-              />
-            ))}
-            <span className="text-xs text-muted-foreground shrink-0">{step.no}/4 {step.label}</span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4].map(n => (
+                <div
+                  key={n}
+                  className={`h-1.5 flex-1 rounded-full transition-colors ${n <= step.no ? 'bg-primary' : 'bg-muted'}`}
+                />
+              ))}
+            </div>
+            <div className="flex justify-between px-0.5">
+              {['①관찰', '②연구·묵상', '③느낌', '④결단'].map((label, i) => (
+                <span key={label} className={`text-xs ${i + 1 === step.no ? 'text-primary font-semibold' : i + 1 < step.no ? 'text-primary/50' : 'text-muted-foreground/50'}`}>
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
@@ -258,7 +266,7 @@ export default function QTDeepMeditation() {
                 <div key={i} className="flex items-start gap-2 rounded-lg border bg-background p-3">
                   <span className="text-xs font-semibold text-primary shrink-0 mt-0.5">{i + 1}</span>
                   <p className="text-sm flex-1 leading-relaxed">{q.text}</p>
-                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  <Badge variant="secondary" className="shrink-0 text-xs">
                     {q.source === 'ai' ? 'AI' : '내 질문'}
                   </Badge>
                 </div>
