@@ -265,33 +265,35 @@ export default function Dashboard() {
                 <p className="text-[13px] text-primary-foreground/70 mt-1">내일도 함께해요 →</p>
               </div>
             ) : (
-              <div className="bg-primary p-5">
+              <div className="bg-primary p-5 relative overflow-hidden">
+                {/* 데코 원 */}
+                <div className="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BookHeart className="w-4 h-4 text-primary-foreground/80" />
                     <span className="text-[13px] font-semibold text-primary-foreground/80">오늘의 QT</span>
                   </div>
-                  {currentStreak >= 3 && (
-                    <span className="flex items-center gap-1 text-[13px] text-accent font-semibold bg-primary-foreground/10 rounded-full px-2 py-0.5">
-                      <Flame className="w-3 h-3" />{currentStreak}일 연속
-                    </span>
-                  )}
                 </div>
                 {todayQT.isLoaded ? (
                   <>
-                    <p className="font-display font-bold text-[15px] leading-snug mb-1 text-primary-foreground">
+                    <p className="font-display font-bold text-[21px] leading-snug mb-1.5 text-primary-foreground">
                       {todayQt?.title ?? '오늘의 묵상'}
                     </p>
-                    <p className="text-[13px] text-accent font-medium mb-2">{todayQT.verse}</p>
+                    <p className="text-[13px] text-accent font-medium mb-1">{todayQT.verse}</p>
                     <p className="text-[13px] text-primary-foreground/70 leading-relaxed line-clamp-2">{todayQT.summary}</p>
                   </>
                 ) : (
                   <p className="text-[15px] text-primary-foreground/70">{devotionalLoading ? '불러오는 중...' : '오늘의 말씀이 기다리고 있어요'}</p>
                 )}
-                <div className="mt-4">
-                  <span className="inline-flex items-center px-4 py-2 rounded-xl bg-accent text-accent-foreground text-[13px] font-semibold">
-                    QT 시작하기 →
+                <div className="mt-4 flex items-center gap-3">
+                  <span className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-accent text-accent-foreground text-[14px] font-bold">
+                    QT 시작하기
                   </span>
+                  {currentStreak > 0 && (
+                    <span className="flex items-center gap-1 text-[14px] font-bold text-accent whitespace-nowrap">
+                      <Flame className="w-4 h-4" />{currentStreak}일
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -315,7 +317,7 @@ export default function Dashboard() {
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div
-                className="h-full rounded-full bg-accent transition-all duration-500"
+                className="h-full rounded-full bg-primary transition-all duration-500"
                 style={{ width: `${bibleProgress}%` }}
               />
             </div>
