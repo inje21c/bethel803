@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BellRing, BookMarked, BookOpen, ChevronLeft, ChevronRight,
-  Link2, Lock, LogOut, MessageCircleQuestion, Moon,
+  Link2, Lock, LogOut, MessageCircleQuestion, Moon, Flame, Heart,
   Save, Smartphone, Sun, Trash2, User,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -15,6 +15,7 @@ import {
   deactivatePushSubscription,
   deleteMyAccount,
   getActivityCalendar,
+  getMyStreak,
   getNotificationPreferences,
   getPushSubscriptions,
   getYearlyChapterCount,
@@ -199,6 +200,14 @@ export default function Profile() {
     onError: () => toast.error('알림 설정 저장에 실패했습니다.'),
   });
 
+  // ── 스트릭 ─────────────────────────────────────────────────
+  const { data: streak } = useQuery({
+    queryKey: ['streak', user?.id],
+    queryFn: () => getMyStreak(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   // ── 나 탭 연간 통계 쿼리 ──────────────────────────────────
   const thisYear = new Date().getFullYear();
   const { data: yearlyQT = 0 } = useQuery({
@@ -257,75 +266,112 @@ export default function Profile() {
     <AppLayout>
       <div className="space-y-5">
 
-        {/* 프로필 헤더 */}
+        {/* 프로필 히어로 */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="card-elevated p-5 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-primary font-bold text-xl">{user?.name?.slice(0, 1)}</span>
+          <div className="rounded-2xl bg-primary p-5 space-y-4">
+            {/* 아바타 + 이름 + 역할 */}
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0">
+                <span className="text-primary-foreground font-bold text-xl">{user?.name?.slice(0, 1)}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-bold text-[15px] text-primary-foreground">{user?.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[13px] font-medium text-accent">{roleLabel}</span>
+                  <span className="text-[13px] text-primary-foreground/60 truncate">{user?.districtName}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-base">{user?.name}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Badge variant={user?.role !== 'member' ? 'default' : 'secondary'} className="text-[10px] px-2 py-0.5">
-                  {roleLabel}
-                </Badge>
-                <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+            {/* streak 요약 */}
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-primary-foreground/20">
+              <div className="text-center">
+                <p className="font-display text-2xl font-bold text-accent flex items-center justify-center gap-1">
+                  <Flame className="w-5 h-5" />{streak?.currentStreak ?? 0}
+                </p>
+                <p className="text-[13px] text-primary-foreground/70 mt-0.5">QT 연속</p>
+              </div>
+              <div className="text-center">
+                <p className="font-display text-2xl font-bold text-accent">{yearlyChapters}</p>
+                <p className="text-[13px] text-primary-foreground/70 mt-0.5">성경읽기(장)</p>
+              </div>
+              <div className="text-center">
+                <p className="font-display text-2xl font-bold text-accent">{yearlyPrayer}</p>
+                <p className="text-[13px] text-primary-foreground/70 mt-0.5">기도하기</p>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* 연간 누적 현황 */}
+        {/* 연간 누적 현황 (0건 제외) */}
+        {[yearlyQT, yearlyChapters, yearlyStudy, yearlyPrayer].some(v => v > 0) && (
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">{thisYear}년 누적 현황</p>
+          <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">{thisYear}년 누적</p>
           <div className="grid grid-cols-2 gap-3">
+            {yearlyQT > 0 && (
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <BookMarked className="w-4 h-4 text-[#4A7AB5]" />
-                <span className="text-xs text-muted-foreground">QT</span>
+                <BookMarked className="w-4 h-4 text-primary" />
+                <span className="text-[13px] text-muted-foreground">QT</span>
               </div>
-              <p className="text-2xl font-bold">{yearlyQT}<span className="text-sm font-normal text-muted-foreground ml-1">일</span></p>
+              <p className="text-2xl font-bold">{yearlyQT}<span className="text-[13px] font-normal text-muted-foreground ml-1">일</span></p>
             </div>
+            )}
+            {yearlyChapters > 0 && (
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <BookOpen className="w-4 h-4 text-[#5FAD2A]" />
-                <span className="text-xs text-muted-foreground">성경읽기</span>
+                <BookOpen className="w-4 h-4 text-success" />
+                <span className="text-[13px] text-muted-foreground">성경읽기</span>
               </div>
-              <p className="text-2xl font-bold">{yearlyChapters}<span className="text-sm font-normal text-muted-foreground ml-1">장</span></p>
+              <p className="text-2xl font-bold">{yearlyChapters}<span className="text-[13px] font-normal text-muted-foreground ml-1">장</span></p>
             </div>
+            )}
+            {yearlyStudy > 0 && (
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">성경공부</span>
+                <span className="text-[13px] text-muted-foreground">성경공부</span>
               </div>
-              <p className="text-2xl font-bold">{yearlyStudy}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+              <p className="text-2xl font-bold">{yearlyStudy}<span className="text-[13px] font-normal text-muted-foreground ml-1">건</span></p>
             </div>
+            )}
+            {yearlyPrayer > 0 && (
             <div className="card-elevated p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-base">🙏</span>
-                <span className="text-xs text-muted-foreground">기도하기</span>
+                <Heart className="w-4 h-4 text-primary" />
+                <span className="text-[13px] text-muted-foreground">기도하기</span>
               </div>
-              <p className="text-2xl font-bold">{yearlyPrayer}<span className="text-sm font-normal text-muted-foreground ml-1">건</span></p>
+              <p className="text-2xl font-bold">{yearlyPrayer}<span className="text-[13px] font-normal text-muted-foreground ml-1">건</span></p>
             </div>
+            )}
           </div>
         </div>
+        )}
 
         {/* 활동 캘린더 */}
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">활동 기록</p>
+          <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">활동 기록</p>
           <div className="card-elevated p-4">
+            {/* 범례 상단 */}
+            <div className="flex items-center justify-center gap-4 mb-3 pb-2 border-b border-border/50">
+              {[['#4A7AB5','QT'],['#5FAD2A','성경읽기'],['#C8002A','일정']].map(([color, label]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div className="w-4 h-[3px] rounded-full" style={{ background: color }} />
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                </div>
+              ))}
+            </div>
             <div className="flex items-center justify-between mb-3">
               <button onClick={prevCal} className="p-1 rounded-md hover:bg-muted transition-colors" aria-label="이전 달">
                 <ChevronLeft className="w-4 h-4 text-muted-foreground" />
               </button>
-              <span className="text-sm font-medium">{calYear}년 {calMonth}월</span>
+              <span className="text-[15px] font-medium">{calYear}년 {calMonth}월</span>
               <button onClick={nextCal} disabled={isCurrentMonth} className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30" aria-label="다음 달">
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
             <div className="grid grid-cols-7 gap-1 mb-1">
               {['일','월','화','수','목','금','토'].map(d => (
-                <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</div>
+                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">
@@ -337,13 +383,13 @@ export default function Profile() {
                 const isToday = dateStr === todayStr;
                 const isFuture = dateStr > todayStr;
                 const numCls = isToday
-                  ? 'text-[#4A7AB5] font-semibold'
+                  ? 'text-accent font-bold'
                   : isFuture
                     ? 'text-muted-foreground/30'
                     : 'text-foreground';
                 const off = 'rgba(140,140,140,0.2)';
                 return (
-                  <div key={day} className="flex flex-col items-center gap-[3px] pb-1">
+                  <div key={day} className={`flex flex-col items-center gap-[3px] pb-1 ${isToday ? 'ring-2 ring-accent rounded-lg' : ''}`}>
                     <span className={`text-[13px] leading-tight ${numCls}`}>{day}</span>
                     <div className="w-full flex flex-col gap-[2px]">
                       <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.qtDone) ? '#4A7AB5' : off }} />
@@ -353,14 +399,6 @@ export default function Profile() {
                   </div>
                 );
               })}
-            </div>
-            <div className="mt-3 flex items-center justify-center gap-4 pt-2 border-t border-border/50">
-              {[['#4A7AB5','QT'],['#5FAD2A','성경읽기'],['#C8002A','일정']].map(([color, label]) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <div className="w-4 h-[3px] rounded-full" style={{ background: color }} />
-                  <span className="text-[10px] text-muted-foreground">{label}</span>
-                </div>
-              ))}
             </div>
           </div>
         </div>

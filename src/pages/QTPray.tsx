@@ -125,12 +125,14 @@ export default function QTPray() {
         {/* 구역 기도 제목 */}
         {groupPrayers.length > 0 && (
           <div className="card-elevated p-5">
-            <p className="text-sm font-semibold mb-3">이번 주 구역 기도 제목</p>
-            <ul className="space-y-2">
+            <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-3">이번 주 구역 기도 제목</p>
+            <ul className="space-y-2.5">
               {groupPrayers.map((p) => (
-                <li key={p.id} className="flex gap-2 text-sm">
-                  <span className="text-primary mt-0.5 shrink-0">•</span>
-                  <span className="leading-relaxed">{p.content}</span>
+                <li key={p.id} className="flex gap-3 border-l-2 border-accent pl-3 py-0.5">
+                  <div className="flex-1">
+                    <p className="text-[13px] font-medium text-muted-foreground">{p.userName}</p>
+                    <p className="text-[15px] leading-relaxed">{p.content}</p>
+                  </div>
                 </li>
               ))}
             </ul>

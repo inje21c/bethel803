@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Home, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, Flame, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { getMyStreak, getQTCalendar, getKSTDateString } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
@@ -47,12 +47,14 @@ export default function QTComplete() {
     <AppLayout>
       <div className="space-y-6">
         {/* 완료 배너 */}
-        <div className="rounded-2xl bg-success/10 border border-success/20 p-6 text-center space-y-2">
-          <div className="text-4xl">🎉</div>
-          <h1 className="font-display text-2xl font-bold text-success">오늘 QT 완료!</h1>
+        <div className="rounded-2xl bg-primary/10 border border-primary/20 p-6 text-center space-y-2">
+          <div className="flex justify-center">
+            <CheckCircle2 className="w-10 h-10 text-success" />
+          </div>
+          <h1 className="font-display text-2xl font-bold text-primary">오늘 QT 완료!</h1>
           <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
             {(streak?.currentStreak ?? 0) > 0 && (
-              <span className="flex items-center gap-1 text-orange-500 font-semibold">
+              <span className="flex items-center gap-1 text-accent font-semibold">
                 <Flame className="w-4 h-4" />
                 {streak!.currentStreak}일 연속
               </span>
@@ -99,13 +101,13 @@ export default function QTComplete() {
 
               let cls = 'text-xs rounded-lg p-1.5 text-center ';
               if (isFuture) {
-                cls += 'text-muted-foreground/40 cursor-default';
+                cls += 'text-muted-foreground/30 cursor-default';
               } else if (done) {
-                cls += 'bg-success/15 text-success font-semibold cursor-pointer hover:bg-success/25';
-                if (isToday) cls += ' ring-2 ring-success';
+                cls += 'bg-primary/15 text-primary font-semibold cursor-pointer hover:bg-primary/25';
+                if (isToday) cls += ' ring-2 ring-accent';
               } else {
-                cls += 'bg-destructive/10 text-destructive/70 cursor-pointer hover:bg-destructive/20';
-                if (isToday) cls += ' ring-2 ring-destructive';
+                cls += 'bg-muted/60 text-muted-foreground/60 cursor-pointer hover:bg-muted';
+                if (isToday) cls += ' ring-2 ring-accent/60';
               }
 
               return (
@@ -119,6 +121,18 @@ export default function QTComplete() {
                 </button>
               );
             })}
+          </div>
+          {/* 범례 */}
+          <div className="flex items-center justify-center gap-4 mt-3 pt-3 border-t">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-4 h-4 rounded bg-primary/15 border border-primary/20 inline-block" />완료
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-4 h-4 rounded inline-block ring-2 ring-accent bg-transparent" />오늘
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-4 h-4 rounded bg-muted/60 inline-block" />미완료
+            </span>
           </div>
         </div>
 
