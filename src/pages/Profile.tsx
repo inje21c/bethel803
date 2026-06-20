@@ -305,51 +305,6 @@ export default function Profile() {
           </div>
         </motion.div>
 
-        {/* 연간 누적 현황 (0건 제외) */}
-        {[yearlyQT, yearlyChapters, yearlyStudy, yearlyPrayer].some(v => v > 0) && (
-        <div>
-          <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">{thisYear}년 누적</p>
-          <div className="grid grid-cols-2 gap-3">
-            {yearlyQT > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <BookMarked className="w-4 h-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground">QT</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyQT}<span className="text-[13px] font-normal text-muted-foreground ml-1">일</span></p>
-            </div>
-            )}
-            {yearlyChapters > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <BookOpen className="w-4 h-4 text-success" />
-                <span className="text-[13px] text-muted-foreground">성경읽기</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyChapters}<span className="text-[13px] font-normal text-muted-foreground ml-1">장</span></p>
-            </div>
-            )}
-            {yearlyStudy > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <BookOpen className="w-4 h-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground">성경공부</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyStudy}<span className="text-[13px] font-normal text-muted-foreground ml-1">건</span></p>
-            </div>
-            )}
-            {yearlyPrayer > 0 && (
-            <div className="card-elevated p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Heart className="w-4 h-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground">기도하기</span>
-              </div>
-              <p className="text-2xl font-bold">{yearlyPrayer}<span className="text-[13px] font-normal text-muted-foreground ml-1">건</span></p>
-            </div>
-            )}
-          </div>
-        </div>
-        )}
-
         {/* 활동 캘린더 */}
         <div>
           <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">활동 기록</p>
