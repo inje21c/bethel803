@@ -22,6 +22,7 @@ export default function QTMain() {
   const { settings, isLoading: settingsLoading, qtMode, hasModule } = useChurch();
   const qtSimpleBook = settings?.qtSimpleBook ?? '시편';
   const hasBibleText = hasModule('bible_text');
+  const hasDeepMeditation = hasModule('deep_meditation');
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
     queryKey: ['qt_content', today, qtMode, qtSimpleBook],
@@ -207,25 +208,38 @@ export default function QTMain() {
         </div>
 
         {/* 깊은 묵상 진입 */}
-        <button
-          onClick={() => navigate('/qt/deep')}
-          className="w-full flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
-        >
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <Search className="w-4 h-4 text-primary" />
+        {hasDeepMeditation ? (
+          <button
+            onClick={() => navigate('/qt/deep')}
+            className="w-full flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
+          >
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Search className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">깊은 묵상</p>
+              <p className="text-xs text-muted-foreground">
+                {deepSession?.state === 'DONE'
+                  ? '오늘 완료 — 기록 보기'
+                  : deepSession
+                    ? '진행 중 — 이어서 하기'
+                    : 'AI 질문과 함께 4단계로 더 깊이 묵상해보세요'}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
+        ) : (
+          <div className="w-full flex items-center gap-3 rounded-xl border border-muted bg-muted/40 p-4 opacity-60">
+            <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-muted-foreground">깊은 묵상</p>
+              <p className="text-xs text-muted-foreground">체험 기간 종료 후 이용할 수 없습니다</p>
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground border border-muted-foreground/30 rounded px-1.5 py-0.5 shrink-0">잠김</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">깊은 묵상</p>
-            <p className="text-xs text-muted-foreground">
-              {deepSession?.state === 'DONE'
-                ? '오늘 완료 — 기록 보기'
-                : deepSession
-                  ? '진행 중 — 이어서 하기'
-                  : 'AI 질문과 함께 4단계로 더 깊이 묵상해보세요'}
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-        </button>
+        )}
 
         {/* 버튼 */}
         {alreadyCompleted ? (
