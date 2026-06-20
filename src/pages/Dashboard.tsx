@@ -202,6 +202,20 @@ export default function Dashboard() {
           <h1 className="font-display text-2xl font-bold">안녕하세요, {user?.name}님</h1>
         </div>
 
+        {/* 신규 가입자(7일 이내) 이용안내 배너 */}
+        {user?.createdAt && (() => {
+          const daysSince = (Date.now() - new Date(user.createdAt).getTime()) / 86_400_000;
+          return daysSince <= 7;
+        })() && (
+          <Link to="/manual" className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 hover:bg-primary/10 transition-colors">
+            <BookOpen className="w-5 h-5 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-primary">처음 오셨나요?</p>
+              <p className="text-[13px] text-muted-foreground">이용안내에서 앱 사용법을 확인하세요 →</p>
+            </div>
+          </Link>
+        )}
+
         {/* Trial 배너 */}
         {churchInfo?.isTrialing && churchInfo.trialDaysLeft > 7 && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center gap-3">
