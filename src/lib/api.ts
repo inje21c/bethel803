@@ -2689,17 +2689,14 @@ export async function getQTByDate(date: string): Promise<QTContent | null> {
 
 export async function getTodayQT(): Promise<QTContent | null> {
   const today = getKSTDateString(new Date());
-  return getQTByDate(today);
-}
-
-/**
- * 베타: qt_scraping 플래그가 켜지면 내 교회에 당일 스크래핑 QT를 복사한 뒤 조회한다.
- * 플래그 꺼짐/소스 교회/이미 복사됨이면 RPC는 무동작 → 기존 getTodayQT와 동일.
- */
-export async function getTodayScrapedQTForBeta(): Promise<QTContent | null> {
-  const today = getKSTDateString(new Date());
-  // 실패해도 조회는 진행 (벧엘 등 이미 콘텐츠 보유 교회는 영향 없음)
-  await supabase.rpc('ensure_my_scraped_qt', { p_date: today });
+  // 베타: qt_scraping 켜지면 내 교회에 당일 스크래핑 QT를 복사(없을 때만).
+  // 플래그 꺼짐/소스 교회/이미 복사됨이면 서버에서 즉시 RETURN(무동작).
+  // 모든 QT 진입점(홈·기도·깊은묵상·구역장·관리)에서 동일하게 보이도록 데이터 계층에 둔다.
+  try {
+    await withApiTimeout(supabase.rpc('ensure_my_scraped_qt', { p_date: today }), 'QT 스크래핑 복사');
+  } catch {
+    // 복사 실패는 비치명적: 기존 콘텐츠 조회는 그대로 진행
+  }
   return getQTByDate(today);
 }
 

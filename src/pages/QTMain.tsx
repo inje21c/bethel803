@@ -5,7 +5,7 @@ import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lu
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import {
-  getTodayScrapedQTForBeta, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
+  getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
   getDeepMeditation, getOrCreateSimpleQT, getKSTDateString,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
@@ -28,7 +28,7 @@ export default function QTMain() {
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
     queryKey: ['qt_content', today, useScrapedQT ? 'scraped' : 'simple', qtSimpleBook],
-    queryFn: () => (useScrapedQT ? getTodayScrapedQTForBeta() : getOrCreateSimpleQT(today, qtSimpleBook)),
+    queryFn: () => (useScrapedQT ? getTodayQT() : getOrCreateSimpleQT(today, qtSimpleBook)),
     enabled: !settingsLoading,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: true,
