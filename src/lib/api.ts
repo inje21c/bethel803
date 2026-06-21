@@ -2027,6 +2027,10 @@ export async function adminResetUserPassword(
     } catch (e) {
       if (e instanceof Error && e.message !== error.message) throw e;
     }
+    const statusCode = (error as { context?: { status?: number } }).context?.status;
+    if (statusCode === 401) {
+      throw new Error('로그인 세션이 만료되었습니다. 다시 로그인한 뒤 시도해주세요.');
+    }
     throw error;
   }
   if (!data?.ok) throw new Error(data?.error || '비밀번호 초기화에 실패했습니다.');
@@ -2222,8 +2226,9 @@ export async function parseBulletin(pdfUrl?: string): Promise<ParsedBulletinResu
     } catch (e) {
       if (e instanceof Error && e.message !== error.message) throw e;
     }
-    if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-      throw new Error('로그인 세션이 유효하지 않습니다. 현재 preview에서 다시 로그인한 뒤 시도해주세요.');
+    const statusCode = (error as { context?: { status?: number } }).context?.status;
+    if (statusCode === 401) {
+      throw new Error('로그인 세션이 만료되었습니다. 다시 로그인한 뒤 시도해주세요.');
     }
     throw error;
   }
