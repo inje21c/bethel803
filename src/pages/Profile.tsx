@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   BellRing, BookMarked, BookOpen, ChevronLeft, ChevronRight,
   Link2, Lock, LogOut, MessageCircleQuestion, Moon, Flame, Heart,
-  Save, Smartphone, Sun, Trash2, User,
+  Save, Smartphone, Sun, Trash2, User, Copy,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { supabase } from '@/lib/supabase';
@@ -261,6 +261,7 @@ export default function Profile() {
   // ── 설정 섹션 토글 ─────────────────────────────────────────
   const [showEditSection, setShowEditSection] = useState(false);
   const [showNotifSection, setShowNotifSection] = useState(false);
+  const [showSupportSection, setShowSupportSection] = useState(false);
 
   return (
     <AppLayout>
@@ -397,6 +398,11 @@ export default function Profile() {
                 onClick: () => navigate('/support'),
                 right: <ChevronRight className="w-4 h-4 text-muted-foreground" />,
               },
+              {
+                icon: <Heart className="w-4 h-4" />, label: '개발자 후원하기', iconBg: 'bg-rose-100 dark:bg-rose-900/30 text-rose-600',
+                onClick: () => setShowSupportSection(v => !v),
+                right: <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showSupportSection ? 'rotate-90' : ''}`} />,
+              },
             ].map((row, i, arr) => (
               <div key={row.label}>
                 <button onClick={row.onClick} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors text-left">
@@ -497,6 +503,42 @@ export default function Profile() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+                {/* 개발자 후원 확장 섹션 */}
+                {row.label === '개발자 후원하기' && showSupportSection && (
+                  <div className="px-4 pb-4 space-y-3 border-t bg-muted/30">
+                    <p className="text-xs text-muted-foreground leading-5 pt-4">
+                      이 앱은 작은 모임들이 함께 신앙생활을 이어가도록 한 사람이 만들고 운영하고 있어요. 보내주시는 마음은 서버 운영과 기능 개선에 소중히 쓰입니다. 후원은 전적으로 자율이며, 하지 않으셔도 모든 기능을 그대로 사용하실 수 있습니다.
+                    </p>
+                    <div className="rounded-xl border bg-card p-4 space-y-2">
+                      {[
+                        ['은행', '토스뱅크'],
+                        ['계좌번호', '1000-0177-6433'],
+                        ['예금주', '현철민'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex items-center justify-between">
+                          <span className="text-[11px] text-muted-foreground">{label}</span>
+                          <span className="text-sm font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-9 gap-1.5"
+                      onClick={() => {
+                        navigator.clipboard.writeText('토스뱅크 1000-0177-6433 현철민')
+                          .then(() => toast.success('계좌 정보가 복사되었습니다.'))
+                          .catch(() => toast.error('복사에 실패했습니다.'));
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      계좌 정보 복사
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center leading-5">
+                      보내주신 후원에 진심으로 감사드립니다.
+                    </p>
                   </div>
                 )}
                 {i < arr.length - 1 && <div className="border-t mx-4" />}
