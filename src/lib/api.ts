@@ -2689,6 +2689,14 @@ export async function getQTByDate(date: string): Promise<QTContent | null> {
 
 export async function getTodayQT(): Promise<QTContent | null> {
   const today = getKSTDateString(new Date());
+  // 베타: qt_scraping 켜지면 내 교회에 당일 스크래핑 QT를 복사(없을 때만).
+  // 플래그 꺼짐/소스 교회/이미 복사됨이면 서버에서 즉시 RETURN(무동작).
+  // 모든 QT 진입점(홈·기도·깊은묵상·구역장·관리)에서 동일하게 보이도록 데이터 계층에 둔다.
+  try {
+    await withApiTimeout(supabase.rpc('ensure_my_scraped_qt', { p_date: today }), 'QT 스크래핑 복사');
+  } catch {
+    // 복사 실패는 비치명적: 기존 콘텐츠 조회는 그대로 진행
+  }
   return getQTByDate(today);
 }
 
@@ -3085,19 +3093,50 @@ export interface ChurchSettings {
   uiMode: 'simple' | 'full';
   isPendingDeletion: boolean;
   deletionDate: string | null;
+  /** 베타 기간 한시 개방 모듈 (슈퍼어드민 토글). 전역 설정. */
+  betaOpenModules: string[];
 }
 
 /**
  * legacy 플랜은 모든 모듈 허용 (기존 교회).
+ * 베타 기간 한시 개방 모듈(슈퍼어드민 토글)은 모든 가입자에게 열림.
  * bible_text를 제외한 모든 모듈은 trialing 중에 열림.
  * bible_text는 라이센스 계약이 필요하므로 trial에서도 modules 값만 따름.
  */
 export function hasModule(settings: ChurchSettings | null | undefined, module: string): boolean {
   if (!settings) return false;
   if (settings.plan === 'legacy') return true;
+  if (settings.betaOpenModules.includes(module)) return true; // 베타 한시 개방 (슈퍼어드민 토글)
   const LEGACY_ONLY_MODULES = ['bible_text', 'bulletin_parsing'];
   if (!LEGACY_ONLY_MODULES.includes(module) && settings.isTrialing) return true;
   return settings.modules[module] ?? false;
+}
+
+export interface BetaFlag {
+  module: string;
+  enabled: boolean;
+}
+
+/** 베타 모듈 플래그 전체 조회 (전역). */
+export async function getBetaFlags(): Promise<BetaFlag[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_beta_flags'),
+    '베타 플래그 조회'
+  );
+  if (error) throw error;
+  return ((data as { module: string; enabled: boolean }[] | null) ?? []).map(r => ({
+    module: r.module,
+    enabled: r.enabled,
+  }));
+}
+
+/** 베타 모듈 플래그 토글 (슈퍼어드민 전용). */
+export async function setBetaFlag(module: string, enabled: boolean): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.rpc('set_beta_flag', { p_module: module, p_enabled: enabled }),
+    '베타 플래그 변경'
+  );
+  if (error) throw error;
 }
 
 /**
@@ -3106,12 +3145,13 @@ export function hasModule(settings: ChurchSettings | null | undefined, module: s
  */
 export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   // allSettled: 한 쪽 타임아웃이 다른 쪽을 죽이지 않음
-  const [settingsResult, infoResult] = await Promise.allSettled([
+  const [settingsResult, infoResult, betaResult] = await Promise.allSettled([
     withApiTimeout(
       supabase.from('church_settings').select('*').limit(1).maybeSingle(),
       '교회 설정 조회'
     ),
     withApiTimeout(supabase.rpc('get_my_church_info'), '교회 정보 조회'),
+    withApiTimeout(supabase.rpc('get_beta_flags'), '베타 플래그 조회'),
   ]);
 
   // 설정 조회가 '일시 실패(타임아웃/네트워크)'면 throw → React Query가 직전 캐시를 유지.
@@ -3143,6 +3183,12 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
   const isTrialing = isBillingTrialing && trialMs > 0;
   const trialDaysLeft = isBillingTrialing ? Math.max(0, Math.ceil(trialMs / 86400000)) : 0;
 
+  // 베타 플래그: 조회 실패 시 빈 배열(게이팅 보수적). enabled=true인 모듈만 개방.
+  const betaRows = betaResult.status === 'fulfilled' && !betaResult.value.error
+    ? ((betaResult.value.data as { module: string; enabled: boolean }[] | null) ?? [])
+    : [];
+  const betaOpenModules = betaRows.filter(r => r.enabled).map(r => r.module);
+
   return {
     qtMode: (settingsRow.qt_mode as QTMode) ?? 'simple',
     modules: (settingsRow.modules as Record<string, boolean>) ?? {},
@@ -3159,6 +3205,7 @@ export async function getMyChurchSettings(): Promise<ChurchSettings | null> {
     uiMode: (settingsRow.ui_mode as 'simple' | 'full') ?? 'full',
     isPendingDeletion: !!(info as Record<string, unknown>)?.deleted_at,
     deletionDate: ((info as Record<string, unknown>)?.deleted_at as string) ?? null,
+    betaOpenModules,
   };
 }
 

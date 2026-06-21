@@ -1,17 +1,76 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown } from 'lucide-react';
+import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown, FlaskConical } from 'lucide-react';
 import {
   getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword,
   restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin,
   getChurchMembersSuperAdmin, changeMasterSuperAdmin,
+  getBetaFlags, setBetaFlag,
   type SuperAdminChurch, type ChurchMemberBasic,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+
+/** 베타 모듈 한글 라벨 */
+const BETA_MODULE_LABELS: Record<string, string> = {
+  bible_text: '성경읽기 본문',
+  deep_meditation: 'QT 깊은 묵상',
+  qt_scraping: 'QT 말씀 자동 스크래핑',
+};
+
+function BetaFlagsPanel() {
+  const qc = useQueryClient();
+  const { data: flags = [], isLoading } = useQuery({
+    queryKey: ['beta_flags'],
+    queryFn: getBetaFlags,
+    staleTime: 1000 * 30,
+  });
+
+  const mutation = useMutation({
+    mutationFn: ({ module, enabled }: { module: string; enabled: boolean }) => setBetaFlag(module, enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['beta_flags'] });
+      qc.invalidateQueries({ queryKey: ['church_settings'] });
+      toast.success('베타 설정이 변경되었습니다.');
+    },
+    onError: (e: unknown) => toast.error((e as Error).message ?? '변경에 실패했습니다.'),
+  });
+
+  return (
+    <div className="rounded-2xl border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <FlaskConical className="w-4 h-4 text-primary" />
+        <div>
+          <p className="font-semibold text-sm">베타 모듈 개방</p>
+          <p className="text-xs text-muted-foreground">켜면 모든 가입자(무료·체험 포함)에게 한시 개방됩니다.</p>
+        </div>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-3"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+        <div className="space-y-2">
+          {flags.map(flag => (
+            <div key={flag.module} className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+              <span className="text-sm font-medium">{BETA_MODULE_LABELS[flag.module] ?? flag.module}</span>
+              <Switch
+                checked={flag.enabled}
+                disabled={mutation.isPending}
+                onCheckedChange={enabled => mutation.mutate({ module: flag.module, enabled })}
+              />
+            </div>
+          ))}
+          {flags.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-3">등록된 베타 모듈이 없습니다.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const PLAN_OPTIONS = ['legacy', 'free', 'starter', 'standard', 'premium'];
 const STATUS_OPTIONS = ['active', 'trialing', 'past_due', 'suspended', 'archived'];
@@ -412,6 +471,9 @@ export default function SuperAdmin() {
             새로고침
           </Button>
         </div>
+
+        {/* 베타 모듈 개방 토글 */}
+        <BetaFlagsPanel />
 
         {/* 교회 목록 */}
         <div className="space-y-3">

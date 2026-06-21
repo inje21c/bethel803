@@ -558,6 +558,22 @@ export default function Dashboard() {
           </motion.div>
         )}
 
+        {/* 개발자 후원 진입점 */}
+        <motion.div variants={item} initial="hidden" animate="show" transition={{ delay: 0.3 }}>
+          <Link
+            to="/profile?support=1"
+            className="flex items-center gap-3 rounded-2xl border border-rose-100 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/15 px-4 py-3 hover:bg-rose-50 dark:hover:bg-rose-950/25 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-rose-100 dark:bg-rose-900/30 text-rose-600">
+              <Heart className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold">이 앱이 도움이 되셨나요?</p>
+              <p className="text-[12px] text-muted-foreground">개발자에게 따뜻한 마음 전하기 →</p>
+            </div>
+          </Link>
+        </motion.div>
+
         {/* Schedule popup */}
         <AnimatePresence>
           {showPopup && (

@@ -353,13 +353,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       슈퍼어드민
                     </Link>
                   )}
-                  <button
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground"
-                    onClick={toggleTheme}
-                  >
-                    {activeTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    {activeTheme === 'dark' ? '라이트 모드' : '야간 모드'}
-                  </button>
                 </div>
 
                 <div className="border-t pt-3">
