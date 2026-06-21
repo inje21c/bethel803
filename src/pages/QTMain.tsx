@@ -5,7 +5,7 @@ import { Flame, Play, Pause, AlertCircle, ChevronRight, Clock, Search } from 'lu
 import { useAuth } from '@/lib/authContext';
 import { useChurch } from '@/lib/churchContext';
 import {
-  getTodayQT, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
+  getTodayQT, getTodayScrapedQTForBeta, getMyQTResponse, getMyStreak, upsertQTResponse, updateQTStreak,
   getDeepMeditation, getOrCreateSimpleQT, getKSTDateString,
 } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
@@ -24,11 +24,16 @@ export default function QTMain() {
   const hasBibleText = hasModule('bible_text');
   const hasDeepMeditation = hasModule('deep_meditation');
   // 베타: qt_scraping 켜지면 simple 모드 교회도 스크래핑 QT를 본다.
-  const useScrapedQT = qtMode !== 'simple' || hasModule('qt_scraping');
+  // simple+스크래핑ON일 때만 벧엘 콘텐츠 복사(getTodayScrapedQTForBeta), 그 외는 일반 경로.
+  const betaScraping = qtMode === 'simple' && hasModule('qt_scraping');
+  const useScrapedQT = qtMode !== 'simple' || betaScraping;
 
   const { data: qt, isLoading: qtLoading, error: qtError } = useQuery({
     queryKey: ['qt_content', today, useScrapedQT ? 'scraped' : 'simple', qtSimpleBook],
-    queryFn: () => (useScrapedQT ? getTodayQT() : getOrCreateSimpleQT(today, qtSimpleBook)),
+    queryFn: () =>
+      betaScraping ? getTodayScrapedQTForBeta()
+      : useScrapedQT ? getTodayQT()
+      : getOrCreateSimpleQT(today, qtSimpleBook),
     enabled: !settingsLoading,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: true,
