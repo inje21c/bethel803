@@ -2448,7 +2448,13 @@ export async function dispatchNotificationPush(notificationId: string): Promise<
     '푸시 발송'
   );
 
-  if (error) throw error;
+  if (error) {
+    const statusCode = (error as { context?: { status?: number } }).context?.status;
+    if (statusCode === 401) {
+      throw new Error('로그인 세션이 만료되었습니다. 다시 로그인한 뒤 시도해주세요.');
+    }
+    throw error;
+  }
   if (!data?.ok) {
     throw new Error(typeof data?.error === 'string' ? data.error : '푸시 발송에 실패했습니다.');
   }
