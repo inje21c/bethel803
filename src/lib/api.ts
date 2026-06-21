@@ -3088,6 +3088,13 @@ export interface ChurchSettings {
 }
 
 /**
+ * 오픈 전 베타 기간 동안 모든 가입자에게 임시로 열어주는 모듈.
+ * 정식 오픈 시 이 배열을 비우면 원래 라이선스 게이팅으로 복귀한다.
+ * (bible_text는 본래 라이선스 계약이 필요하나 베타 테스트 위해 한시 개방)
+ */
+const BETA_OPEN_MODULES = ['bible_text'];
+
+/**
  * legacy 플랜은 모든 모듈 허용 (기존 교회).
  * bible_text를 제외한 모든 모듈은 trialing 중에 열림.
  * bible_text는 라이센스 계약이 필요하므로 trial에서도 modules 값만 따름.
@@ -3095,6 +3102,7 @@ export interface ChurchSettings {
 export function hasModule(settings: ChurchSettings | null | undefined, module: string): boolean {
   if (!settings) return false;
   if (settings.plan === 'legacy') return true;
+  if (BETA_OPEN_MODULES.includes(module)) return true; // 베타 한시 개방 (오픈 시 제거)
   const LEGACY_ONLY_MODULES = ['bible_text', 'bulletin_parsing'];
   if (!LEGACY_ONLY_MODULES.includes(module) && settings.isTrialing) return true;
   return settings.modules[module] ?? false;
