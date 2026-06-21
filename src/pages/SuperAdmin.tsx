@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 const BETA_MODULE_LABELS: Record<string, string> = {
   bible_text: '성경읽기 본문',
   deep_meditation: 'QT 깊은 묵상',
+  qt_scraping: 'QT 말씀 자동 스크래핑',
 };
 
 function BetaFlagsPanel() {
