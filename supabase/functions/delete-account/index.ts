@@ -78,8 +78,34 @@ Deno.serve(async (req) => {
         { headers: corsHeaders }
       );
 
+    } else if (profile.role === 'leader' && profile.district_id) {
+      // 리더(모임장): 같은 모임에 다른 활성 구성원이 있으면 탈퇴 차단
+      // (리더가 빠지면 모임이 리더 부재 상태가 되어 승인/관리가 불가능해짐)
+      const { count } = await adminClient
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'active')
+        .eq('district_id', profile.district_id)
+        .neq('id', user.id);
+
+      if ((count ?? 0) > 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'leader_has_members',
+            message: '모임에 구성원이 있습니다. 다른 분에게 리더를 넘기거나 구성원을 정리한 후 탈퇴해주세요.',
+          }),
+          { status: 409, headers: corsHeaders }
+        );
+      }
+
+      // 리더 단독(구성원 없음) → 본인 삭제. 빈 모임(district)은 운영자가 정리.
+      await adminClient.from('users').delete().eq('id', user.id);
+      await adminClient.auth.admin.deleteUser(user.id);
+
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+
     } else {
-      // 구역원/구역장: 본인 데이터만 즉시 삭제
+      // 구역원: 본인 데이터만 즉시 삭제
       await adminClient.from('users').delete().eq('id', user.id);
       await adminClient.auth.admin.deleteUser(user.id);
 

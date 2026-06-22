@@ -275,14 +275,14 @@ export default function Login() {
                 </p>
               </div>
 
-              {/* 새로 시작: 교회 등록 */}
+              {/* 새로 시작: 모임 만들기 */}
               <div className="rounded-xl border bg-card p-4 space-y-2">
                 <p className="font-display font-semibold text-[15px]">새로 시작하시나요?</p>
                 <p className="text-[13px] text-muted-foreground leading-relaxed">
-                  우리 모임·교회를 직접 시작하려면 아래에서 등록하세요.
+                  우리 모임을 직접 시작하려면 아래에서 만드세요.
                 </p>
                 <Button asChild className="w-full">
-                  <Link to="/signup/church">교회 등록하기</Link>
+                  <Link to="/signup">모임 만들기</Link>
                 </Button>
               </div>
 
@@ -296,9 +296,9 @@ export default function Login() {
 
         {/* 교회 등록 링크 */}
         <p className="text-center text-xs text-muted-foreground pt-4 pb-2">
-          새 교회를 등록하시겠어요?{' '}
-          <Link to="/signup/church" className="text-primary underline underline-offset-2 font-medium">
-            교회 등록
+          교회 단위로 도입하시나요?{' '}
+          <Link to="/business" className="text-primary underline underline-offset-2 font-medium">
+            교회 도입 안내
           </Link>
         </p>
 

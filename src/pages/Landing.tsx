@@ -23,7 +23,7 @@ export default function Landing() {
               로그인
             </Link>
             <Button size="sm" asChild>
-              <Link to="/signup/church">시작하기</Link>
+              <Link to="/signup">모임 만들기</Link>
             </Button>
           </div>
         </div>
@@ -44,13 +44,13 @@ export default function Landing() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-[15px]" asChild>
-              <Link to="/signup/church">우리 구역 시작하기 <ChevronRight className="w-4 h-4 ml-1" /></Link>
+              <Link to="/signup">우리 모임 시작하기 <ChevronRight className="w-4 h-4 ml-1" /></Link>
             </Button>
             <Link
               to="/login"
               className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl border border-white/30 bg-white/10 text-primary-foreground text-[15px] font-semibold hover:bg-white/20 transition-colors"
             >
-              로그인 / 구역원 가입
+              로그인 / 초대받아 참여
             </Link>
           </div>
         </div>
@@ -88,10 +88,14 @@ export default function Landing() {
             구성원은 언제든 초대 링크로 부를 수 있습니다.
           </p>
           <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold" asChild>
-            <Link to="/signup/church">
-              시작하기 <ChevronRight className="w-4 h-4 ml-1" />
+            <Link to="/signup">
+              모임 만들기 <ChevronRight className="w-4 h-4 ml-1" />
             </Link>
           </Button>
+          <p className="text-[13px] text-primary-foreground/60 pt-2">
+            교회 단위로 도입하시나요?{' '}
+            <Link to="/business" className="text-accent font-medium underline underline-offset-2">교회 도입 안내</Link>
+          </p>
         </div>
       </section>
 

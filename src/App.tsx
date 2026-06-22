@@ -46,6 +46,8 @@ const QTDate = lazy(() => import("./pages/QTDate"));
 const QTDeepMeditation = lazy(() => import("./pages/QTDeepMeditation"));
 const QTLeaderDashboard = lazy(() => import("./pages/QTLeaderDashboard"));
 const ChurchSignup = lazy(() => import("./pages/ChurchSignup"));
+const Signup = lazy(() => import("./pages/Signup"));
+const Business = lazy(() => import("./pages/Business"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Join = lazy(() => import("./pages/Join"));
 const Landing = lazy(() => import("./pages/Landing"));
@@ -102,7 +104,9 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/signup/church" element={<ChurchSignup />} />
+        <Route path="/business" element={<Business />} />
         <Route path="/join" element={<Join />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />

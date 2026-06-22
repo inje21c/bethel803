@@ -119,8 +119,8 @@ export default function Profile() {
     setDeleteLoading(true);
     try {
       const result = await deleteMyAccount();
-      if (result.error === 'master_has_members') { toast.error(result.message ?? '다른 구성원이 있습니다. 먼저 권한을 이전해주세요.'); return; }
-      if (result.error) { toast.error(result.error); return; }
+      if (result.error === 'master_has_members' || result.error === 'leader_has_members') { toast.error(result.message ?? '다른 구성원이 있습니다. 먼저 권한을 이전해주세요.'); return; }
+      if (result.error) { toast.error(result.message ?? result.error); return; }
       await supabase.auth.signOut();
       navigate('/login', { replace: true });
     } finally { setDeleteLoading(false); }

@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
-import { useChurch } from '@/lib/churchContext';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, MessageSquareHeart, Megaphone, CalendarDays, Share2, UserCheck } from 'lucide-react';
 
@@ -8,9 +7,9 @@ const FIRST_STEPS = [
   {
     step: 1,
     icon: Share2,
-    label: '구역원 초대하기',
+    label: '구성원 초대하기',
     link: '/admin?tab=members',
-    tutorial: '초대 링크를 카카오톡 채팅방에 공유하면 됩니다. 링크를 누른 구성원은 자동으로 구역에 배정됩니다.',
+    tutorial: '초대 링크를 카카오톡 채팅방에 공유하면 됩니다. 링크를 누른 구성원은 자동으로 모임에 배정됩니다.',
   },
   {
     step: 2,
@@ -38,7 +37,6 @@ const FIRST_STEPS = [
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { settings: church } = useChurch();
 
   function handleStart() {
     localStorage.setItem('bethel_onboarded', '1');
@@ -53,10 +51,10 @@ export default function Onboarding() {
         <div className="rounded-2xl bg-primary p-6 relative overflow-hidden text-center">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-accent/15 pointer-events-none" />
           <p className="font-display text-[22px] font-bold text-primary-foreground">
-            {church?.name ?? '구역'}에 오신 것을 환영합니다
+            환영합니다, {user?.name}님
           </p>
           <p className="text-[13px] text-primary-foreground/60 mt-1">
-            {user?.name}님, 구역이 준비되었습니다
+            {user?.districtName ?? '모임'} 공간이 준비되었습니다
           </p>
         </div>
 
@@ -69,7 +67,9 @@ export default function Onboarding() {
             <p className="text-[14px] font-semibold">혼자 먼저 써봐도 됩니다</p>
             <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
               구성원은 나중에 언제든 초대 링크로 부를 수 있습니다.
-              실제 구역장에게 이관하고 싶을 때는 <span className="text-primary font-medium">[나] → [관리]</span>에서 마스터 권한을 넘길 수 있습니다.
+              {user?.role === 'master' && (
+                <> 실제 구역장에게 이관하고 싶을 때는 <span className="text-primary font-medium">[나] → [관리]</span>에서 마스터 권한을 넘길 수 있습니다.</>
+              )}
             </p>
           </div>
         </div>
