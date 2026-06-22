@@ -295,10 +295,12 @@ export default function BibleReading() {
     // 현재 선택 장의 본문이 실제로 준비됐을 때만 스크롤 (placeholder 단계 제외)
     if (!pendingJumpVerse || chapterStale || verses.length === 0) return;
     requestAnimationFrame(() => {
-      verseRefs.current[pendingJumpVerse]?.scrollIntoView({
-        behavior: 'smooth',
-        block: pendingJumpVerse === 1 ? 'start' : 'center',
-      });
+      if (pendingJumpVerse === 1) {
+        // 1절로 이동 시 권/장 선택 헤더까지 함께 보이도록 리더 상단으로 스크롤
+        readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        verseRefs.current[pendingJumpVerse]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       setPendingJumpVerse(null);
     });
   }, [chapterStale, pendingJumpVerse, verses]);
@@ -688,7 +690,7 @@ export default function BibleReading() {
             />
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-              <section ref={readerRef} className="min-w-0 rounded-lg border bg-card">
+              <section ref={readerRef} className="min-w-0 scroll-mt-20 rounded-lg border bg-card">
                 <div className="flex items-center justify-between border-b px-2 py-2">
                   <Button variant="ghost" size="icon" className="shrink-0" onClick={() => moveChapter(-1)} aria-label="이전 장">
                     <ChevronLeft className="h-5 w-5" />
