@@ -24,12 +24,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const dates = await getRequestedDates(req);
+    const { dates, force } = await getRequestedDates(req);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const results: { date: string; scripture: string }[] = [];
 
     for (const date of dates) {
-      results.push(await fetchAndStoreQT(supabase, date));
+      results.push(await fetchAndStoreQT(supabase, date, force));
     }
 
     const first = results[0];
@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
 async function fetchAndStoreQT(
   supabase: ReturnType<typeof createClient>,
   date: string,
+  force = false,
 ): Promise<{ date: string; scripture: string }> {
   // scraped 모드 교회 목록 동적 조회 (슈퍼어드민 허가 교회)
   const { data: settingsRows } = await supabase
@@ -66,7 +67,8 @@ async function fetchAndStoreQT(
   const scrapedIds = (settingsRows ?? []).map((r) => r.church_id as string);
 
   // 이미 저장된 교회 확인: church_id IN (...) 필터로 maybeSingle 오류 방지
-  if (scrapedIds.length > 0) {
+  // force=true 면 캐시/skip을 무시하고 재스크랩 → 같은 행을 upsert(id 유지, 완료기록 보존)
+  if (!force && scrapedIds.length > 0) {
     const { data: existing } = await supabase
       .from('qt_contents')
       .select('church_id, date, title, scripture, scripture_text, summary, question, prayer, application, audio_url, hymn_suggestions')
@@ -172,22 +174,26 @@ function getTodayKST(): string {
   return kst.toISOString().slice(0, 10);
 }
 
-async function getRequestedDates(req: Request): Promise<string[]> {
+async function getRequestedDates(req: Request): Promise<{ dates: string[]; force: boolean }> {
   if (req.method === 'GET') {
     const url = new URL(req.url);
-    return buildDateRange(
-      url.searchParams.get('date') ?? undefined,
-      url.searchParams.get('from') ?? undefined,
-      url.searchParams.get('to') ?? undefined,
-    );
+    return {
+      dates: buildDateRange(
+        url.searchParams.get('date') ?? undefined,
+        url.searchParams.get('from') ?? undefined,
+        url.searchParams.get('to') ?? undefined,
+      ),
+      force: url.searchParams.get('force') === 'true' || url.searchParams.get('force') === '1',
+    };
   }
 
   const body = await req.json().catch(() => ({})) as {
     date?: string;
     from?: string;
     to?: string;
+    force?: boolean;
   };
-  return buildDateRange(body.date, body.from, body.to);
+  return { dates: buildDateRange(body.date, body.from, body.to), force: body.force === true };
 }
 
 function buildDateRange(date?: string, from?: string, to?: string): string[] {
