@@ -776,29 +776,27 @@ export default function BibleReading() {
                           ref={node => {
                             verseRefs.current[item.verse] = node;
                           }}
-                          className={`flex items-start gap-1 px-4 py-2 transition-colors ${verseStateClass}`}
+                          className={`flex items-start gap-1.5 px-4 py-2 transition-colors ${verseStateClass}`}
                         >
+                          <button
+                            type="button"
+                            className="mt-1 min-w-[1.5em] shrink-0 text-right text-xs font-semibold leading-none text-primary/50 tabular-nums hover:text-primary"
+                            onClick={() => setSelectedVerse(item.verse)}
+                          >
+                            {item.verse}
+                          </button>
                           <p className={`min-w-0 flex-1 leading-relaxed ${FONT_SIZE_CLASSES[fontSizeLevel]}`}>
                             <button
                               type="button"
-                              className="mr-1 align-top text-xs font-semibold text-primary/60 tabular-nums hover:text-primary"
-                              onClick={() => setSelectedVerse(item.verse)}
+                              className={`float-right ml-1.5 p-0.5 ${bookmarked ? 'text-primary' : 'text-muted-foreground/30'} hover:text-primary disabled:opacity-50`}
+                              onClick={() => toggleBookmark(item.verse)}
+                              disabled={bookmarkMutation.isPending || removeBookmarkMutation.isPending}
+                              aria-label={bookmarked ? '북마크 해제' : '북마크 추가'}
                             >
-                              {item.verse}
+                              {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
                             </button>
                             {item.text}
                           </p>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={`h-7 w-7 shrink-0 ${bookmarked ? 'text-primary' : 'text-muted-foreground/50'}`}
-                            onClick={() => toggleBookmark(item.verse)}
-                            disabled={bookmarkMutation.isPending || removeBookmarkMutation.isPending}
-                            aria-label={bookmarked ? '북마크 해제' : '북마크 추가'}
-                          >
-                            {bookmarked ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                          </Button>
                         </div>
                       );
                     })
