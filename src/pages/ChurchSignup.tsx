@@ -44,8 +44,8 @@ export default function ChurchSignup() {
       toast.error('비밀번호가 일치하지 않습니다.');
       return;
     }
-    if (password.length < 8) {
-      toast.error('비밀번호는 8자 이상이어야 합니다.');
+    if (password.length < 6) {
+      toast.error('비밀번호는 6자 이상이어야 합니다.');
       return;
     }
     setLoading(true);
@@ -202,7 +202,7 @@ export default function ChurchSignup() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="8자 이상"
+                  placeholder="6자 이상"
                 />
               </div>
 
