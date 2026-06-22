@@ -259,19 +259,6 @@ export async function getDistricts(): Promise<District[]> {
   }));
 }
 
-export async function getActiveDistricts(): Promise<{ id: string; name: string; churchName: string }[]> {
-  const { data, error } = await withApiTimeout(
-    supabase.rpc('get_active_districts_with_church'),
-    '활성 구역 조회'
-  );
-  if (error) throw error;
-  return (data ?? []).map((row: { id: string; name: string; church_name: string }) => ({
-    id: row.id,
-    name: row.name,
-    churchName: row.church_name,
-  }));
-}
-
 export async function createDistrict(params: { name: string; description: string }): Promise<void> {
   const { data: churchId, error: churchErr } = await supabase.rpc('get_my_church_id');
   if (churchErr || !churchId) throw new Error('교회 정보를 불러올 수 없습니다.');

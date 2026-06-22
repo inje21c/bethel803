@@ -49,20 +49,16 @@ export default function Join() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [kakaoLoading, setKakaoLoading] = useState(false);
 
-  // 구역 정보 조회 — churches JOIN 제외 (034 RLS: anon은 churches 접근 불가)
+  // 구역 정보 조회 — 단건 RPC(get_join_district)로만. anon 전역 열거 차단(054).
   useEffect(() => {
     if (!districtId) { setInfoLoading(false); setInfoError(true); return; }
     supabase
-      .from('districts')
-      .select('id, name')
-      .eq('id', districtId)
-      .eq('is_active', true)
-      .maybeSingle()
+      .rpc('get_join_district', { p_id: districtId })
       .then(({ data, error }) => {
-        if (error || !data) {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (error || !row) {
           setInfoError(true);
         } else {
-          const row = data as { id: string; name: string };
           setDistrictInfo({ id: row.id, name: row.name, churchName: '' });
         }
         setInfoLoading(false);
