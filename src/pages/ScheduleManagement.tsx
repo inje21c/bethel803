@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarDays, Plus, MapPin, Clock, Edit2, Trash2, Users, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -179,6 +180,24 @@ export default function ScheduleManagement() {
     enabled: !!currentDistrictId,
   });
 
+  // 활동 캘린더에서 일정 날짜 클릭 시 ?date=YYYY-MM-DD 로 진입 → 해당 일정 강조/스크롤
+  const [searchParams] = useSearchParams();
+  const focusDate = searchParams.get('date');
+  const scheduleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focusDate || schedules.length === 0) return;
+    const target = schedules.find(s => s.date === focusDate);
+    if (!target) return;
+    setHighlightedId(target.id);
+    const t = setTimeout(() => {
+      scheduleRefs.current[target.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
+    const clear = setTimeout(() => setHighlightedId(null), 2400);
+    return () => { clearTimeout(t); clearTimeout(clear); };
+  }, [focusDate, schedules]);
+
   const addMutation = useMutation({
     mutationFn: (data: Omit<Schedule, 'id' | 'createdAt' | 'createdBy'>) => addSchedule({
       ...data,
@@ -249,7 +268,14 @@ export default function ScheduleManagement() {
   };
 
   const renderScheduleCard = (schedule: Schedule, isPast = false) => (
-    <motion.div key={schedule.id} variants={item} initial="hidden" animate="show" className={`card-elevated p-4 ${isPast ? 'opacity-60' : ''}`}>
+    <motion.div
+      key={schedule.id}
+      ref={node => { scheduleRefs.current[schedule.id] = node; }}
+      variants={item}
+      initial="hidden"
+      animate="show"
+      className={`card-elevated p-4 transition-all ${isPast ? 'opacity-60' : ''} ${highlightedId === schedule.id ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

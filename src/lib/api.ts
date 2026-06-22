@@ -3725,10 +3725,10 @@ export async function getActivityCalendar(
     withApiTimeout(
       supabase
         .from('schedules')
-        .select('date')
+        .select('schedule_date')
         .eq('district_id', districtId)
-        .gte('date', from)
-        .lte('date', to),
+        .gte('schedule_date', from)
+        .lte('schedule_date', to),
       '일정 캘린더 조회'
     ),
   ]);
@@ -3737,7 +3737,7 @@ export async function getActivityCalendar(
     (qtRes.data ?? []).map(r => ((r as Record<string, unknown>).qt_contents as { date: string }).date)
   );
   const readingDates = new Set((readingRes.data ?? []).map(r => r.log_date as string));
-  const scheduleDates = new Set((scheduleRes.data ?? []).map(r => r.date as string));
+  const scheduleDates = new Set((scheduleRes.data ?? []).map(r => r.schedule_date as string));
 
   const days: ActivityDay[] = [];
   for (let d = 1; d <= lastDay; d++) {
@@ -3769,12 +3769,18 @@ export async function getLeaderWeeklyChecklist(districtId: string): Promise<Lead
   const { weekStart, weekEnd } = getKSTWeekRange();
   const today = getKSTDateString();
 
+  // 성경공부는 주일(일요일) 주보로 배포되어 그 주 월~일 모임에서 나눈다.
+  // 따라서 이번 주(월~일) 기준으로 직전 주일에 배포된 주보가 "이번 주 성경공부".
+  // study_date 하한을 weekStart 직전 일요일까지 넓혀 누락을 막는다.
+  const studyWindowStart = new Date(new Date(`${weekStart}T00:00:00Z`).getTime() - 86400000)
+    .toISOString().slice(0, 10);
+
   const [studyRes, scheduleRes, qtRes, memberRes] = await Promise.all([
     withApiTimeout(
       supabase.from('bible_studies')
         .select('id', { count: 'exact', head: true })
         .eq('district_id', districtId)
-        .gte('study_date', weekStart)
+        .gte('study_date', studyWindowStart)
         .lte('study_date', weekEnd),
       '체크리스트 - 성경공부 등록'
     ),

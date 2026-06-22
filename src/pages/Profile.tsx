@@ -355,15 +355,30 @@ export default function Profile() {
                     ? 'text-muted-foreground/30'
                     : 'text-foreground';
                 const off = 'rgba(140,140,140,0.2)';
-                return (
-                  <div key={day} className={`flex flex-col items-center gap-[3px] pb-1 ${isToday ? 'border-2 border-accent rounded-md' : ''}`}>
+                const hasSchedule = !!act?.hasSchedule;
+                const cellInner = (
+                  <>
                     <span className={`text-[13px] leading-tight ${numCls}`}>{day}</span>
                     <div className="w-full flex flex-col gap-[2px]">
                       <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.qtDone) ? '#4A7AB5' : off }} />
                       <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.readingDone) ? '#5FAD2A' : off }} />
-                      <div className="h-[3px] rounded-full" style={{ background: (!isFuture && act?.hasSchedule) ? '#C8002A' : off }} />
+                      <div className="h-[3px] rounded-full" style={{ background: hasSchedule ? '#C8002A' : off }} />
                     </div>
-                  </div>
+                  </>
+                );
+                const baseCls = `flex flex-col items-center gap-[3px] pb-1 ${isToday ? 'border-2 border-accent rounded-md' : ''}`;
+                return hasSchedule ? (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => navigate(`/schedule?date=${dateStr}`)}
+                    className={`${baseCls} cursor-pointer hover:bg-muted/60 rounded-md transition-colors`}
+                    aria-label={`${calMonth}월 ${day}일 일정 보기`}
+                  >
+                    {cellInner}
+                  </button>
+                ) : (
+                  <div key={day} className={baseCls}>{cellInner}</div>
                 );
               })}
             </div>

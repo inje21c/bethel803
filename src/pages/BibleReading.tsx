@@ -776,23 +776,23 @@ export default function BibleReading() {
                           ref={node => {
                             verseRefs.current[item.verse] = node;
                           }}
-                          className={`grid grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] gap-2 px-4 py-3 transition-colors ${verseStateClass}`}
+                          className={`flex items-start gap-1 px-4 py-2 transition-colors ${verseStateClass}`}
                         >
-                          <button
-                            type="button"
-                            className="h-8 rounded-md text-sm font-semibold text-muted-foreground hover:bg-muted"
-                            onClick={() => setSelectedVerse(item.verse)}
-                          >
-                            {item.verse}
-                          </button>
-                          <p className={`${FONT_SIZE_CLASSES[fontSizeLevel]} leading-relaxed`}>
+                          <p className={`min-w-0 flex-1 leading-relaxed ${FONT_SIZE_CLASSES[fontSizeLevel]}`}>
+                            <button
+                              type="button"
+                              className="mr-1 align-top text-xs font-semibold text-primary/60 tabular-nums hover:text-primary"
+                              onClick={() => setSelectedVerse(item.verse)}
+                            >
+                              {item.verse}
+                            </button>
                             {item.text}
                           </p>
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className={bookmarked ? 'text-primary' : 'text-muted-foreground'}
+                            className={`h-7 w-7 shrink-0 ${bookmarked ? 'text-primary' : 'text-muted-foreground/50'}`}
                             onClick={() => toggleBookmark(item.verse)}
                             disabled={bookmarkMutation.isPending || removeBookmarkMutation.isPending}
                             aria-label={bookmarked ? '북마크 해제' : '북마크 추가'}
