@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BookOpen, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import DistrictPicker from '@/components/DistrictPicker';
 
 // 카톡 인앱 브라우저는 구글 OAuth를 차단(disallowed_useragent)하므로 외부 브라우저로 우회
 function isKakaoInAppBrowser() {
@@ -39,7 +38,7 @@ function KakaoIcon() {
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, loginWithKakao, register, resetPassword, user, loading } = useAuth();
+  const { login, loginWithGoogle, loginWithKakao, resetPassword, user, loading } = useAuth();
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -60,15 +59,6 @@ export default function Login() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
-  // 회원가입
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regPassword2, setRegPassword2] = useState('');
-  const [regDistrictId, setRegDistrictId] = useState('');
-  const [regLoading, setRegLoading] = useState(false);
-  const [regDone, setRegDone] = useState(false);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail.trim() || !loginPassword.trim()) {
@@ -88,38 +78,6 @@ export default function Login() {
       }
     } finally {
       if (mounted.current) setLoginLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
-      toast.error('모든 항목을 입력해주세요.');
-      return;
-    }
-    if (regPassword !== regPassword2) {
-      toast.error('비밀번호가 일치하지 않습니다.');
-      return;
-    }
-    if (regPassword.length < 6) {
-      toast.error('비밀번호는 6자 이상이어야 합니다.');
-      return;
-    }
-    if (!regDistrictId) {
-      toast.error('소속 구역을 선택해주세요.');
-      return;
-    }
-    setRegLoading(true);
-    try {
-      await register(regEmail.trim(), regPassword, regName.trim(), regDistrictId);
-      if (mounted.current) setRegDone(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '회원가입에 실패했습니다.';
-      if (mounted.current) {
-        toast.error(message.includes('already') ? '이미 등록된 이메일입니다.' : message);
-      }
-    } finally {
-      if (mounted.current) setRegLoading(false);
     }
   };
 
@@ -302,112 +260,37 @@ export default function Login() {
             </div>
           </TabsContent>
 
-          {/* 회원가입 탭 */}
+          {/* 회원가입(참여) 탭 — 초대 전용 안내 */}
           <TabsContent value="register">
-            {/* 초대 링크 안내 */}
-            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 px-3 py-2.5 mb-4 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-              초대 링크를 받으셨나요? <span className="font-medium">링크를 직접 클릭</span>하면 구역이 자동으로 연결됩니다. 여기서 가입하면 구역장 승인이 필요합니다.
-            </div>
-            {regDone ? (
-              <div className="text-center py-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <BookOpen className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-display font-semibold text-lg">가입 요청 완료</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  구역장 승인 대기 중입니다.<br />
-                  승인 후 로그인이 가능합니다.
+            <div className="space-y-4 py-1">
+              {/* 모임 참여: 초대 링크 */}
+              <div className="rounded-xl border bg-card p-4 space-y-1.5">
+                <p className="font-display font-semibold text-[15px]">모임에 참여하시나요?</p>
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
+                  모임 리더(구역장)가 보낸 <span className="font-medium text-foreground">초대 링크</span>를
+                  휴대폰에서 직접 누르면 자동으로 연결됩니다. 이 화면에서 따로 가입할 필요가 없습니다.
                 </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setRegDone(false)}
-                >
-                  로그인으로 돌아가기
+                <p className="text-[12px] text-muted-foreground/80">
+                  링크는 카카오톡·문자 등으로 받으실 수 있어요.
+                </p>
+              </div>
+
+              {/* 새로 시작: 교회 등록 */}
+              <div className="rounded-xl border bg-card p-4 space-y-2">
+                <p className="font-display font-semibold text-[15px]">새로 시작하시나요?</p>
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
+                  우리 모임·교회를 직접 시작하려면 아래에서 등록하세요.
+                </p>
+                <Button asChild className="w-full">
+                  <Link to="/signup/church">교회 등록하기</Link>
                 </Button>
               </div>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reg-name">이름</Label>
-                  <Input
-                    id="reg-name"
-                    value={regName}
-                    onChange={e => setRegName(e.target.value)}
-                    placeholder="실명을 입력하세요"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-email">이메일</Label>
-                  <Input
-                    id="reg-email"
-                    type="email"
-                    value={regEmail}
-                    onChange={e => setRegEmail(e.target.value)}
-                    placeholder="이메일을 입력하세요"
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-password">비밀번호</Label>
-                  <Input
-                    id="reg-password"
-                    type="password"
-                    value={regPassword}
-                    onChange={e => setRegPassword(e.target.value)}
-                    placeholder="6자 이상"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-password2">비밀번호 확인</Label>
-                  <Input
-                    id="reg-password2"
-                    type="password"
-                    value={regPassword2}
-                    onChange={e => setRegPassword2(e.target.value)}
-                    placeholder="비밀번호를 다시 입력하세요"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <DistrictPicker value={regDistrictId} onChange={setRegDistrictId} />
-                <Button type="submit" className="w-full" disabled={regLoading}>
-                  {regLoading ? '처리 중...' : '회원가입 요청'}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  가입 후 구역장 승인이 필요합니다.
-                </p>
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-card px-2 text-muted-foreground">또는</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full gap-2"
-                    disabled={googleLoading}
-                    onClick={handleGoogleLogin}
-                  >
-                    <GoogleIcon />
-                    {googleLoading ? '이동 중...' : '구글 계정으로 가입하기'}
-                  </Button>
-                  <Button
-                    type="button"
-                    className="w-full gap-2 bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90"
-                    disabled={kakaoLoading}
-                    onClick={handleKakaoLogin}
-                  >
-                    <KakaoIcon />
-                    {kakaoLoading ? '이동 중...' : '카카오 계정으로 가입하기'}
-                  </Button>
-                </div>
-              </form>
-            )}
+
+              <p className="text-[12px] text-muted-foreground text-center leading-relaxed">
+                이미 계정이 있다면 위 <span className="font-medium">[로그인]</span> 탭을 이용하세요.
+                <br />구글·카카오 계정도 로그인 탭에서 사용할 수 있습니다.
+              </p>
+            </div>
           </TabsContent>
         </Tabs>
 
@@ -415,7 +298,7 @@ export default function Login() {
         <p className="text-center text-xs text-muted-foreground pt-4 pb-2">
           새 교회를 등록하시겠어요?{' '}
           <Link to="/signup/church" className="text-primary underline underline-offset-2 font-medium">
-            교회 무료 등록
+            교회 등록
           </Link>
         </p>
 
