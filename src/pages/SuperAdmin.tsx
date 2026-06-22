@@ -6,8 +6,9 @@ import {
   restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin,
   getChurchMembersSuperAdmin, changeMasterSuperAdmin, createChurchSuperAdmin,
   getCommunityDistrictsSuperAdmin, graduateDistrictToNewChurch, moveDistrictToChurch,
+  getCommunityDistrictMembersSuperAdmin, setCommunityMemberRoleSuperAdmin, approveCommunityMemberSuperAdmin,
   getBetaFlags, setBetaFlag,
-  type SuperAdminChurch, type ChurchMemberBasic, type CommunityDistrict,
+  type SuperAdminChurch, type ChurchMemberBasic, type CommunityDistrict, type CommunityMember,
 } from '@/lib/api';
 
 const COMMUNITY_CHURCH_ID = '00000000-0000-4100-a000-000000000002';
@@ -542,8 +543,82 @@ function GraduateModal({ district, churches, onClose }: { district: CommunityDis
   );
 }
 
+function CommunityMembersModal({ district, onClose }: { district: CommunityDistrict; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data: members = [], isLoading } = useQuery<CommunityMember[]>({
+    queryKey: ['community_members', district.district_id],
+    queryFn: () => getCommunityDistrictMembersSuperAdmin(district.district_id),
+    staleTime: 1000 * 15,
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['community_members', district.district_id] });
+    qc.invalidateQueries({ queryKey: ['community_districts'] });
+  };
+  const roleMut = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: 'leader' | 'member' }) => setCommunityMemberRoleSuperAdmin(userId, role),
+    onSuccess: () => { refresh(); toast.success('역할 변경됨'); },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const approveMut = useMutation({
+    mutationFn: (userId: string) => approveCommunityMemberSuperAdmin(userId),
+    onSuccess: () => { refresh(); toast.success('승인됨'); },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border bg-card p-6 space-y-4 shadow-xl max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold">구성원 관리</p>
+            <p className="text-xs text-muted-foreground truncate">{district.name}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
+        </div>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">불러오는 중...</p>
+        ) : members.length === 0 ? (
+          <p className="text-xs text-muted-foreground">구성원이 없습니다.</p>
+        ) : (
+          <div className="space-y-2">
+            {members.map(m => (
+              <div key={m.user_id} className="rounded-lg border px-3 py-2 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {m.name}
+                      {m.status === 'pending' && <span className="ml-1 text-xs text-amber-600">대기</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                  </div>
+                  {m.status === 'pending' && (
+                    <Button size="sm" className="shrink-0" disabled={approveMut.isPending} onClick={() => approveMut.mutate(m.user_id)}>승인</Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">역할</span>
+                  <select
+                    value={m.role}
+                    disabled={roleMut.isPending}
+                    onChange={e => roleMut.mutate({ userId: m.user_id, role: e.target.value as 'leader' | 'member' })}
+                    className="rounded-lg border bg-background px-2 py-1 text-xs"
+                  >
+                    <option value="leader">leader</option>
+                    <option value="member">member</option>
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CommunityDistrictsPanel({ churches }: { churches: SuperAdminChurch[] }) {
   const [graduating, setGraduating] = useState<CommunityDistrict | null>(null);
+  const [managing, setManaging] = useState<CommunityDistrict | null>(null);
   const { data: districts = [], isLoading } = useQuery({
     queryKey: ['community_districts'],
     queryFn: getCommunityDistrictsSuperAdmin,
@@ -553,6 +628,7 @@ function CommunityDistrictsPanel({ churches }: { churches: SuperAdminChurch[] })
   return (
     <div className="rounded-2xl border bg-card p-4 space-y-3">
       {graduating && <GraduateModal district={graduating} churches={churches} onClose={() => setGraduating(null)} />}
+      {managing && <CommunityMembersModal district={managing} onClose={() => setManaging(null)} />}
       <div className="flex items-center gap-2">
         <Users2 className="w-4 h-4 text-primary" />
         <p className="font-semibold text-sm">커뮤니티 모임 {districts.length}개</p>
@@ -574,9 +650,14 @@ function CommunityDistrictsPanel({ churches }: { churches: SuperAdminChurch[] })
                   리더 {d.leader_name ?? '없음'} · 구성원 {d.member_count}{d.pending_count > 0 ? ` · 대기 ${d.pending_count}` : ''}
                 </p>
               </div>
-              <Button size="sm" variant="outline" className="shrink-0 gap-1" onClick={() => setGraduating(d)}>
-                <GraduationCap className="w-3.5 h-3.5" /> 승격
-              </Button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button size="sm" variant="outline" className="gap-1" onClick={() => setManaging(d)}>
+                  <Users className="w-3.5 h-3.5" /> 구성원
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1" onClick={() => setGraduating(d)}>
+                  <GraduationCap className="w-3.5 h-3.5" /> 승격
+                </Button>
+              </div>
             </div>
           ))}
         </div>

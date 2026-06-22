@@ -3536,6 +3536,34 @@ export async function moveDistrictToChurch(districtId: string, targetChurchId: s
   if (error) throw error;
 }
 
+export interface CommunityMember {
+  user_id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+}
+
+export async function getCommunityDistrictMembersSuperAdmin(districtId: string): Promise<CommunityMember[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_community_district_members_superadmin', { p_district_id: districtId }),
+    '커뮤니티 모임 구성원'
+  );
+  if (error) throw error;
+  return (data ?? []) as CommunityMember[];
+}
+
+export async function setCommunityMemberRoleSuperAdmin(userId: string, role: 'leader' | 'member'): Promise<void> {
+  const { error } = await supabase.rpc('set_community_member_role_superadmin', { p_user_id: userId, p_role: role });
+  if (error) throw error;
+}
+
+export async function approveCommunityMemberSuperAdmin(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('approve_community_member_superadmin', { p_user_id: userId });
+  if (error) throw error;
+}
+
 export async function getChurchMembersSuperAdmin(churchId: string): Promise<ChurchMemberBasic[]> {
   const { data, error } = await withApiTimeout(
     supabase.rpc('get_church_members_superadmin', { p_church_id: churchId }),
