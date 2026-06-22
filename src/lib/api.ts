@@ -2432,7 +2432,8 @@ export async function dispatchNotificationPush(notificationId: string): Promise<
         dryRun: false,
       },
     }),
-    '푸시 발송'
+    '푸시 발송',
+    45000, // web-push 콜드스타트 + 구독별 순차 발송으로 10초 초과 가능 → 45초
   );
 
   if (error) {
