@@ -3496,6 +3496,46 @@ export async function createChurchSuperAdmin(params: {
   return { churchId: row.church_id, districtId: row.district_id, slug: row.slug };
 }
 
+export interface CommunityDistrict {
+  district_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  leader_name: string | null;
+  member_count: number;
+  pending_count: number;
+}
+
+export async function getCommunityDistrictsSuperAdmin(): Promise<CommunityDistrict[]> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_community_districts_superadmin'),
+    '커뮤니티 모임 목록'
+  );
+  if (error) throw error;
+  return (data ?? []) as CommunityDistrict[];
+}
+
+export async function graduateDistrictToNewChurch(districtId: string, churchName: string, plan: string): Promise<string> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('graduate_district_to_new_church', {
+      p_district_id: districtId,
+      p_church_name: churchName,
+      p_plan: plan,
+    }),
+    '교회로 승격'
+  );
+  if (error) throw error;
+  return data as string;
+}
+
+export async function moveDistrictToChurch(districtId: string, targetChurchId: string): Promise<void> {
+  const { error } = await supabase.rpc('move_district_to_church', {
+    p_district_id: districtId,
+    p_target_church_id: targetChurchId,
+  });
+  if (error) throw error;
+}
+
 export async function getChurchMembersSuperAdmin(churchId: string): Promise<ChurchMemberBasic[]> {
   const { data, error } = await withApiTimeout(
     supabase.rpc('get_church_members_superadmin', { p_church_id: churchId }),

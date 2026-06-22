@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown, FlaskConical, Plus, Copy } from 'lucide-react';
+import { Building2, Users, Users2, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown, FlaskConical, Plus, Copy, GraduationCap } from 'lucide-react';
 import {
   getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword,
   restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin,
   getChurchMembersSuperAdmin, changeMasterSuperAdmin, createChurchSuperAdmin,
+  getCommunityDistrictsSuperAdmin, graduateDistrictToNewChurch, moveDistrictToChurch,
   getBetaFlags, setBetaFlag,
-  type SuperAdminChurch, type ChurchMemberBasic,
+  type SuperAdminChurch, type ChurchMemberBasic, type CommunityDistrict,
 } from '@/lib/api';
+
+const COMMUNITY_CHURCH_ID = '00000000-0000-4100-a000-000000000002';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -456,6 +459,132 @@ function CreateChurchModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function GraduateModal({ district, churches, onClose }: { district: CommunityDistrict; churches: SuperAdminChurch[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [mode, setMode] = useState<'new' | 'existing'>('new');
+  const [churchName, setChurchName] = useState(district.name);
+  const [plan, setPlan] = useState('free');
+  const [targetChurchId, setTargetChurchId] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (mode === 'new') return graduateDistrictToNewChurch(district.district_id, churchName.trim(), plan);
+      if (!targetChurchId) throw new Error('대상 교회를 선택하세요');
+      return moveDistrictToChurch(district.district_id, targetChurchId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['superadmin_churches'] });
+      qc.invalidateQueries({ queryKey: ['community_districts'] });
+      toast.success('승격 완료');
+      onClose();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const targets = churches.filter(c => c.id !== COMMUNITY_CHURCH_ID);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border bg-card p-6 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold">교회로 승격</p>
+            <p className="text-xs text-muted-foreground truncate">{district.name} · 구성원 {district.member_count}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setMode('new')}
+            className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${mode === 'new' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          >새 교회로 분리</button>
+          <button
+            onClick={() => setMode('existing')}
+            className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${mode === 'existing' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          >기존 교회로 통합</button>
+        </div>
+
+        {mode === 'new' ? (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">새 교회 이름 *</Label>
+              <Input value={churchName} onChange={e => setChurchName(e.target.value)} placeholder="교회 이름" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Plan</Label>
+              <select value={plan} onChange={e => setPlan(e.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm">
+                {PLAN_OPTIONS.filter(p => p !== 'community').map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground">모임의 리더가 새 교회의 마스터로 승격됩니다.</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <Label className="text-xs">통합할 교회 *</Label>
+            <select value={targetChurchId} onChange={e => setTargetChurchId(e.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm">
+              <option value="">선택...</option>
+              {targets.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <p className="text-xs text-muted-foreground">기존 교회로 옮깁니다. 역할은 그대로(리더 유지)입니다.</p>
+          </div>
+        )}
+
+        <Button
+          className="w-full"
+          disabled={mutation.isPending || (mode === 'new' ? !churchName.trim() : !targetChurchId)}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? '처리 중...' : '승격 실행'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CommunityDistrictsPanel({ churches }: { churches: SuperAdminChurch[] }) {
+  const [graduating, setGraduating] = useState<CommunityDistrict | null>(null);
+  const { data: districts = [], isLoading } = useQuery({
+    queryKey: ['community_districts'],
+    queryFn: getCommunityDistrictsSuperAdmin,
+    staleTime: 1000 * 30,
+  });
+
+  return (
+    <div className="rounded-2xl border bg-card p-4 space-y-3">
+      {graduating && <GraduateModal district={graduating} churches={churches} onClose={() => setGraduating(null)} />}
+      <div className="flex items-center gap-2">
+        <Users2 className="w-4 h-4 text-primary" />
+        <p className="font-semibold text-sm">커뮤니티 모임 {districts.length}개</p>
+        <span className="text-xs text-muted-foreground">메타데이터만 (콘텐츠 미열람)</span>
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">불러오는 중...</p>
+      ) : districts.length === 0 ? (
+        <p className="text-xs text-muted-foreground">아직 모임이 없습니다.</p>
+      ) : (
+        <div className="space-y-2">
+          {districts.map(d => (
+            <div key={d.district_id} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {d.name}{!d.is_active && <span className="text-xs text-muted-foreground"> (비활성)</span>}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  리더 {d.leader_name ?? '없음'} · 구성원 {d.member_count}{d.pending_count > 0 ? ` · 대기 ${d.pending_count}` : ''}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="shrink-0 gap-1" onClick={() => setGraduating(d)}>
+                <GraduationCap className="w-3.5 h-3.5" /> 승격
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdmin() {
   const [editing, setEditing] = useState<SuperAdminChurch | null>(null);
   const [creating, setCreating] = useState(false);
@@ -551,6 +680,9 @@ export default function SuperAdmin() {
 
         {/* 베타 모듈 개방 토글 */}
         <BetaFlagsPanel />
+
+        {/* 커뮤니티 모임 운영 (목록 + 교회 승격) */}
+        <CommunityDistrictsPanel churches={churches} />
 
         {/* 교회 목록 */}
         <div className="space-y-3">
