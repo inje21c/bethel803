@@ -3478,6 +3478,24 @@ export interface ChurchMemberBasic {
   district_name: string;
 }
 
+export async function createChurchSuperAdmin(params: {
+  name: string;
+  districtName: string;
+  plan: string;
+}): Promise<{ churchId: string; districtId: string; slug: string }> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('create_church_superadmin', {
+      p_name: params.name,
+      p_district_name: params.districtName,
+      p_plan: params.plan,
+    }),
+    '교회 생성'
+  );
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as { church_id: string; district_id: string; slug: string };
+  return { churchId: row.church_id, districtId: row.district_id, slug: row.slug };
+}
+
 export async function getChurchMembersSuperAdmin(churchId: string): Promise<ChurchMemberBasic[]> {
   const { data, error } = await withApiTimeout(
     supabase.rpc('get_church_members_superadmin', { p_church_id: churchId }),

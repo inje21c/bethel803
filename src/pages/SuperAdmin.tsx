@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown, FlaskConical } from 'lucide-react';
+import { Building2, Users, RefreshCw, Pencil, X, ChevronRight, Mail, KeyRound, Trash2, RotateCcw, AlertTriangle, Crown, FlaskConical, Plus, Copy } from 'lucide-react';
 import {
   getAllChurchesSuperAdmin, updateChurchSuperAdmin, resetMasterPassword,
   restoreChurchSuperAdmin, hardDeleteChurchSuperAdmin,
-  getChurchMembersSuperAdmin, changeMasterSuperAdmin,
+  getChurchMembersSuperAdmin, changeMasterSuperAdmin, createChurchSuperAdmin,
   getBetaFlags, setBetaFlag,
   type SuperAdminChurch, type ChurchMemberBasic,
 } from '@/lib/api';
@@ -72,7 +72,7 @@ function BetaFlagsPanel() {
   );
 }
 
-const PLAN_OPTIONS = ['legacy', 'free', 'starter', 'standard', 'premium'];
+const PLAN_OPTIONS = ['legacy', 'free', 'community', 'starter', 'standard', 'premium'];
 const STATUS_OPTIONS = ['active', 'trialing', 'past_due', 'suspended', 'archived'];
 const BILLING_OPTIONS = ['manual', 'trialing', 'active', 'past_due', 'canceled'];
 const UI_MODE_OPTIONS = ['simple', 'full'];
@@ -84,6 +84,7 @@ const QT_MODE_OPTIONS = [
 const PLAN_COLORS: Record<string, string> = {
   legacy:   'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
   free:     'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  community:'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
   starter:  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   standard: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
   premium:  'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
@@ -387,8 +388,77 @@ function MasterChangeModal({
   );
 }
 
+function CreateChurchModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState('');
+  const [districtName, setDistrictName] = useState('1구역');
+  const [plan, setPlan] = useState('free');
+  const [result, setResult] = useState<{ districtId: string; slug: string } | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => createChurchSuperAdmin({ name: name.trim(), districtName: districtName.trim(), plan }),
+    onSuccess: (r) => {
+      setResult({ districtId: r.districtId, slug: r.slug });
+      qc.invalidateQueries({ queryKey: ['superadmin_churches'] });
+      toast.success('교회가 생성되었습니다');
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const inviteLink = result ? `${window.location.origin}/join?d=${result.districtId}` : '';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border bg-card p-6 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <p className="font-semibold">교회 생성 (B2B)</p>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
+        </div>
+
+        {result ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              교회와 첫 구역이 만들어졌습니다. 아래 <span className="font-medium text-foreground">초대 링크</span>로 담당자가 가입하면
+              자동으로 마스터가 됩니다(빈 교회 첫 사용자).
+            </p>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs break-all">{inviteLink}</div>
+            <Button
+              className="w-full gap-1.5"
+              onClick={() => { navigator.clipboard.writeText(inviteLink).then(() => toast.success('복사되었습니다')).catch(() => toast.error('복사 실패')); }}
+            >
+              <Copy className="w-4 h-4" /> 초대 링크 복사
+            </Button>
+            <Button variant="outline" className="w-full" onClick={onClose}>닫기</Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">교회 이름 *</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="예: 한빛교회" autoFocus />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">첫 구역 이름</Label>
+              <Input value={districtName} onChange={e => setDistrictName(e.target.value)} placeholder="1구역" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Plan</Label>
+              <select value={plan} onChange={e => setPlan(e.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm">
+                {PLAN_OPTIONS.filter(p => p !== 'community').map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <Button className="w-full" disabled={!name.trim() || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? '생성 중...' : '교회 생성'}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdmin() {
   const [editing, setEditing] = useState<SuperAdminChurch | null>(null);
+  const [creating, setCreating] = useState(false);
   const [masterChanging, setMasterChanging] = useState<SuperAdminChurch | null>(null);
   const [resettingEmail, setResettingEmail] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -457,6 +527,7 @@ export default function SuperAdmin() {
   return (
     <AppLayout>
       {editing && <EditModal church={editing} onClose={() => setEditing(null)} />}
+      {creating && <CreateChurchModal onClose={() => setCreating(false)} />}
       {masterChanging && <MasterChangeModal church={masterChanging} onClose={() => setMasterChanging(null)} />}
 
       <div className="space-y-4">
@@ -466,10 +537,16 @@ export default function SuperAdmin() {
             <h1 className="font-display text-xl font-bold">슈퍼어드민</h1>
             <p className="text-sm text-muted-foreground">교회 {churches.length}개</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-1.5" />
-            새로고침
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              교회 생성
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              새로고침
+            </Button>
+          </div>
         </div>
 
         {/* 베타 모듈 개방 토글 */}

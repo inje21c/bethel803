@@ -167,7 +167,7 @@ const getMemberSections = (): Section[] => [
 // ==========================================
 // 2. 구역장 가이드 데이터 (조건별 분기)
 // ==========================================
-type LeaderType = 'bethel' | 'trial' | 'special';
+type LeaderType = 'bethel' | 'trial' | 'community' | 'special';
 
 const getLeaderSections = (type: LeaderType): Section[] => {
   const commonAdmin: Section = {
@@ -219,6 +219,28 @@ const getLeaderSections = (type: LeaderType): Section[] => {
           {
             subtitle: '공지 문자 자동 생성',
             text: '모임 일시·장소·QT 범위를 요약한 카카오톡 공지 문자를 한 번에 생성합니다. 복사해서 단톡방에 바로 붙여넣으세요.',
+          },
+        ],
+      },
+    ];
+  }
+
+  if (type === 'community') {
+    return [
+      commonAdmin,
+      {
+        id: 'admin_community',
+        title: '내 모임 운영',
+        icon: Settings,
+        content: [
+          {
+            subtitle: '모임은 내가 관리해요',
+            text: '내 모임의 구성원 초대·승인, 성경공부·일정 등록을 모두 직접 관리합니다. 다른 모임의 내용은 보이지 않으니 안심하고 우리 모임에 집중하세요.',
+          },
+          {
+            subtitle: '더 큰 단위로 키우고 싶다면',
+            text: '여러 모임을 교회 단위로 묶어 운영하고 싶으시면 [나] → [문의하기]로 알려주세요. 함께 준비해 드립니다.',
+            uiBadges: ['[나] → [문의하기]'],
           },
         ],
       },
@@ -321,6 +343,7 @@ export default function UserManual() {
   // 구역장 타입 결정
   const leaderType: LeaderType = useMemo(() => {
     if (settings?.plan === 'legacy') return 'bethel';
+    if (settings?.plan === 'community') return 'community';
     if (settings?.isTrialing && settings?.uiMode === 'simple') return 'trial';
     return 'special';
   }, [settings]);
@@ -456,9 +479,11 @@ export default function UserManual() {
                           {item.isPremium && !hasBibleText && (
                             <div className="mt-3 p-3 bg-amber-50/50 border border-amber-100 rounded-lg dark:bg-amber-900/10 dark:border-amber-900/30">
                               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
-                                {settings?.isTrialing
-                                  ? "📣 현재 우리 구역은 기본 체험판을 사용 중이어서 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 정식 버전 도입을 건의해 보세요!"
-                                  : "📣 현재 우리 교회의 플랜에서는 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 풀 패키지 도입을 건의해 보세요!"}
+                                {settings?.plan === 'community'
+                                  ? "📣 앱 내 성경 본문 열람과 AI 깊은 묵상은 교회 단위로 도입할 때 제공되는 기능입니다. 관심 있으시면 [나] → [문의하기]로 알려주세요!"
+                                  : settings?.isTrialing
+                                    ? "📣 현재 우리 구역은 기본 체험판을 사용 중이어서 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 정식 버전 도입을 건의해 보세요!"
+                                    : "📣 현재 우리 교회의 플랜에서는 앱 내 성경 본문 열람 및 AI 기능이 제한되어 있습니다. 더 편리하고 깊은 묵상을 위해 구역장님께 풀 패키지 도입을 건의해 보세요!"}
                               </p>
                             </div>
                           )}
