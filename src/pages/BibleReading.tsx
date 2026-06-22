@@ -738,7 +738,7 @@ export default function BibleReading() {
                           ref={node => {
                             verseRefs.current[item.verse] = node;
                           }}
-                          className={`flex items-start gap-1.5 px-4 py-2 transition-colors ${verseStateClass}`}
+                          className={`flex scroll-mt-20 items-start gap-1.5 px-4 py-2 transition-colors ${verseStateClass}`}
                         >
                           <button
                             type="button"
