@@ -887,7 +887,7 @@ export async function getBibleChapter(bookId: number, chapter: number): Promise<
   const { data, error } = await withApiTimeout(
     supabase
       .from('bible_verses')
-      .select('*')
+      .select('book_id, chapter, verse, text')
       .eq('book_id', bookId)
       .eq('chapter', chapter)
       .order('verse', { ascending: true }),

@@ -54,6 +54,7 @@ import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/AppLayout';
 import CommunitySubNav from '@/components/CommunitySubNav';
+import BibleReferencePicker from '@/components/BibleReferencePicker';
 import { toast } from 'sonner';
 
 const FONT_SIZE_CLASSES = ['text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl'];
@@ -176,9 +177,14 @@ export default function BibleReading() {
   const target = 1189;
   const today = getKSTDateString();
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // 성경 권/본문은 불변 데이터 → 무기한 캐시 (세션 내 재조회 없음)
   const { data: books = [], isLoading: booksLoading } = useQuery({
     queryKey: ['bible_books'],
     queryFn: getBibleBooks,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const selectedBook = books.find(book => book.id === selectedBookId) ?? books[0];
@@ -221,11 +227,28 @@ export default function BibleReading() {
     );
   }, [lastLocationKey, restoredLocationKey, selectedBook, selectedChapter, selectedVerse]);
 
-  const { data: verses = [], isLoading: chapterLoading } = useQuery({
+  const { data: verses = [], isLoading: chapterLoading, isPlaceholderData: chapterStale } = useQuery({
     queryKey: ['bible_chapter', currentBookId, selectedChapter],
     queryFn: () => getBibleChapter(currentBookId, selectedChapter),
     enabled: !!selectedBook,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    placeholderData: (prev) => prev, // 장 전환 시 스피너 대신 이전 본문 유지 → 즉시 느낌
   });
+
+  // 인접 장 미리 가져오기 → 이전/다음 이동 시 즉시 표시
+  useEffect(() => {
+    if (!selectedBook) return;
+    const prefetch = (ch: number) => {
+      queryClient.prefetchQuery({
+        queryKey: ['bible_chapter', currentBookId, ch],
+        queryFn: () => getBibleChapter(currentBookId, ch),
+        staleTime: Infinity,
+      });
+    };
+    if (selectedChapter < selectedBook.chapterCount) prefetch(selectedChapter + 1);
+    if (selectedChapter > 1) prefetch(selectedChapter - 1);
+  }, [currentBookId, selectedChapter, selectedBook, queryClient]);
 
   const { data: bookmarks = [] } = useQuery({
     queryKey: ['bible_bookmarks', user?.id],
@@ -269,7 +292,8 @@ export default function BibleReading() {
   }, [bookmarks]);
 
   useEffect(() => {
-    if (!pendingJumpVerse || chapterLoading || verses.length === 0) return;
+    // 현재 선택 장의 본문이 실제로 준비됐을 때만 스크롤 (placeholder 단계 제외)
+    if (!pendingJumpVerse || chapterStale || verses.length === 0) return;
     requestAnimationFrame(() => {
       verseRefs.current[pendingJumpVerse]?.scrollIntoView({
         behavior: 'smooth',
@@ -277,15 +301,15 @@ export default function BibleReading() {
       });
       setPendingJumpVerse(null);
     });
-  }, [chapterLoading, pendingJumpVerse, verses]);
+  }, [chapterStale, pendingJumpVerse, verses]);
 
   useEffect(() => {
-    if (chapterLoading || verses.length === 0) return;
+    if (chapterStale || verses.length === 0) return;
     const maxVerse = verses[verses.length - 1]?.verse ?? 1;
     if (selectedVerse > maxVerse) {
       setSelectedVerse(maxVerse);
     }
-  }, [chapterLoading, selectedVerse, verses]);
+  }, [chapterStale, selectedVerse, verses]);
 
   const totalChapters = readings.reduce((sum, r) => sum + r.chapters, 0);
   const progress = Math.min((totalChapters / target) * 100, 100);
@@ -470,30 +494,14 @@ export default function BibleReading() {
     },
   });
 
-  const handleBookChange = (value: string) => {
-    const book = books.find(item => item.id === Number(value));
-    if (!book) return;
-    setSelectedBookId(book.id);
-    setSelectedChapter(1);
-    setSelectedVerse(1);
-  };
-
-  const handleChapterChange = (value: string) => {
-    setSelectedChapter(Number(value));
-    setSelectedVerse(1);
-  };
-
-  const jumpToVerse = (verse: number) => {
+  // 권/장/절 피커에서 선택 → 해당 위치로 이동 + 스크롤
+  const applyReference = (bookId: number, chapter: number, verse: number) => {
+    setSelectedBookId(bookId);
+    setSelectedChapter(chapter);
     setSelectedVerse(verse);
     setActiveTab('reader');
-    requestAnimationFrame(() => {
-      verseRefs.current[verse]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-  };
-
-  const handleQuickOpen = () => {
+    setPendingJumpVerse(verse);
     readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    jumpToVerse(selectedVerse);
   };
 
   const moveChapter = (direction: -1 | 1) => {
@@ -578,8 +586,6 @@ export default function BibleReading() {
     deleteReadingMutation.mutate(id);
   };
 
-  const chapterOptions = Array.from({ length: selectedBook?.chapterCount ?? 1 }, (_, index) => index + 1);
-  const verseOptions = verses.map(item => item.verse);
   const planStats = getPlanStats(readingPlan);
   const activePlanDay = getActivePlanDay(readingPlan, today);
   const activePlanItemsLabel = activePlanDay ? formatPlanItems(activePlanDay.items) : '';
@@ -672,79 +678,35 @@ export default function BibleReading() {
               </div>
             )}
             {hasBibleText && <>
-            <section className="rounded-lg border bg-card p-4">
-              <div className="grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto] md:items-end">
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">성경 권</span>
-                  <Select value={String(currentBookId)} onValueChange={handleBookChange} disabled={booksLoading}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="성경 권 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {books.map(book => (
-                        <SelectItem key={book.id} value={String(book.id)}>
-                          {book.koreanName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </label>
-
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">장</span>
-                  <Select value={String(selectedChapter)} onValueChange={handleChapterChange} disabled={!selectedBook}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="장 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {chapterOptions.map(chapter => (
-                        <SelectItem key={chapter} value={String(chapter)}>
-                          {chapter}장
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </label>
-
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">절</span>
-                  <Select value={String(selectedVerse)} onValueChange={(value) => setSelectedVerse(Number(value))} disabled={verseOptions.length === 0}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="절 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {verseOptions.map(verse => (
-                        <SelectItem key={verse} value={String(verse)}>
-                          {verse}절
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </label>
-
-                <Button onClick={handleQuickOpen} className="h-10 gap-1.5">
-                  바로 보기
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </section>
+            <BibleReferencePicker
+              open={pickerOpen}
+              onOpenChange={setPickerOpen}
+              books={books}
+              currentBookId={currentBookId}
+              currentChapter={selectedChapter}
+              onSelect={applyReference}
+            />
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
               <section ref={readerRef} className="min-w-0 rounded-lg border bg-card">
-                <div className="flex items-center justify-between border-b px-4 py-3">
-                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(-1)}>
-                    <ChevronLeft className="h-4 w-4" />
-                    이전
+                <div className="flex items-center justify-between border-b px-2 py-2">
+                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => moveChapter(-1)} aria-label="이전 장">
+                    <ChevronLeft className="h-5 w-5" />
                   </Button>
-                  <div className="text-center">
-                    <h2 className="font-display text-lg font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    disabled={booksLoading}
+                    className="flex flex-col items-center rounded-md px-3 py-1 transition-colors hover:bg-muted"
+                  >
+                    <span className="flex items-center gap-1 font-display text-lg font-semibold">
                       {selectedBook?.koreanName ?? '성경'} {selectedChapter}장
-                    </h2>
-                    <p className="text-xs text-muted-foreground">{verses.length}절</p>
-                  </div>
-                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => moveChapter(1)}>
-                    다음
-                    <ChevronRight className="h-4 w-4" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                    <span className="text-xs text-muted-foreground">{verses.length}절 · 눌러서 이동</span>
+                  </button>
+                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => moveChapter(1)} aria-label="다음 장">
+                    <ChevronRight className="h-5 w-5" />
                   </Button>
                 </div>
 
