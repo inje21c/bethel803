@@ -73,8 +73,9 @@ async function run() {
   const { data: uBusers } = await a.from('users').select('id').eq('district_id', uB.district_id);
   check('A가 B 구성원 안보임', !(uBusers && uBusers.length), uBusers && uBusers.length ? `${uBusers.length}명` : '');
 
-  // 격리: district-scoped 테이블에서 B 구역 데이터 0행
-  for (const tbl of ['prayer_requests', 'bible_studies', 'schedules', 'weekly_reports']) {
+  // 격리: district_id 컬럼을 가진 district-scoped 테이블에서 B 구역 데이터 0행
+  // (prayer_requests는 user_id 스코프 → 표준 테스트가 커버)
+  for (const tbl of ['bible_studies', 'schedules', 'weekly_reports']) {
     const { data: d, error } = await a.from(tbl).select('id').eq('district_id', uB.district_id);
     check(`A가 B ${tbl} 안보임`, !error && !(d && d.length), error ? error.message : (d && d.length ? `${d.length}행` : ''));
   }
