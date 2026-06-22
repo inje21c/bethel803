@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Lock,
   Pencil,
   Plus,
@@ -643,23 +642,22 @@ export default function BibleReading() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="reader" className="gap-1.5">
-              <BookOpen className="h-4 w-4" />
-              본문 읽기
-            </TabsTrigger>
-            <TabsTrigger value="bookmarks" className="gap-1.5">
-              <Bookmark className="h-4 w-4" />
-              북마크
-            </TabsTrigger>
-            <TabsTrigger value="plan" className="gap-1.5">
-              <ClipboardList className="h-4 w-4" />
-              읽기표
-            </TabsTrigger>
-            <TabsTrigger value="log" className="gap-1.5">
-              <TrendingUp className="h-4 w-4" />
-              읽기 기록
-            </TabsTrigger>
+          {/* 페이지 내 보기 전환 — 상단 섹션 내비(알약)와 구분되도록 밑줄 탭 스타일 */}
+          <TabsList className="grid h-auto w-full grid-cols-4 gap-0 rounded-none border-b bg-transparent p-0">
+            {[
+              { value: 'reader', label: '본문 읽기' },
+              { value: 'bookmarks', label: '북마크' },
+              { value: 'plan', label: '읽기표' },
+              { value: 'log', label: '읽기 기록' },
+            ].map(t => (
+              <TabsTrigger
+                key={t.value}
+                value={t.value}
+                className="rounded-none border-b-2 border-transparent bg-transparent px-1 py-2 text-[13px] font-medium text-muted-foreground shadow-none transition-colors data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                {t.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="reader" className="mt-0 space-y-5">
