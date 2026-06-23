@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { ChevronRight, Check, Users, User, Mail } from 'lucide-react';
+import { LegalDialog } from '@/components/legal/LegalDialog';
 
 // 모임 만들기(group-first) 가입.
 // church_name 없이 가입 → handle_new_user (053) 분기 C:
@@ -148,13 +149,19 @@ export default function Signup() {
           </div>
 
           <div className="flex items-start gap-2.5">
-            <Checkbox id="terms" checked={termsAgreed} onCheckedChange={(v) => setTermsAgreed(!!v)} />
-            <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-              <Link to="/terms" target="_blank" className="text-primary underline underline-offset-2">이용약관</Link>
+            <Checkbox
+              id="terms"
+              aria-label="이용약관 및 개인정보처리방침 동의"
+              checked={termsAgreed}
+              onCheckedChange={(v) => setTermsAgreed(!!v)}
+              className="mt-0.5"
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed break-keep">
+              <LegalDialog type="terms">이용약관</LegalDialog>
               {' '}및{' '}
-              <Link to="/privacy" target="_blank" className="text-primary underline underline-offset-2">개인정보처리방침</Link>
+              <LegalDialog type="privacy">개인정보처리방침</LegalDialog>
               에 동의합니다.
-            </label>
+            </p>
           </div>
 
           <Button

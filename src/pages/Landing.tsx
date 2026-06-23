@@ -35,10 +35,10 @@ export default function Landing() {
           <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-accent/15 pointer-events-none" />
           <div className="absolute -left-6 bottom-0 w-24 h-24 rounded-full bg-accent/8 pointer-events-none" />
           <p className="text-[13px] font-bold text-accent tracking-widest uppercase mb-3">교회 · 구역 · 소모임</p>
-          <h1 className="font-display text-[32px] sm:text-4xl font-bold leading-tight text-primary-foreground mb-3">
+          <h1 className="font-display text-[32px] sm:text-4xl font-bold leading-tight text-primary-foreground mb-3 break-keep">
             구역 모임을<br />더 풍성하게
           </h1>
-          <p className="text-[15px] text-primary-foreground/70 leading-relaxed max-w-md mb-6">
+          <p className="text-[15px] text-primary-foreground/70 leading-relaxed max-w-md mb-6 break-keep">
             말씀 묵상부터 기도제목, 성경읽기, 성경공부까지.<br />
             구역원이 함께 자라는 공간을 만들어 보세요.
           </p>
@@ -82,8 +82,8 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto px-4 text-center space-y-5 relative overflow-hidden">
           <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-56 h-56 rounded-full bg-accent/10 pointer-events-none" />
           <p className="text-[13px] font-bold text-accent tracking-widest uppercase">구역장 · 소모임 리더라면</p>
-          <h2 className="font-display text-[26px] font-bold text-primary-foreground">함께 시작해보세요</h2>
-          <p className="text-[15px] text-primary-foreground/70 max-w-md mx-auto leading-relaxed">
+          <h2 className="font-display text-[26px] font-bold text-primary-foreground break-keep">함께 시작해보세요</h2>
+          <p className="text-[15px] text-primary-foreground/70 max-w-md mx-auto leading-relaxed break-keep">
             혼자 먼저 써보고, 괜찮으면 구역원을 초대하면 됩니다.<br />
             구성원은 언제든 초대 링크로 부를 수 있습니다.
           </p>
