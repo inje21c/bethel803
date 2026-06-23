@@ -106,6 +106,27 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const activeTheme = resolvedTheme ?? theme ?? 'light';
   const canResetDistrict = isViewingOtherDistrict && isMaster;
 
+  // 첫 화면 렌더 후 유휴 시간에 주요 탭 청크를 미리 받아둔다.
+  // 탭 첫 진입 시 청크 다운로드 지연(흰 화면/스피너)을 없앤다. 시각 변화 없음.
+  useEffect(() => {
+    const prefetch = () => {
+      import('@/pages/QTMain').catch(() => {});
+      import('@/pages/BibleReading').catch(() => {});
+      import('@/pages/BibleStudyList').catch(() => {});
+      import('@/pages/PrayerRequests').catch(() => {});
+    };
+    const ric = (window as Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+    if (ric) {
+      const id = ric(prefetch);
+      return () => (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(prefetch, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
