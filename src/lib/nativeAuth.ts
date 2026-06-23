@@ -90,10 +90,16 @@ export function initNativeAuthDeepLinks() {
     // 시스템 브라우저 닫기 (열려 있던 경우)
     await Browser.close().catch(() => {});
 
-    // 세션이 localStorage에 저장됐으므로 앱을 다시 진입시켜 로그인 상태로 부팅한다.
-    // (onAuthStateChange가 딥링크 복귀 후 화면 전환을 못 잡는 경우 대비 — 가장 확실)
+    // 정상 경로: setSession → onAuthStateChange → setUser → 로그인 화면이 자동
+    // 전환(이메일 로그인과 동일). 콜드 리로드 없이 즉시 넘어가 빠르다.
+    // 안전망: 혹시 전환이 안 되면 2초 뒤에도 로그인/랜딩에 머물러 있을 때만 재진입.
     if (ok) {
-      window.location.replace('/dashboard');
+      setTimeout(() => {
+        const path = window.location.pathname;
+        if (path === '/' || path.startsWith('/login') || path.startsWith('/join')) {
+          window.location.replace('/dashboard');
+        }
+      }, 2000);
     }
   });
 }
