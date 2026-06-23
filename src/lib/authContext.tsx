@@ -393,6 +393,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // signOut 실패해도 로컬 상태는 이미 초기화됨
     }
+    // 네이티브 전용: signOut이 타임아웃/실패하면 localStorage에 세션이 남아
+    // 재시작 시 자동로그인되는 버그가 있다. supabase 세션 키를 직접 제거해
+    // 확실히 로그아웃 상태로 만든다. (웹 동작은 그대로 — 가드)
+    if (isNativeApp()) {
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch {
+        // localStorage 접근 불가 시 무시
+      }
+    }
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string, districtId?: string) => {
