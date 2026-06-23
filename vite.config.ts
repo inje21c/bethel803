@@ -20,7 +20,9 @@ export default defineConfig(({ mode }) => ({
       srcDir: "src",
       filename: "sw.ts",
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      // 자동 등록 비활성화: main.tsx에서 웹 환경일 때만 수동 등록한다.
+      // (네이티브 Capacitor WebView에서 SW가 흰 화면을 유발하는 것 방지)
+      injectRegister: null,
       includeAssets: [
         "favicon.ico",
         "robots.txt",
