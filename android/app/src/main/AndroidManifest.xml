@@ -22,12 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- OAuth 딥링크 복귀: app.moco://auth-callback -->
+            <!-- OAuth 딥링크 복귀: im.moco://auth-callback -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="app.moco" />
+                <data android:scheme="im.moco" />
             </intent-filter>
 
         </activity>

@@ -1,4 +1,4 @@
-package app.moco;
+package im.moco;
 
 import com.getcapacitor.BridgeActivity;
 
