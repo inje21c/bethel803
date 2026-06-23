@@ -2,7 +2,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   // appId는 스토어 공개 후 변경 불가(변경 시 새 앱으로 취급). 테스트 단계에서 확정 권장.
-  appId: 'kr.or.bethel.guzic',
+  // 브랜드 '모코(moco)' 기반 reverse-DNS. (appName은 표시명이라 추후 변경 가능)
+  appId: 'app.moco',
   appName: '벧엘구역',
   // vite build 산출물 디렉토리
   webDir: 'dist',

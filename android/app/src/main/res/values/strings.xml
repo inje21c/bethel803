@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">벧엘구역</string>
     <string name="title_activity_main">벧엘구역</string>
-    <string name="package_name">kr.or.bethel.guzic</string>
-    <string name="custom_url_scheme">kr.or.bethel.guzic</string>
+    <string name="package_name">app.moco</string>
+    <string name="custom_url_scheme">app.moco</string>
 </resources>

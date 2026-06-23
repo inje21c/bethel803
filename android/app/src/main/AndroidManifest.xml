@@ -22,12 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- OAuth 딥링크 복귀: kr.or.bethel.guzic://auth-callback -->
+            <!-- OAuth 딥링크 복귀: app.moco://auth-callback -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="kr.or.bethel.guzic" />
+                <data android:scheme="app.moco" />
             </intent-filter>
 
         </activity>

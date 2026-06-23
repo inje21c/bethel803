@@ -1,4 +1,4 @@
-package kr.or.bethel.guzic;
+package app.moco;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -8,8 +8,8 @@ export const isNativeApp = () => Capacitor.isNativePlatform();
 
 // OAuth 복귀용 커스텀 스킴 딥링크.
 // Supabase Auth → URL Configuration → Redirect URLs 에 반드시 등록해야 한다
-// (prod·staging 양쪽): kr.or.bethel.guzic://auth-callback
-const APP_SCHEME = 'kr.or.bethel.guzic';
+// (prod·staging 양쪽): app.moco://auth-callback
+const APP_SCHEME = 'app.moco';
 export const NATIVE_AUTH_REDIRECT = `${APP_SCHEME}://auth-callback`;
 
 // 네이티브에서 OAuth 로그인.
