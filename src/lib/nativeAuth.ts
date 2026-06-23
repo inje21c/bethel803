@@ -18,7 +18,6 @@ export const NATIVE_AUTH_REDIRECT = `${APP_SCHEME}://auth-callback`;
 // 인앱 WebView는 Google OAuth가 차단되므로, 시스템 브라우저(Custom Tabs /
 // SFSafariViewController)로 열고 딥링크로 복귀한다.
 export async function nativeOAuthSignIn(provider: 'google' | 'kakao') {
-  console.log('[nativeAuth] signIn 시작', { provider, redirectTo: NATIVE_AUTH_REDIRECT, isNative: isNativeApp() });
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -27,7 +26,6 @@ export async function nativeOAuthSignIn(provider: 'google' | 'kakao') {
     },
   });
   if (error) throw error;
-  console.log('[nativeAuth] authorize URL:', data?.url);
   if (data?.url) {
     await Browser.open({ url: data.url, presentationStyle: 'popover' });
   }
@@ -56,8 +54,9 @@ export function initNativeAuthDeepLinks() {
   deepLinkInitialized = true;
 
   App.addListener('appUrlOpen', async ({ url }) => {
-    console.log('[nativeAuth] appUrlOpen 수신:', url);
+    // 주의: url에는 토큰이 들어있으므로 전체를 로그로 남기지 않는다.
     if (!url.startsWith(NATIVE_AUTH_REDIRECT)) return;
+    console.log('[nativeAuth] OAuth 콜백 수신');
     let ok = false;
     try {
       // PKCE 플로우: ?code=... 를 세션으로 교환
