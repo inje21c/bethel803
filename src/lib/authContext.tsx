@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { updateLastLogin } from './api';
 import { queryClient } from './queryClient';
 import { debugLog, startTrace } from './utils';
+import { isNativeApp, nativeOAuthSignIn, nativeLinkIdentity } from './nativeAuth';
 
 const PROFILE_CACHE_KEY = 'bethel_profile_v1';
 
@@ -329,6 +330,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithProvider = useCallback(async (provider: 'google' | 'kakao') => {
     debugLog('Auth', 'loginWithProvider requested', { provider });
+    // 네이티브 앱: 시스템 브라우저 + 딥링크 복귀 (인앱 WebView는 Google OAuth 차단)
+    if (isNativeApp()) {
+      await nativeOAuthSignIn(provider);
+      return;
+    }
     const redirectTo = import.meta.env.VITE_APP_URL || window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -340,6 +346,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const linkProviderAccount = useCallback(async (provider: 'google' | 'kakao') => {
     debugLog('Auth', 'linkProviderAccount requested', { provider });
+    if (isNativeApp()) {
+      await nativeLinkIdentity(provider);
+      return;
+    }
     const redirectTo = `${import.meta.env.VITE_APP_URL || window.location.origin}/profile`;
     const { error } = await supabase.auth.linkIdentity({
       provider,

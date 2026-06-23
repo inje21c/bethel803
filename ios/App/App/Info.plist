@@ -47,5 +47,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- OAuth 딥링크 복귀: kr.or.bethel.guzic://auth-callback -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>kr.or.bethel.guzic</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kr.or.bethel.guzic</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
