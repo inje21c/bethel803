@@ -38,3 +38,8 @@ supabase/.temp/
 
 # 로컬 도구 아티팩트
 .codex
+
+# Capacitor 자동생성 파일 (cap sync가 매번 재생성 → 추적 시 git pull 충돌 유발)
+android/app/capacitor.build.gradle
+android/capacitor.settings.gradle
+ios/App/CapApp-SPM/Package.swift
