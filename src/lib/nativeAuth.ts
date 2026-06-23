@@ -58,29 +58,43 @@ export function initNativeAuthDeepLinks() {
   App.addListener('appUrlOpen', async ({ url }) => {
     console.log('[nativeAuth] appUrlOpen 수신:', url);
     if (!url.startsWith(NATIVE_AUTH_REDIRECT)) return;
+    let ok = false;
     try {
       // PKCE 플로우: ?code=... 를 세션으로 교환
       const parsed = new URL(url);
       const code = parsed.searchParams.get('code');
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) console.error('[nativeAuth] exchangeCodeForSession 에러', error.message);
+        else ok = true;
       } else {
-        // 암시적(implicit) 플로우 fallback: #access_token=...&refresh_token=...
+        // 암시적(implicit) 플로우: #access_token=...&refresh_token=...
         const hash = url.split('#')[1];
         if (hash) {
           const params = new URLSearchParams(hash);
           const access_token = params.get('access_token');
           const refresh_token = params.get('refresh_token');
           if (access_token && refresh_token) {
-            await supabase.auth.setSession({ access_token, refresh_token });
+            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (error) console.error('[nativeAuth] setSession 에러', error.message);
+            else {
+              ok = true;
+              console.log('[nativeAuth] 로그인 성공, user:', data.session?.user?.id);
+            }
           }
         }
       }
     } catch (e) {
       console.error('[nativeAuth] 세션 교환 실패', e);
-    } finally {
-      // 시스템 브라우저 닫기 (열려 있던 경우)
-      await Browser.close().catch(() => {});
+    }
+
+    // 시스템 브라우저 닫기 (열려 있던 경우)
+    await Browser.close().catch(() => {});
+
+    // 세션이 localStorage에 저장됐으므로 앱을 다시 진입시켜 로그인 상태로 부팅한다.
+    // (onAuthStateChange가 딥링크 복귀 후 화면 전환을 못 잡는 경우 대비 — 가장 확실)
+    if (ok) {
+      window.location.replace('/dashboard');
     }
   });
 }
