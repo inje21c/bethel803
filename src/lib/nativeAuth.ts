@@ -7,9 +7,11 @@ import { supabase } from './supabase';
 export const isNativeApp = () => Capacitor.isNativePlatform();
 
 // OAuth 복귀용 커스텀 스킴 딥링크.
-// Supabase Auth → URL Configuration → Redirect URLs 에 반드시 등록해야 한다
-// (prod·staging 양쪽): im.moco://auth-callback
-const APP_SCHEME = 'im.moco';
+// 주의: 스킴에 점(.)이 있으면 Supabase(GoTrue)가 Redirect URL 매칭에 실패한다.
+// 따라서 appId(im.moco)와 별개로 점 없는 스킴 'moco'를 쓴다.
+// Supabase Auth → URL Configuration → Redirect URLs 에 반드시 등록 (prod·staging):
+//   moco://auth-callback
+const APP_SCHEME = 'moco';
 export const NATIVE_AUTH_REDIRECT = `${APP_SCHEME}://auth-callback`;
 
 // 네이티브에서 OAuth 로그인.
