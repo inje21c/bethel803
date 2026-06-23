@@ -27,6 +27,7 @@ if (Capacitor.isNativePlatform()) {
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
     <App />
-    <SpeedInsights />
+    {/* Vercel 분석은 웹에서만. 네이티브 앱에선 script 404만 나므로 제외 */}
+    {!Capacitor.isNativePlatform() && <SpeedInsights />}
   </ThemeProvider>
 );

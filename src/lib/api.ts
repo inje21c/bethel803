@@ -3660,7 +3660,7 @@ export async function getYearlyChapterCount(userId: string, year: number): Promi
 export async function getYearlyStudyCompletedCount(userId: string, year: number): Promise<number> {
   const { count, error } = await withApiTimeout(
     supabase
-      .from('bible_study_answers')
+      .from('study_answers')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('completed', true)
