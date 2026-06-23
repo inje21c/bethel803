@@ -158,6 +158,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
 async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']): Promise<UserProfile | null> {
   if (!session?.user) return null;
   const retryDelays = [0, 500];
+  let triedRefresh = false;
 
   for (const delayMs of retryDelays) {
     if (delayMs > 0) {
@@ -169,6 +170,22 @@ async function resolveSessionProfile(session: Awaited<ReturnType<typeof supabase
       if (profile) return profile;
     } catch (error) {
       if (error instanceof InvalidSessionError) {
+        // 네이티브 전용: 콜드 스타트 시 저장된 토큰이 만료돼 fetchProfile이 401나는
+        // 경쟁이 있다(no-op lock으로 토큰갱신과 직렬화 안 됨). 즉시 무효 처리하면
+        // 로그인 화면이 떴다가 백그라운드 갱신 후 "갑자기 자동로그인"되는 깜빡임 발생.
+        // → 토큰을 한 번 강제 갱신하고 재시도. 그래도 실패할 때만 무효로 본다.
+        // 웹은 기존 동작 그대로(현재 문제없이 동작 중) — 절대 건드리지 않는다.
+        if (isNativeApp() && !triedRefresh) {
+          triedRefresh = true;
+          try {
+            const { data, error: refreshErr } = await supabase.auth.refreshSession();
+            if (!refreshErr && data.session) {
+              continue; // 갱신 성공 → 다음 루프에서 신선한 토큰으로 재조회
+            }
+          } catch {
+            // 갱신 실패 → 아래에서 무효 처리
+          }
+        }
         throw error;
       }
       // 다음 재시도에서 다시 확인
