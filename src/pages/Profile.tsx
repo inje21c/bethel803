@@ -263,6 +263,7 @@ export default function Profile() {
   const [showNotifSection, setShowNotifSection] = useState(false);
   const [searchParams] = useSearchParams();
   const [showSupportSection, setShowSupportSection] = useState(() => searchParams.get('support') === '1');
+  const [showAccountDrop, setShowAccountDrop] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('support') === '1') {
@@ -549,31 +550,43 @@ export default function Profile() {
               <p className="text-xs text-muted-foreground leading-5 pt-4">
                 이 앱은 작은 모임들이 함께 신앙생활을 이어가도록 한 사람이 만들고 운영하고 있어요. 보내주시는 마음은 서버 운영과 기능 개선에 소중히 쓰입니다. 후원은 전적으로 자율이며, 하지 않으셔도 모든 기능을 그대로 사용하실 수 있습니다.
               </p>
-              <div className="rounded-xl border bg-card p-4 space-y-2">
-                {[
-                  ['은행', '토스뱅크'],
-                  ['계좌번호', '1000-0177-6433'],
-                  ['예금주', '현철민'],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{label}</span>
-                    <span className="text-sm font-medium">{value}</span>
-                  </div>
-                ))}
-              </div>
               <Button
                 size="sm"
                 variant="outline"
                 className="w-full h-9 gap-1.5"
-                onClick={() => {
-                  navigator.clipboard.writeText('토스뱅크 1000-0177-6433 현철민')
-                    .then(() => toast.success('계좌 정보가 복사되었습니다.'))
-                    .catch(() => toast.error('복사에 실패했습니다.'));
-                }}
+                onClick={() => setShowAccountDrop(v => !v)}
               >
-                <Copy className="w-3.5 h-3.5" />
-                계좌 정보 복사
+                <Heart className="w-3.5 h-3.5 text-rose-500" />
+                후원하기
+                <ChevronRight className={`w-3.5 h-3.5 ml-auto transition-transform ${showAccountDrop ? 'rotate-90' : ''}`} />
               </Button>
+              {showAccountDrop && (
+                <div className="rounded-xl border bg-card p-4 space-y-3">
+                  {[
+                    ['은행', '토스뱅크'],
+                    ['계좌번호', '1000-0177-6433'],
+                    ['예금주', '현철민'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground">{label}</span>
+                      <span className="text-sm font-medium">{value}</span>
+                    </div>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-9 gap-1.5 mt-1"
+                    onClick={() => {
+                      navigator.clipboard.writeText('토스뱅크 1000-0177-6433 현철민')
+                        .then(() => toast.success('계좌 정보가 복사되었습니다.'))
+                        .catch(() => toast.error('복사에 실패했습니다.'));
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    복사
+                  </Button>
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground text-center leading-5">
                 보내주신 후원에 진심으로 감사드립니다.
               </p>
