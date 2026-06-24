@@ -75,6 +75,17 @@ VITE_APP_VERSION=local-dev
 
 ---
 
+## 3-1. 환경 전환 (staging / prod-read)
+
+- **`.env.local` = 항상 staging.** 절대 prod 값으로 덮지 말 것.
+  (`npm run staging:env-check`가 prod URL이면 `[warn]` 띄움 — 이 점검 통과 상태 유지)
+
+- **prod 데이터 읽기 확인**: `.env.prodread.local`(prod 값) + `npm run dev:prodread`.
+  - 읽기 전용. 생성/수정/삭제 버튼 누르지 말 것 (운영 교회 데이터).
+  - 확인 후 `npm run dev`로 staging 복귀.
+
+---
+
 ## 4. 기술 스택
 
 - **프론트**: React + TypeScript + Vite, PWA
