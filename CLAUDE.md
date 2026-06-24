@@ -120,12 +120,14 @@ VITE_APP_VERSION=local-dev
 ---
 
 ## 7. AI 도구 역할
+> 2026-04-09 `Codex_gstack_도입안` 제안에 따라, 역할 분리 원칙은 유지하되 도구는 아래와 같이 명확히 한다.
 
-- **Claude Code** — 주력. 코드 작성·수정·실행 딜리버리.
-- **Antigravity (Gemini)** — Claude 리미트 시 폴백. 코드 시각화/구조 파악.
-- 한 작업에 **한 도구**. 동시 중복 금지.
-- 어느 도구든 이 CLAUDE.md를 읽고 시작 → 진실 분기 금지.
-
+- **주력 도구 (Implementation Agent): Claude Code**
+  - 코드 작성, 수정, 실행, 테스트, 배포 등 실제 구현을 담당한다.
+- **보조 도구 (Review/Architecture Agent): Gemini Code Assist (Antigravity)**
+  - 코드 구조 분석, 시각화, 아키텍처 리뷰, 제3자 관점의 QA 등 보조 역할을 수행한다.
+- **원칙**: 한 작업에는 하나의 주력 도구를 사용하며, 역할 전환 시 명시적으로 요청한다.
+- 모든 AI 도구는 작업을 시작할 때 이 `CLAUDE.md` 파일을 읽고 현재 프로젝트의 규칙과 맥락을 따른다.
 ---
 
 ## 8. 작업 방식
