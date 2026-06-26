@@ -7,20 +7,19 @@
 ---
 
 ## 마지막 업데이트
-- 날짜: 2026-06-24
-- 장소/도구: 회사 · 윈도우 · C:\dev\bethel803-web
+- 날짜: 2026-06-26
+- 장소/도구: 집 · 맥북 · ~/dev/bethel803-web
 
-## 지금까지 (EC2 → 로컬 이전)
-- EC2에서 main 웹 개발을 로컬로 옮기는 검증 **완료**.
-- 회사 윈도우 `C:\dev\bethel803-web`(main)에서 npm run dev 정상 기동,
-  신규 가입·로그인까지 확인 → Supabase 연동 작동 실증.
-- EC2 측 bethel803은 GitHub main과 동기화 완료(docs 반영, manifest는 빌드 생성이라 제외).
+## 지금까지
+- 맥북 bethel803-web 로컬 검증 완료 (staging 로그인 확인)
+- 회사 윈도우 + 집 맥북 양쪽 모두 EC2 없이 개발 가능 확인
 
 ## 다음에 할 차례
-- [ ] 집(맥북)에서도 SSH로 bethel803-web clone → 동일 검증
-- [ ] push→Vercel Production 자동배포 1회 확인 (사소한 수정으로)
-- [ ] EC2 나머지 9개 레포 미push 변경 일괄 점검 → EC2 stop → terminate
+- [ ] dance-2027 EC2→로컬 이전
+- [ ] EC2 나머지 레포(7개) 미push 변경 점검
+- [ ] EC2 stop → 관찰 → terminate
 - [ ] feature 브랜치 19개 정리 (별도 세션)
+- [ ] 집 맥북 vcc-game 검증 (vercel dev, vibecoding001 계정)
 
 ## 막힌 것 / 결정 대기
 - 없음 (A 검증 통과)

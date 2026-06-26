@@ -32,14 +32,16 @@ go-to-market은 **구역장을 겨냥한 B2B2C**다.
 - **회사 윈도우: HTTPS clone 막힘** (회사 SSL 검사 → `SEC_E_UNTRUSTED_ROOT`).
   → **반드시 SSH로** clone/push:
   `git clone git@github.com:inje21c/bethel803.git`
-- 집 맥북: (확인 예정 — SSH 키 등록돼 있으면 동일)
+- 집 맥북: SSH 키 `~/.ssh/id_ed25519`, GitHub Settings 등록 완료.
+  clone 폴더: `~/dev/bethel803-web`. SSH push/pull 정상 동작 확인(2026-06-26).
 
 ### 폴더 분리 (같은 레포, 두 목적)
-| 폴더 | 브랜치 | 목적 | 도구 |
-|---|---|---|---|
-| `C:\dev\bethel803-web` | main | 웹 운영 개발 | Claude Code / VS Code |
-| `C:\Users\NH\bethel803` | feat/capacitor | Android 앱 빌드 | Android Studio + Capacitor |
-- 두 폴더는 같은 GitHub 레포를 가리킴. 목적이 다르므로 분리 유지.
+| 폴더 | 기기 | 브랜치 | 목적 | 도구 |
+|---|---|---|---|---|
+| `C:\dev\bethel803-web` | 회사 윈도우 | main | 웹 운영 개발 | Claude Code / VS Code |
+| `~/dev/bethel803-web` | 집 맥북 | main | 웹 운영 개발 | Claude Code / VS Code |
+| `C:\Users\NH\bethel803` | 회사 윈도우 | feat/capacitor | Android 앱 빌드 | Android Studio + Capacitor |
+- 모든 폴더는 같은 GitHub 레포를 가리킴. 목적이 다르므로 분리 유지.
 
 ### 실행
 ```
