@@ -156,8 +156,15 @@ export default function BibleReading() {
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const [activeTab, setActiveTab] = useState('reader');
-  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState(1);
+  // localStorage에서 마지막 위치를 즉시 읽어 초기화 → bible_books 로드 전에도 bible_chapter 쿼리 시작 가능
+  const [selectedBookId, setSelectedBookId] = useState<number | null>(() => {
+    const loc = readLastLocation(user?.id);
+    return loc?.bookId ?? 1;
+  });
+  const [selectedChapter, setSelectedChapter] = useState(() => {
+    const loc = readLastLocation(user?.id);
+    return loc?.chapter ?? 1;
+  });
   const [selectedVerse, setSelectedVerse] = useState(1);
   const [pendingJumpVerse, setPendingJumpVerse] = useState<number | null>(null);
   const [restoredLocationKey, setRestoredLocationKey] = useState<string | null>(null);
@@ -187,7 +194,8 @@ export default function BibleReading() {
   });
 
   const selectedBook = books.find(book => book.id === selectedBookId) ?? books[0];
-  const currentBookId = selectedBook?.id ?? 1;
+  // books 로드 전에도 selectedBookId가 있으면 올바른 ID 사용 → bible_chapter 쿼리 병렬 시작 가능
+  const currentBookId = selectedBookId ?? selectedBook?.id ?? 1;
   const lastLocationKey = getLastLocationKey(user?.id);
 
   useEffect(() => {
@@ -229,7 +237,7 @@ export default function BibleReading() {
   const { data: verses = [], isLoading: chapterLoading, isPlaceholderData: chapterStale } = useQuery({
     queryKey: ['bible_chapter', currentBookId, selectedChapter],
     queryFn: () => getBibleChapter(currentBookId, selectedChapter),
-    enabled: !!selectedBook,
+    enabled: selectedBookId !== null, // books 로드 전에도 시작 가능 (selectedBookId는 localStorage에서 초기화)
     staleTime: Infinity,
     gcTime: Infinity,
     placeholderData: (prev) => prev, // 장 전환 시 스피너 대신 이전 본문 유지 → 즉시 느낌
@@ -253,18 +261,21 @@ export default function BibleReading() {
     queryKey: ['bible_bookmarks', user?.id],
     queryFn: () => getBibleBookmarks(user!.id),
     enabled: !!user,
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: readings = [], isLoading: readingsLoading } = useQuery({
     queryKey: ['bible_reading_logs', user?.id],
     queryFn: () => getBibleReadingLogs(user!.id),
     enabled: !!user,
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: readingPlan = null, isLoading: planLoading } = useQuery({
     queryKey: ['bible_reading_plan_primary', user?.id],
     queryFn: () => getPrimaryBibleReadingPlan(user!.id),
     enabled: !!user,
+    staleTime: 1000 * 60 * 5,
   });
 
   useEffect(() => {

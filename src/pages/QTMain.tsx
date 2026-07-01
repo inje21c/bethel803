@@ -44,6 +44,7 @@ export default function QTMain() {
     queryKey: ['qt_response', qt?.id, user?.id],
     queryFn: () => getMyQTResponse(qt!.id, user!.id),
     enabled: !!qt?.id && !!user?.id,
+    staleTime: 1000 * 60 * 30,
   });
 
   const { data: streak } = useQuery({

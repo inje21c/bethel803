@@ -315,7 +315,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     debugLog('Auth', 'login requested', { email });
-    const { error } = await withAuthTimeout(
+    const { error, data } = await withAuthTimeout(
       supabase.auth.signInWithPassword({ email, password }),
       '로그인 요청이 지연되고 있습니다. 다시 시도해주세요.'
     );
@@ -323,7 +323,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted.current) setLoading(false);
       throw error;
     }
-    // 프로필 fetch와 navigate는 onAuthStateChange(SIGNED_IN)에서 처리
+    // SIGNED_IN 이벤트 발화 전에 프로필 fetch를 미리 시작 → profileRequestCache에 적재
+    // onAuthStateChange(SIGNED_IN)에서 resolveSessionProfileCached 호출 시 캐시 히트로 즉시 반환
+    if (data.session) {
+      resolveSessionProfileCached(data.session);
+    }
     queryClient.clear();
   }, []);
 
