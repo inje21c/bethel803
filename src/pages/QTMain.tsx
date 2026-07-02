@@ -12,6 +12,16 @@ import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
+// KST 00:10(자정+10분) = UTC 15:10까지 남은 밀리초
+// QT는 매일 자정에 업로드되므로 10분 여유를 두고 자동 갱신
+function msUntilQTRefresh(): number {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(15, 10, 0, 0); // UTC 15:10 = KST 00:10
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
 export default function QTMain() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -35,9 +45,9 @@ export default function QTMain() {
       : useScrapedQT ? getTodayQT()
       : getOrCreateSimpleQT(today, qtSimpleBook),
     enabled: !settingsLoading,
-    staleTime: 1000 * 60 * 30,
+    staleTime: msUntilQTRefresh(),   // KST 00:10까지 신선 유지 → 이후 포커스 시 즉시 재조회
     refetchOnWindowFocus: true,
-    refetchInterval: (query) => (query.state.data ? false : 60_000),
+    refetchInterval: (query) => (query.state.data ? msUntilQTRefresh() : 60_000),
   });
 
   const { data: myResponse } = useQuery({
