@@ -21,6 +21,7 @@ import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 
 const LAST_LOCATION_KEY_PREFIX = 'bethel_bible_last_location';
+const SHOW_DISTRICT_WEEKLY_SUMMARY = false;
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -133,7 +134,7 @@ export default function Dashboard() {
   const { data: weeklyReports = [] } = useQuery({
     queryKey: ['weekly_reports', currentDistrictId],
     queryFn: () => getWeeklyReports(currentDistrictId),
-    enabled: !!currentDistrictId,
+    enabled: SHOW_DISTRICT_WEEKLY_SUMMARY && !!currentDistrictId,
     staleTime: 1000 * 60 * 10,
   });
   const lastLockedReport = weeklyReports.find(r => r.isLocked);
@@ -452,7 +453,7 @@ export default function Dashboard() {
         })()}
 
         {/* 우리 구역 이번 주 통계 */}
-        {lastLockedReport && (
+        {SHOW_DISTRICT_WEEKLY_SUMMARY && lastLockedReport && (
           <motion.div variants={item} initial="hidden" animate="show">
             <p className="text-[13px] font-bold text-muted-foreground tracking-widest uppercase px-0.5 mb-2">우리 구역 이번 주</p>
             <div className="grid grid-cols-2 gap-3">
