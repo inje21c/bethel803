@@ -134,7 +134,7 @@ export default function QTMain() {
           <p className="text-sm text-muted-foreground">
             {qtMode === 'simple'
               ? '잠시 후 다시 시도해주세요.'
-              : '매일 오전 6시에 업데이트됩니다.'}
+              : '매일 자정에 업데이트됩니다.'}
           </p>
           {qtError && (
             <p className="text-xs text-destructive bg-destructive/10 rounded p-2 text-left break-all">
