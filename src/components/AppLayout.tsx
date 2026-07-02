@@ -110,22 +110,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  // 인증 후 모든 페이지 청크를 백그라운드에서 미리 로드 (첫 방문 Suspense 스피너 제거)
+  // 자주 바로 이어서 여는 핵심 화면만 낮은 우선순위로 미리 로드한다.
+  // 전체 페이지를 한 번에 당기면 로그인 직후 대시보드 데이터 요청과 경쟁할 수 있다.
   useEffect(() => {
     const prefetch = () => {
-      import('@/pages/BibleStudyList').catch(() => {});
-      import('@/pages/BibleStudyDetail').catch(() => {});
-      import('@/pages/PrayerRequests').catch(() => {});
-      import('@/pages/PrayerRequestDetail').catch(() => {});
-      import('@/pages/ScheduleManagement').catch(() => {});
-      import('@/pages/BibleReading').catch(() => {});
-      import('@/pages/AdminDashboard').catch(() => {});
-      import('@/pages/Profile').catch(() => {});
-      import('@/pages/UserManual').catch(() => {});
-      import('@/pages/DistrictManagement').catch(() => {});
       import('@/pages/QTMain').catch(() => {});
-      import('@/pages/QTPray').catch(() => {});
-      import('@/pages/QTComplete').catch(() => {});
+      import('@/pages/BibleReading').catch(() => {});
     };
     if ('requestIdleCallback' in window) {
       const id = requestIdleCallback(prefetch);

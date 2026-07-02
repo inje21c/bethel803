@@ -29,6 +29,7 @@ import {
   createBibleReadingPlan,
   deleteBibleBookmark,
   deleteBibleReadingLog,
+  getBibleBookmarkLocations,
   getBibleBookmarks,
   getBibleBooks,
   getBibleChapter,
@@ -257,17 +258,23 @@ export default function BibleReading() {
     if (selectedChapter > 1) prefetch(selectedChapter - 1);
   }, [currentBookId, selectedChapter, selectedBook, queryClient]);
 
-  const { data: bookmarks = [] } = useQuery({
+  const { data: bookmarks = [], isLoading: bookmarksLoading } = useQuery({
     queryKey: ['bible_bookmarks', user?.id],
     queryFn: () => getBibleBookmarks(user!.id),
+    enabled: !!user && activeTab === 'bookmarks',
+  });
+
+  const { data: bookmarkLocations = [] } = useQuery({
+    queryKey: ['bible_bookmark_locations', user?.id],
+    queryFn: () => getBibleBookmarkLocations(user!.id),
     enabled: !!user,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 10,
   });
 
   const { data: readings = [], isLoading: readingsLoading } = useQuery({
     queryKey: ['bible_reading_logs', user?.id],
     queryFn: () => getBibleReadingLogs(user!.id),
-    enabled: !!user,
+    enabled: !!user && activeTab === 'log',
     staleTime: 1000 * 60 * 5,
   });
 
@@ -288,18 +295,18 @@ export default function BibleReading() {
   const { data: isLocked = false } = useQuery({
     queryKey: ['lock_status', currentDistrictId],
     queryFn: () => getCurrentLockStatus(currentDistrictId),
-    enabled: !!currentDistrictId,
+    enabled: !!currentDistrictId && activeTab === 'log',
   });
 
   const { hasModule, isLoading: churchLoading } = useChurch();
   const hasBibleText = hasModule('bible_text');
 
   const bookmarkMap = useMemo(() => {
-    return new Map(bookmarks.map(bookmark => [
+    return new Map(bookmarkLocations.map(bookmark => [
       buildVerseKey(bookmark.bookId, bookmark.chapter, bookmark.verse),
       bookmark,
     ]));
-  }, [bookmarks]);
+  }, [bookmarkLocations]);
 
   useEffect(() => {
     // 현재 선택 장의 본문이 실제로 준비됐을 때만 스크롤 (placeholder 단계 제외)
@@ -335,6 +342,7 @@ export default function BibleReading() {
 
   const invalidateBookmarkQueries = () => {
     queryClient.invalidateQueries({ queryKey: ['bible_bookmarks', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['bible_bookmark_locations', user?.id] });
   };
 
   const bookmarkMutation = useMutation({
@@ -698,7 +706,7 @@ export default function BibleReading() {
               onSelect={applyReference}
             />
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="grid gap-5">
               <section ref={readerRef} className="min-w-0 scroll-mt-20 rounded-lg border bg-card">
                 <div className="flex items-center justify-between border-b px-2 py-2">
                   <Button variant="ghost" size="icon" className="shrink-0" onClick={() => moveChapter(-1)} aria-label="이전 장">
@@ -830,59 +838,6 @@ export default function BibleReading() {
                   </div>
                 )}
               </section>
-
-              <aside className="rounded-lg border bg-card p-4 lg:sticky lg:top-24 lg:self-start">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="font-display text-sm font-semibold">최근 북마크</h2>
-                  <span className="text-xs text-muted-foreground">{bookmarks.length}개</span>
-                </div>
-                {bookmarks.length === 0 ? (
-                  <p className="rounded-md bg-muted/50 px-3 py-6 text-center text-sm text-muted-foreground">
-                    마음에 남는 절의 북마크 아이콘을 눌러 저장하세요.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {bookmarks.slice(0, 5).map(bookmark => (
-                      <div key={bookmark.id} className="rounded-md border p-3">
-                        <button
-                          type="button"
-                          className="block w-full text-left text-sm font-semibold hover:text-primary"
-                          onClick={() => goToBookmark(bookmark)}
-                        >
-                          {bookmark.bookName} {bookmark.chapter}:{bookmark.verse}
-                        </button>
-                        {bookmark.text && (
-                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                            {bookmark.text}
-                          </p>
-                        )}
-                        <div className="mt-2 flex justify-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
-                            onClick={() => removeBookmarkMutation.mutate(bookmark.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            삭제
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {bookmarks.length > 5 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setActiveTab('bookmarks')}
-                      >
-                        전체 북마크 보기
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </aside>
             </div>
             </>}
           </TabsContent>
@@ -894,10 +849,16 @@ export default function BibleReading() {
                   <h2 className="font-display text-lg font-semibold">내 북마크</h2>
                   <p className="text-sm text-muted-foreground">저장한 절을 모아보고 바로 본문으로 이동합니다.</p>
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">{bookmarks.length}개 저장됨</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {bookmarksLoading ? '불러오는 중' : `${bookmarks.length}개 저장됨`}
+                </span>
               </div>
 
-              {bookmarks.length === 0 ? (
+              {bookmarksLoading ? (
+                <div className="flex justify-center rounded-lg bg-muted/50 px-4 py-12">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              ) : bookmarks.length === 0 ? (
                 <div className="rounded-lg bg-muted/50 px-4 py-12 text-center">
                   <Bookmark className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium">저장된 북마크가 없습니다.</p>

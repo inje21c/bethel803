@@ -148,6 +148,14 @@ export interface BibleBookmark {
   createdAt: string;
 }
 
+export interface BibleBookmarkLocation {
+  id: string;
+  userId: string;
+  bookId: number;
+  chapter: number;
+  verse: number;
+}
+
 export type BibleReadingPlanScope = 'all' | 'old' | 'new';
 
 export interface BibleReadingPlanItem {
@@ -899,6 +907,24 @@ export async function getBibleChapter(bookId: number, chapter: number): Promise<
     chapter: row.chapter,
     verse: row.verse,
     text: row.text,
+  }));
+}
+
+export async function getBibleBookmarkLocations(userId: string): Promise<BibleBookmarkLocation[]> {
+  const { data, error } = await withApiTimeout(
+    supabase
+      .from('bible_bookmarks')
+      .select('id, user_id, book_id, chapter, verse')
+      .eq('user_id', userId),
+    '성경 북마크 위치 조회'
+  );
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    userId: row.user_id,
+    bookId: row.book_id,
+    chapter: row.chapter,
+    verse: row.verse,
   }));
 }
 
