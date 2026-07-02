@@ -136,6 +136,9 @@ export default function QTMain() {
               ? '잠시 후 다시 시도해주세요.'
               : '매일 자정에 업데이트됩니다.'}
           </p>
+          <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['qt_content'] })}>
+            다시 확인하기
+          </Button>
           {qtError && (
             <p className="text-xs text-destructive bg-destructive/10 rounded p-2 text-left break-all">
               {String(qtError)}
