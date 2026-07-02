@@ -1,5 +1,5 @@
 // Supabase Edge Function: fetch-devotional
-// 매일 06:00 KST (21:00 UTC) 실행
+// 매일 00:10 KST (15:10 UTC) 실행 — pg_cron: '10 15 * * *'
 // BodyMatterDetail + BodyBible 스크래핑 → qt_contents + daily_devotionals upsert
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

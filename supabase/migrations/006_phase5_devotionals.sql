@@ -27,12 +27,12 @@ CREATE POLICY "active users can read devotionals"
 -- service_role은 RLS 우회하므로 별도 정책 불필요
 
 -- ============================================================
--- pg_cron: 매일 21:00 UTC (다음날 KST 06:00) 자동 실행
+-- pg_cron: 매일 15:10 UTC (다음날 KST 00:10) 자동 실행
 -- pg_cron 익스텐션이 활성화된 경우 주석 해제 후 실행
 -- ============================================================
 -- SELECT cron.schedule(
 --   'fetch-devotional-daily',
---   '0 21 * * *',  -- 매일 21:00 UTC = 다음날 06:00 KST
+--   '10 15 * * *',  -- 매일 15:10 UTC = 다음날 00:10 KST
 --   $$
 --     SELECT net.http_post(
 --       url := current_setting('app.supabase_url') || '/functions/v1/fetch-devotional',
