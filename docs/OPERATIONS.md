@@ -127,8 +127,8 @@ Supabase Functions 환경에는 다음 값이 필요하다.
 구성:
 
 - Edge Function: `fetch-devotional`
-- 저장 테이블: `daily_devotionals`
-- 현재 운영 경로: 외부 실행 경로 유지
+- 저장 테이블: `qt_contents`, `daily_devotionals`
+- 운영 cron: `fetch-devotional-0010-kst`, `fetch-devotional-0600-kst`
 
 확인 항목:
 
@@ -136,22 +136,41 @@ Supabase Functions 환경에는 다음 값이 필요하다.
 - OpenAI API key 설정됨
 - 외부 사이트 접근 가능
 - 실제 운영 경로에서 정상 실행됨
+- Supabase cron은 UTC 기준이므로 `00:10 KST`는 `10 15 * * *`다.
+- 원본 사이트가 자정 직후 준비되지 않을 수 있으므로 `06:00 KST` 백업 잡도 유지한다.
 
 현재 확인된 사항:
 
 - `fetch-devotional` 함수는 실제 실행 및 텔레그램 알림 정상 수신 기록이 있다.
-- 반면 Supabase DB cron `fetch-devotional-daily`는 `schema "net" does not exist`로 실패 중인 것이 확인되었다.
+- 과거 Supabase DB cron `fetch-devotional-daily`는 `schema "net" does not exist`로 실패한 기록이 있다.
 
 운영 방침:
 
-- 묵상 수집은 현재 정상 동작 중인 외부 실행 경로를 유지한다.
-- 실패 중인 Supabase DB cron `fetch-devotional-daily`는 혼선을 막기 위해 제거한다.
+- `pg_cron`, `pg_net`이 켜진 상태에서 Edge Function을 직접 호출한다.
+- 실패 중인 옛 cron `fetch-devotional-daily`는 혼선을 막기 위해 제거한다.
+- 정식 등록 SQL은 `scripts/setup_fetch_devotional_cron.sql`을 사용한다.
 
-제거 SQL:
+운영 등록 SQL:
+
+```bash
+psql "$DB_URL" \
+  -v supabase_url=https://ljozrpecvlqqmwykxjfk.supabase.co \
+  -f scripts/setup_fetch_devotional_cron.sql
+```
+
+등록 후 확인:
 
 ```sql
-select cron.unschedule('fetch-devotional-daily');
+select jobid, jobname, schedule, active
+from cron.job
+where jobname like 'fetch-devotional%'
+order by jobname;
 ```
+
+기대 스케줄:
+
+- `fetch-devotional-0010-kst`: `10 15 * * *`
+- `fetch-devotional-0600-kst`: `0 21 * * *`
 
 ## 5.2 주간 마감
 
