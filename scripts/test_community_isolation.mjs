@@ -32,7 +32,7 @@ function check(name, ok, detail = '') {
 }
 
 const created = [];
-async function 테스터A(label, group) {
+async function mk(label, group) {
   const email = `iso.comm.${label}.${Date.now().toString(36)}@example.com`;
   const { data, error } = await admin.auth.admin.createUser({
     email, password: PW, email_confirm: true,
@@ -45,8 +45,8 @@ async function 테스터A(label, group) {
 
 async function run() {
   const tag = Date.now().toString(36);
-  const A = await 테스터A('a', `격리A모임_${tag}`);
-  const B = await 테스터A('b', `격리B모임_${tag}`);
+  const A = await mk('a', `격리A모임_${tag}`);
+  const B = await mk('b', `격리B모임_${tag}`);
   await new Promise(r => setTimeout(r, 800)); // 트리거 반영
 
   const { data: rows } = await admin.from('users').select('id,role,district_id,church_id').in('id', [A.id, B.id]);

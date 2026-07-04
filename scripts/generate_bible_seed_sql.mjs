@@ -69,7 +69,7 @@ console.log(`Generated ${outputPath} with ${books.length} books and ${verses.len
 
 if (chunkDir) {
   const resolvedChunkDir = path.resolve(chunkDir);
-  fs.테스터AdirSync(resolvedChunkDir, { recursive: true });
+  fs.mkdirSync(resolvedChunkDir, { recursive: true });
 
   const chunkSize = 500;
   const header = [
