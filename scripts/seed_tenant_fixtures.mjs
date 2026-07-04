@@ -43,7 +43,8 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const PASSWORD = 'SEED_PASSWORD_ENV';
+const PASSWORD = process.env.SEED_PASSWORD; // 실행 전 환경변수로 주입: SEED_PASSWORD=... node scripts/seed_tenant_fixtures.mjs
+if (!PASSWORD) throw new Error('SEED_PASSWORD 환경변수를 설정하세요.');
 const RUN = Date.now().toString(36); // 실행마다 고유 슬러그/이메일
 
 // 교회 2곳 × (구역 2개) × 역할 구성
