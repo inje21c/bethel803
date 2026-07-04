@@ -92,14 +92,14 @@ GRANT EXECUTE ON FUNCTION public.move_district_to_church(UUID, UUID) TO authenti
 -- ============================================================
 -- 어제 베타에서 잘못 유입된 구역. idempotent: 이미 옮겨졌으면 no-op.
 -- 트리거를 직접 우회(USER 비활성)하여 마이그레이션 owner 권한으로 이동.
--- 추가: 구성원K(은행구역, pending, 테스트 참여자)를 테스트구역 구역원으로 먼저
+-- 추가: 구성원K(타구역, pending, 테스트 참여자)를 테스트구역 구역원으로 먼저
 --       옮긴 뒤, 테스트구역과 함께 커뮤니티로 이동시킨다.
 DO $$
 DECLARE
   v_district  UUID := 'ba2ea0f1-fa4b-4b04-b930-ad27c6919359'; -- 테스트구역
   v_bethel    UUID := '00000000-0000-4100-a000-000000000001';
   v_community UUID := '00000000-0000-4100-a000-000000000002';
-  v_member_k     UUID := 'cc11f2a8-f7a6-495f-8b22-5ceb3b50c257'; -- 구성원K
+  v_member_k  UUID := 'cc11f2a8-f7a6-495f-8b22-5ceb3b50c257'; -- 구성원K
 BEGIN
   -- 현재 벧엘 밑에 있을 때만 이동 (안전 가드)
   IF EXISTS (
@@ -109,7 +109,7 @@ BEGIN
     ALTER TABLE public.districts DISABLE TRIGGER USER;
     ALTER TABLE public.users     DISABLE TRIGGER USER;
 
-    -- 구성원K를 은행구역 → 테스트구역으로 (같은 교회 내 구역 이동, role/status 유지)
+    -- 구성원K를 타구역 → 테스트구역으로 (같은 교회 내 구역 이동, role/status 유지)
     UPDATE public.users
        SET district_id = v_district
      WHERE id = v_member_k AND church_id = v_bethel;

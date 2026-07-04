@@ -51,8 +51,8 @@
 
 | 커밋 SHA (구) | 포함 문자열 | 처리 |
 |---|---|---|
-| `423561e` | [REDACTED - rotated 2026-07-04] | filter-repo 재작성 완료 |
-| `9b6fa77` | 테스터H, UUID-A, UUID-B | filter-repo 재작성 완료 |
+| `423561e` | 회전된 staging 임시 비밀번호 | filter-repo 재작성 완료 |
+| `9b6fa77` | 비식별 대상자명 및 관련 식별자 | filter-repo 재작성 완료 |
 | 다수 | cmhyun@gmail.com | 유지 결정 |
 
 **재작성 범위:** 전체 369개 커밋 / 2026-07-04 force-push 완료
@@ -71,3 +71,30 @@
 ## Phase 5 — 재발 방지 (진행 예정)
 
 GitHub Actions gitleaks 워크플로우 및 CLAUDE.md 문서 작성 규칙 추가.
+
+---
+
+## Phase 4 애드엔덤 — 2차 검증 (2026-07-04)
+
+| 항목 | 결과 | 상태 |
+|---|---|---|
+| R1 개발일지 잔존 실명/아티팩트 치환 | 지정 5건 수정 | 완료 |
+| R2 052 마이그레이션 주석·로컬 변수명 치환 | SQL 실행 의미 변경 없이 주석과 변수명만 수정 | 완료 |
+| R3 전수 재스캔(확장자 필터 없음) | 실명/교회명/임시비번 키워드 0건 | 완료 |
+| R3 지정 UUID 앞조각 확인 | 052 마이그레이션의 익명 UUID 단독 1건만 잔존 | 의도적 유지 |
+| R4 히스토리 재작성 | replacements.txt 반영 및 force-push 필요 | 사람 게이트 |
+| R5 프로세스 교정 | CLAUDE.md 문서 위생 규칙 추가 | 완료 |
+
+검증 방식:
+
+```bash
+rg -n --hidden --glob '!node_modules/**' --glob '!.git/**' "<애드엔덤 지정 키워드>" .
+```
+
+결과: 0건.
+
+남은 완료 조건:
+
+- 사람 확인 후 히스토리 재작성 및 force-push
+- fresh clone에서 전체 히스토리 `git log --all -S` 전 키워드 0건 확인
+- GitHub Support 캐시 삭제 요청 발송
