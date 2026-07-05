@@ -26,6 +26,40 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // 며칠간 방치된 구버전 캐시가 이제는 존재하지 않는 스크립트를 요청해
+      // 화면이 그대로 멈추는 경우의 최후 안전망. React가 뜨기도 전에 실패할
+      // 수 있으므로 모듈 스크립트보다 먼저, 별도 스크립트로 등록한다.
+      (function () {
+        var KEY = 'bethel_stale_reload_at';
+        var COOLDOWN_MS = 10000;
+        function reloadOnce() {
+          try {
+            var last = Number(sessionStorage.getItem(KEY) || '0');
+            var now = Date.now();
+            if (now - last < COOLDOWN_MS) return;
+            sessionStorage.setItem(KEY, String(now));
+          } catch (e) {}
+          location.reload();
+        }
+        window.addEventListener('error', function (e) {
+          if (e.target && e.target.tagName === 'SCRIPT') {
+            reloadOnce();
+            return;
+          }
+          var msg = (e.message || (e.error && e.error.message) || '') + '';
+          if (/dynamically imported module|module script|Failed to fetch/i.test(msg)) {
+            reloadOnce();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+          var msg = (e.reason && e.reason.message) || String(e.reason || '');
+          if (/dynamically imported module|module script|Failed to fetch/i.test(msg)) {
+            reloadOnce();
+          }
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

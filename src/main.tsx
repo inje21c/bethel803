@@ -3,6 +3,7 @@ import { ThemeProvider } from "next-themes";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import App from "./App.tsx";
 import "./index.css";
+import "./lib/registerSW";
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

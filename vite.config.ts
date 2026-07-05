@@ -20,7 +20,9 @@ export default defineConfig(({ mode }) => ({
       srcDir: "src",
       filename: "sw.ts",
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      // 자동 주입 대신 src/lib/registerSW.ts에서 수동 등록한다.
+      // (SKIP_WAITING 타이밍을 "탭이 백그라운드로 전환될 때"로 제어하기 위함)
+      injectRegister: false,
       includeAssets: [
         "favicon.ico",
         "robots.txt",
