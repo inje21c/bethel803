@@ -3,6 +3,8 @@
 import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{
@@ -11,13 +13,38 @@ declare let self: ServiceWorkerGlobalScope & {
   }>;
 };
 
-// 주의: skipWaiting()을 호출하지 않는다.
-// 새 버전 SW는 대기 상태로 설치만 되고, 사용자가 앱을 완전히 닫았다가
-// 다시 열 때 활성화된다. (세션 중 강제 새로고침으로 입력이 끊기는 문제 방지)
+// skipWaiting()은 자동으로 호출하지 않는다. 대신 클라이언트가 안전한 시점
+// (탭이 백그라운드로 전환될 때, src/lib/registerSW.ts 참고)에 SKIP_WAITING
+// 메시지를 보내면 그때 활성화한다 — 입력 중 강제 새로고침 방지 + 장기 방치로
+// 인한 구버전 SW 고착(흰 화면) 방지를 동시에 만족시키기 위함.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 clientsClaim();
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+
+// 대형 vendor 청크(vite.config.ts globIgnores 참고)는 설치 속도를 위해
+// 프리캐시 대상에서 제외하고, 대신 최초 요청 시점에 SW Cache Storage에
+// 캐시한다. 브라우저 HTTP 캐시보다 축출(eviction) 가능성이 낮아
+// 장기간 미접속 후 재실행 시 안전망이 된다.
+registerRoute(
+  ({ url }) => /\/assets\/vendor-(react|supabase|charts)-.*\.js$/.test(url.pathname),
+  new CacheFirst({
+    cacheName: 'vendor-chunks-v1',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 12,
+        maxAgeSeconds: 60 * 60 * 24 * 365,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
 
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL('/index.html'), {
