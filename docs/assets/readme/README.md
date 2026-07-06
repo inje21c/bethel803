@@ -7,7 +7,7 @@ README 상단에 사용할 공개용 이미지를 두는 폴더입니다.
 - `screenshot-dashboard.png`
 - `screenshot-devotional.png`
 - `screenshot-study-attendance.png`
-- `social-preview.png`
+- `social-preview.png`: GitHub repository Social Preview 설정에 업로드할 대표 이미지
 
 주의:
 
