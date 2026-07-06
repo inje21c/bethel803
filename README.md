@@ -18,7 +18,7 @@ The README images use sample or privacy-safe screens with sensitive information 
 
 ## Links
 
-- **Demo**: Public sample-data demo is being prepared
+- **Demo**: [Limited public demo](https://project-9zxj4.vercel.app/)
 - **Service Overview**: [Current service overview](./docs/기능설계/01_서비스개요_현재구현.md)
 - **Core Features**: [Core feature design](./docs/기능설계/02_핵심업무기능.md)
 - **Data Architecture**: [Data architecture](./docs/기능설계/04_데이터_아키텍처.md)
@@ -145,6 +145,12 @@ Key automation:
 - [Group-First Architecture](./docs/기능설계/모임우선_아키텍처_재설계.md)
 - [Operations Guide](./docs/OPERATIONS.md)
 - [Public Repository Hygiene Report](./EXPOSURE_REPORT.md)
+
+## License
+
+This repository is public for portfolio, review, and learning purposes, but it is not currently released under an open-source license.
+
+Unless a license is added later, all rights are reserved. Please do not reuse, redistribute, or commercialize the source code without permission.
 
 ## Current Status
 
