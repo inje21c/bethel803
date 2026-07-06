@@ -1,8 +1,33 @@
 # bethel803
 
-교회 소그룹의 삶을 더 깊게 기억하고 돌보기 위한 PWA입니다.
+교회 소그룹의 QT, 기도제목, 성경읽기, 출석, 성경공부, 리더 대시보드를 하나로 묶은 **Group-First PWA**입니다.
 
-bethel803은 단순한 모임 관리 앱이 아니라, 실제 공동체 안에서 매일의 신앙 기록과 돌봄을 이어가기 위해 만든 운영 도구입니다. 성경공부, QT, 기도제목, 성경읽기, 일정, 출석, 리더 대시보드를 한 흐름으로 묶어 소그룹의 사용 깊이를 높이는 데 집중합니다.
+> A group-first church small group care PWA built with React, TypeScript, Supabase, and Vercel.
+
+bethel803은 단순한 모임 관리 앱이 아닙니다. 소그룹 리더가 구성원의 신앙 활동과 돌봄 흐름을 기억하고, 구성원은 매일의 QT, 기도, 성경읽기, 성경공부 응답을 부담 없이 남길 수 있도록 만든 실제 운영 도구입니다.
+
+이 프로젝트는 실제 공동체 사용, 제품 설계 기록, 개인 포트폴리오를 함께 담고 있습니다. 목표는 대규모 확산보다 작은 공동체 안에서 반복 사용되는 흐름을 깊게 만들고, 그 과정의 의사결정과 개선 과정을 남기는 데 있습니다.
+
+## Preview
+
+| 리더 대시보드 | QT / 기도 흐름 | 성경공부 / 출석 |
+| --- | --- | --- |
+| <img src="./docs/assets/readme/screenshot-dashboard.png" alt="리더 대시보드" width="260"> | <img src="./docs/assets/readme/screenshot-devotional.png" alt="QT 깊은 묵상과 기도 흐름" width="260"> | <img src="./docs/assets/readme/screenshot-study-attendance.png" alt="성경공부 응답 화면" width="260"> |
+
+README 이미지는 민감정보가 제거된 샘플 화면을 사용합니다.
+
+## Links
+
+- **Demo**: 샘플 데이터 기반 공개 데모 준비 중
+- **Service Overview**: [서비스 개요](./docs/기능설계/01_서비스개요_현재구현.md)
+- **Core Features**: [핵심 기능](./docs/기능설계/02_핵심업무기능.md)
+- **Data Architecture**: [데이터 아키텍처](./docs/기능설계/04_데이터_아키텍처.md)
+- **Group-First Architecture**: [모임 우선 아키텍처](./docs/기능설계/모임우선_아키텍처_재설계.md)
+- **Operations Guide**: [운영 가이드](./docs/OPERATIONS.md)
+
+## Tech Stack
+
+React · TypeScript · Vite · Tailwind CSS · shadcn-ui · TanStack Query · Supabase Auth · PostgreSQL · RLS · Storage · Edge Functions · Web Push · Vercel
 
 ## 방향
 
