@@ -139,9 +139,6 @@ Key automation:
 
 ## Documentation
 
-- [Project Charter](./CHARTER.md)
-- [Operations Rules](./CLAUDE.md)
-- [Current State](./STATE.md)
 - [Service Overview](./docs/기능설계/01_서비스개요_현재구현.md)
 - [Core Features](./docs/기능설계/02_핵심업무기능.md)
 - [Data Architecture](./docs/기능설계/04_데이터_아키텍처.md)
