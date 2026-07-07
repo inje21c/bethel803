@@ -1,293 +1,228 @@
-# bethel803 운영 가이드
+# Operations Guide / 운영 가이드
 
-## 1. 목적
+> Public document / 공개 문서
+> Last reviewed / 마지막 점검: 2026-07-07
 
-이 문서는 `bethel803`를 실제로 실행, 배포, 점검할 때 필요한 운영 절차를 정리한다.
+## English Summary
 
-이 문서는 다음에 집중한다.
+This guide explains how bethel803 is run, verified, and operated at a high level. It intentionally avoids private credentials and environment-specific secrets. Public readers can use it to understand the operational model, while maintainers should still rely on private deployment settings for actual production work.
 
-- 로컬 개발 실행
-- 프론트 배포 준비
-- Supabase 운영 설정
-- 자동화 기능 점검
+## 한국어 요약
 
-세부 점검 항목은 [운영준비체크리스트.md](/home/ubuntu/bethel803/docs/운영준비체크리스트.md)를 함께 본다.
+이 문서는 bethel803의 실행, 검증, 운영 흐름을 공개 가능한 수준에서 정리합니다. 비공개 자격 증명이나 환경별 시크릿은 포함하지 않습니다. 공개 독자는 운영 모델을 이해하는 데 사용할 수 있고, 실제 운영자는 별도의 비공개 배포 설정을 기준으로 작업해야 합니다.
 
-## 2. 로컬 개발 실행
+## 1. Scope / 문서 범위
 
-### 2.1 준비
+This guide covers:
 
-필수 도구:
+- Local development / 로컬 개발 실행
+- Frontend deployment model / 프론트 배포 방식
+- Supabase configuration areas / Supabase 설정 영역
+- Automation checks / 자동화 점검
+- Role-based operational smoke tests / 역할별 운영 스모크 테스트
+
+This guide does not include:
+
+- Production secrets / 운영 시크릿
+- Private database URLs / 비공개 DB URL
+- Real user data / 실제 사용자 데이터
+- Manual one-off support credentials / 일회성 지원 자격 증명
+
+## 2. Local Development / 로컬 개발
+
+Required tools / 필요 도구:
 
 - Node.js
 - npm
 
-### 2.2 환경 변수
-
-`.env.example`를 기준으로 `.env.local`을 만든다.
-
-필수 값:
-
-| 키 | 설명 |
-|----|------|
-| `VITE_SUPABASE_URL` | 프론트에서 사용할 Supabase URL |
-| `VITE_SUPABASE_ANON_KEY` | 프론트에서 사용할 anon key |
-| `VITE_APP_URL` | 비밀번호 재설정 리디렉션용 앱 URL |
-
-주의:
-
-- `service_role` 키는 프론트 `.env`에 넣지 않는다.
-- `OPENAI_API_KEY`도 프론트 `.env`에 넣지 않는다.
-
-### 2.3 실행 명령
+Install and run / 설치와 실행:
 
 ```bash
 npm install
 npm run dev
 ```
 
-기본 개발 서버:
+Default local URL / 기본 로컬 주소:
 
-- `http://localhost:8080`
+```text
+http://localhost:8080
+```
 
-### 2.4 검증 명령
+## 3. Environment Variables / 환경 변수
+
+Create `.env.local` from `.env.example`. Only frontend-safe values should use the `VITE_` prefix.
+
+`.env.example`을 기준으로 `.env.local`을 만듭니다. 프론트에 노출 가능한 값만 `VITE_` 접두사를 사용합니다.
+
+| Key | Purpose |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase project URL used by the frontend |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key used by the frontend |
+| `VITE_APP_URL` | App URL used for auth redirects |
+| `VITE_VAPID_PUBLIC_KEY` | Public key for web push when enabled |
+| `VITE_APP_VERSION` | App version label |
+
+Security rules / 보안 원칙:
+
+- Do not place `service_role` keys in frontend env files.
+  `service_role` 키를 프론트 환경 파일에 넣지 않습니다.
+- Do not place `OPENAI_API_KEY` in frontend env files.
+  `OPENAI_API_KEY`를 프론트 환경 파일에 넣지 않습니다.
+- Edge Function secrets should be managed in Supabase.
+  Edge Function 시크릿은 Supabase에서 관리합니다.
+
+## 4. Verification / 검증
+
+Recommended local checks / 권장 로컬 점검:
 
 ```bash
 npm test
+npm run build
 ```
 
-EC2 서버는 하드웨어 여유가 부족하므로 프론트 빌드를 필수 로컬 검증으로 보지 않는다.
-EC2에서는 변경 범위 확인과 가벼운 정적 검사만 수행하고, 실제 프론트 빌드와 배포 검증은 GitHub 커밋 이후 Vercel 배포 과정에서 확인한다.
+When local hardware or environment constraints make a full build impractical, the production deployment pipeline should still be checked through Vercel logs.
+로컬 환경 제약으로 전체 빌드가 어렵다면, 운영 배포 파이프라인의 Vercel 로그에서 빌드 결과를 반드시 확인합니다.
 
-## 3. 프론트 배포
+## 5. Frontend Deployment / 프론트 배포
 
-프론트 운영 배포는 GitHub에 커밋한 뒤 Vercel에서 빌드하고 배포하는 방식을 기준으로 한다.
-저장소에는 `firebase.json` 기준 정적 배포 구성도 남아 있으나, EC2에서 직접 빌드해 배포하는 흐름은 기본 운영 경로로 보지 않는다.
+Primary deployment path / 기본 배포 경로:
 
-### 3.1 배포 전 확인
+1. Commit reviewed changes to GitHub.
+   검토된 변경사항을 GitHub에 커밋합니다.
+2. Vercel builds the frontend from the repository.
+   Vercel이 저장소 기준으로 프론트엔드를 빌드합니다.
+3. Check build logs and deployed routes.
+   빌드 로그와 배포된 라우트를 확인합니다.
+4. Confirm SPA rewrite behavior for direct route access.
+   직접 URL 접근 시 SPA rewrite 동작을 확인합니다.
 
-1. 변경 파일과 커밋 범위를 확인한다.
-2. 가능한 경우 가벼운 로컬 검사를 수행한다.
-3. Vercel 배포 로그에서 `npm run build` 성공 여부를 확인한다.
-4. SPA rewrite가 필요한 경로가 정상 동작하는지 배포 URL에서 확인한다.
+The repository may contain other static hosting configuration files, but Vercel is the main production deployment path.
+저장소에 다른 정적 호스팅 설정 파일이 남아 있을 수 있지만, 운영 배포의 기본 경로는 Vercel입니다.
 
-### 3.2 Firebase Hosting 기준
+## 6. Supabase Operations / Supabase 운영
 
-현재 설정:
+### 6.1 Frontend Connection / 프론트 연결
 
-- 정적 루트: `dist`
-- 모든 경로를 `index.html`로 rewrite
-- asset 캐시 헤더 포함
+| Value | Purpose |
+| --- | --- |
+| Supabase URL | Frontend project endpoint / 프론트 프로젝트 엔드포인트 |
+| Supabase anon key | Public client key / 공개 클라이언트 키 |
+| App URL | Auth redirect and app links / 인증 리디렉션과 앱 링크 |
 
-운영 URL이 확정되면 아래도 같이 맞춰야 한다.
+### 6.2 Edge Function Secrets / Edge Function 시크릿
 
-- `VITE_APP_URL`
-- Supabase Auth Redirect URL
+| Secret | Purpose |
+| --- | --- |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side privileged access |
+| `OPENAI_API_KEY` | AI-assisted automation when configured |
 
-## 4. Supabase 운영 설정
-
-## 4.1 프론트 연결용 값
-
-프론트 런타임에 다음 값이 필요하다.
-
-| 키 | 설명 |
-|----|------|
-| `VITE_SUPABASE_URL` | 프로젝트 URL |
-| `VITE_SUPABASE_ANON_KEY` | public anon key |
-| `VITE_APP_URL` | 운영 앱 주소 |
-
-## 4.2 Edge Function 환경 변수
-
-Supabase Functions 환경에는 다음 값이 필요하다.
-
-| 키 | 설명 |
-|----|------|
-| `SUPABASE_URL` | 프로젝트 URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | service role key |
-| `OPENAI_API_KEY` | OpenAI API key |
-
-대상 함수:
+Relevant functions / 관련 함수:
 
 - `fetch-devotional`
 - `parse-bulletin`
+- `push-dispatch`
+- `scheduled-notifications`
+- `delete-account`
 
-## 4.3 DB 및 스토리지 확인
+### 6.3 Database and Storage / DB와 Storage
 
-운영 전에 아래를 확인한다.
+Before production operation, confirm:
 
-- 마이그레이션이 모두 반영되었는가
-- `districts`, `notifications`, `notification_reads`, `prayer_intercessions`가 존재하는가
-- `compute_weekly_report()` 함수가 존재하는가
-- Storage `attachments` 버킷이 생성되었는가
+- Migrations are applied.
+  마이그레이션이 반영되어 있습니다.
+- RLS policies are enabled and reviewed.
+  RLS 정책이 활성화되어 있고 검토되었습니다.
+- Required Storage buckets exist.
+  필요한 Storage 버킷이 존재합니다.
+- Automation functions exist and have expected permissions.
+  자동화 함수가 존재하고 필요한 권한을 갖습니다.
 
-## 5. 자동화 운영
+## 7. Automation / 자동화
 
-## 5.1 묵상 수집
+| Job | Unit | Purpose |
+| --- | --- | --- |
+| Devotional fetching / 묵상 수집 | Edge Function | Fetch and store daily devotional content |
+| Weekly close / 주간 마감 | DB function or scheduled job | Generate weekly reports and lock states |
+| Bulletin parsing / 주보 파싱 | Edge Function | Create Bible study drafts from PDF input |
+| Push dispatch / 푸시 발송 | Edge Function | Send web push notifications |
 
-구성:
+Operational note / 운영 메모:
 
-- Edge Function: `fetch-devotional`
-- 저장 테이블: `qt_contents`, `daily_devotionals`
-- 운영 cron: `fetch-devotional-0010-kst`, `fetch-devotional-0600-kst`
+Supabase cron schedules use UTC. Korean Standard Time schedules should be converted explicitly and verified in the Supabase project.
+Supabase cron은 UTC 기준입니다. 한국시간 기준 스케줄은 명시적으로 변환하고 Supabase 프로젝트에서 확인해야 합니다.
 
-확인 항목:
+## 8. Role-Based Smoke Tests / 역할별 스모크 테스트
 
-- 함수 배포됨
-- OpenAI API key 설정됨
-- 외부 사이트 접근 가능
-- 실제 운영 경로에서 정상 실행됨
-- Supabase cron은 UTC 기준이므로 `00:10 KST`는 `10 15 * * *`다.
-- 원본 사이트가 자정 직후 준비되지 않을 수 있으므로 `06:00 KST` 백업 잡도 유지한다.
+Minimum roles / 최소 역할:
 
-현재 확인된 사항:
-
-- `fetch-devotional` 함수는 실제 실행 및 텔레그램 알림 정상 수신 기록이 있다.
-- 과거 Supabase DB cron `fetch-devotional-daily`는 `schema "net" does not exist`로 실패한 기록이 있다.
-
-운영 방침:
-
-- `pg_cron`, `pg_net`이 켜진 상태에서 Edge Function을 직접 호출한다.
-- 실패 중인 옛 cron `fetch-devotional-daily`는 혼선을 막기 위해 제거한다.
-- 정식 등록 SQL은 `scripts/setup_fetch_devotional_cron.sql`을 사용한다.
-
-운영 등록 SQL:
-
-```bash
-psql "$DB_URL" \
-  -v supabase_url=https://ljozrpecvlqqmwykxjfk.supabase.co \
-  -f scripts/setup_fetch_devotional_cron.sql
-```
-
-등록 후 확인:
-
-```sql
-select jobid, jobname, schedule, active
-from cron.job
-where jobname like 'fetch-devotional%'
-order by jobname;
-```
-
-기대 스케줄:
-
-- `fetch-devotional-0010-kst`: `10 15 * * *`
-- `fetch-devotional-0600-kst`: `0 21 * * *`
-
-## 5.2 주간 마감
-
-구성:
-
-- DB 함수: `compute_weekly_report()`
-- 결과 테이블: `weekly_reports`
-- 운영 cron: `weekly-close-all-districts`
-
-확인 항목:
-
-- 함수 생성됨
-- 권한/RLS가 맞는가
-- `weekly-close-all-districts`가 등록됐는가
-- 스케줄이 `매주 일요일 15:00 KST` 기준과 일치하는가
-
-현재 확인된 사항:
-
-- 기존 단일 구역 cron `weekly-close`는 제거했다.
-- 멀티 구역 cron `weekly-close-all-districts`로 전환했다.
-- 수동 실행으로 활성 구역 전체 `weekly_reports` 생성이 정상 확인되었다.
-
-현재 운영 스케줄:
-
-- `weekly-close-all-districts`
-- `0 6 * * 0` (매주 일요일 06:00 UTC = 15:00 KST)
-
-## 5.3 주보 PDF 파싱
-
-구성:
-
-- Edge Function: `parse-bulletin`
-- 결과 테이블: `bible_studies`
-
-확인 항목:
-
-- 함수 배포됨
-- OpenAI API key 설정됨
-- PDF URL 접근 가능
-- 스케줄 등록됨
-
-주의:
-
-- 코드 기준으로는 비발행 초안(`published=false`) 등록까지 구현돼 있다.
-- 실제 운영에서는 등록 후 검토/발행 흐름이 정상인지 확인해야 한다.
-
-## 6. 운영 점검 순서
-
-권장 순서:
-
-1. 프론트 환경 변수 설정
-2. Supabase 마이그레이션 상태 확인
-3. Storage 버킷 확인
-4. Edge Function 배포
-5. 함수 환경 변수 설정
-6. 자동화 수동 호출 테스트
-7. cron 등록 확인
-8. 역할별 실사용 테스트
-
-## 7. 역할별 실사용 테스트
-
-최소 다음 계정으로 확인한다.
-
-- `master`
-- `leader`
 - `member`
+- `leader`
+- `master`
+- `superadmin` when platform-level changes are involved
 
-검증 항목:
+Checkpoints / 점검 항목:
 
-- `member`는 일반 기능만 접근 가능
-- `leader`는 `/admin` 접근 가능
-- `master`는 `/districts` 접근 가능
-- 다른 구역 데이터가 섞이지 않음
+- Members can access normal member workflows only.
+  구성원은 일반 기능만 접근할 수 있습니다.
+- Leaders can access their own group dashboard and management scope.
+  리더는 자기 모임의 관리 범위에 접근할 수 있습니다.
+- Masters can access church-level administration when assigned.
+  마스터는 지정된 경우 교회 단위 관리에 접근할 수 있습니다.
+- Data from another group or church is not visible.
+  다른 모임 또는 교회 데이터가 보이지 않습니다.
 
-## 8. 트러블슈팅 포인트
+## 9. Troubleshooting / 문제 해결 기준
 
-### 8.1 로그인은 되지만 화면이 비정상
+### Login succeeds but the app state is wrong / 로그인은 되지만 화면 상태가 이상함
 
-확인:
+Check:
 
-- `users` 테이블에 해당 사용자 프로필이 생성됐는가
-- `district_id`가 유효한가
-- `status`가 `pending`인지 `active`인지 확인
+- User profile exists in `users`.
+- `district_id` and `church_id` are valid.
+- `status` is `pending` or `active` as expected.
+- Role-based route guards match the profile.
 
-### 8.2 비밀번호 재설정 링크가 동작하지 않음
+### Password reset link does not work / 비밀번호 재설정 링크가 동작하지 않음
 
-확인:
+Check:
 
-- `VITE_APP_URL` 값
-- Supabase Auth Redirect URL 설정
-- 실제 배포 URL과 일치 여부
+- `VITE_APP_URL`
+- Supabase Auth Redirect URL
+- Deployed app URL and redirect settings
 
-### 8.3 첨부 업로드 실패
+### Attachment upload fails / 첨부 업로드 실패
 
-확인:
+Check:
 
-- `attachments` 버킷 존재 여부
-- 버킷 권한 설정
-- 업로드 파일 크기/형식 제한
+- Storage bucket exists.
+- Bucket policy allows the intended operation.
+- File size and type are acceptable.
 
-### 8.4 자동화가 실행되지 않음
+### Automation does not run / 자동화가 실행되지 않음
 
-확인:
+Check:
 
-- Edge Function 배포 여부
-- 함수 환경 변수 설정 여부
-- cron 등록 여부
-- 함수 로그 에러
+- Edge Function deployment
+- Function secrets
+- Cron registration
+- Function logs
+- External source availability
 
-메모:
+## 10. Public Hygiene / 공개 문서 위생
 
-- `fetch-devotional`은 현재 외부 실행 경로를 기준으로 운영한다.
-- Supabase DB cron 실패 기록은 실제 성공 실행과 혼선을 만들 수 있으므로 제거 상태를 유지한다.
+Before committing public documentation:
 
-## 9. 관련 문서
+- Do not include real names, phone numbers, emails, passwords, tokens, or third-party UUIDs unless intentionally public.
+  의도적으로 공개하는 정보가 아니라면 실명, 전화번호, 이메일, 비밀번호, 토큰, 제3자 UUID를 포함하지 않습니다.
+- Use sample names such as `Member A`, `Leader A`, or `Tester A`.
+  `Member A`, `Leader A`, `Tester A` 같은 샘플 이름을 사용합니다.
+- Prefer relative repository links over local absolute paths.
+  로컬 절대경로보다 저장소 상대 링크를 사용합니다.
 
-- [운영준비체크리스트.md](/home/ubuntu/bethel803/docs/운영준비체크리스트.md)
-- [01_서비스개요_현재구현.md](/home/ubuntu/bethel803/docs/기능설계/01_서비스개요_현재구현.md)
-- [04_데이터_아키텍처.md](/home/ubuntu/bethel803/docs/기능설계/04_데이터_아키텍처.md)
-- [05_개발로드맵.md](/home/ubuntu/bethel803/docs/기능설계/05_개발로드맵.md)
+## 11. Related Documents / 관련 문서
+
+- [Service Overview / 서비스 개요](./기능설계/01_서비스개요_현재구현.md)
+- [Core Features / 핵심 업무 기능](./기능설계/02_핵심업무기능.md)
+- [Data Architecture / 데이터 아키텍처](./기능설계/04_데이터_아키텍처.md)
+- [Group-First Architecture / 모임 우선 아키텍처](./기능설계/모임우선_아키텍처_재설계.md)

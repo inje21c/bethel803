@@ -18,14 +18,17 @@ The README images use sample or privacy-safe screens with sensitive information 
 
 ## Links
 
-- **Demo**: [Limited public demo](https://project-9zxj4.vercel.app/)
-- **Service Overview**: [Current service overview](./docs/기능설계/01_서비스개요_현재구현.md)
-- **Core Features**: [Core feature design](./docs/기능설계/02_핵심업무기능.md)
-- **Data Architecture**: [Data architecture](./docs/기능설계/04_데이터_아키텍처.md)
-- **Group-First Architecture**: [Group-first architecture redesign](./docs/기능설계/모임우선_아키텍처_재설계.md)
-- **Operations Guide**: [Operations guide](./docs/OPERATIONS.md)
+These links are curated for public GitHub visitors. The detailed documents remain mostly bilingual or Korean-first because bethel803 was designed and operated for Korean church small groups.
 
-Most detailed design and operations documents are currently written in Korean because the service was designed for Korean church small groups.
+| Area | Link | Public context |
+| --- | --- | --- |
+| Demo | [Limited public demo](https://project-9zxj4.vercel.app/) | A limited public build for previewing the service shape. |
+| Service Overview | [Current service overview](./docs/기능설계/01_서비스개요_현재구현.md) | Explains what the service currently does and who it serves. |
+| Core Features | [Core feature design](./docs/기능설계/02_핵심업무기능.md) | Describes devotional, prayer, Bible study, attendance, and dashboard flows. |
+| Data Architecture | [Data architecture](./docs/기능설계/04_데이터_아키텍처.md) | Summarizes the main data model and Supabase/Postgres boundaries. |
+| Group-First Architecture | [Group-first architecture redesign](./docs/기능설계/모임우선_아키텍처_재설계.md) | Records the product decision to center groups before church-level administration. |
+| Operations | [Operations guide](./docs/OPERATIONS.md) | Covers deployment, Supabase operations, scheduled jobs, and production-care notes. |
+| Public Hygiene | [Public repository hygiene report](./EXPOSURE_REPORT.md) | Documents the repository review performed before public exposure. |
 
 ## Tech Stack
 
