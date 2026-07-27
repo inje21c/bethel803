@@ -326,19 +326,15 @@ interface QTDetail {
 async function fetchQTDetail(date: string): Promise<QTDetail> {
   const data = await postApi('BodyMatterDetail', date) as Record<string, unknown>;
 
-  // 진단용: API 응답 필드 목록 + summary 관련 필드 값 확인
-  console.log('[BodyMatterDetail] keys:', Object.keys(data).join(', '));
-  console.log('[BodyMatterDetail] Qt_a2:', JSON.stringify(data.Qt_a2));
-  console.log('[BodyMatterDetail] Qt_Brf:', JSON.stringify(data.Qt_Brf));
-  console.log('[BodyMatterDetail] Qt_sj:', JSON.stringify(data.Qt_sj));
-
   const bibleName = String(data.Bible_name ?? '').replace(/\(.*?\)/, '').trim();
   const bibleChapter = String(data.Bible_chapter ?? '').trim();
   const scripture = bibleName && bibleChapter ? `${bibleName} ${bibleChapter}` : '시편 119:105';
 
   const title = String(data.Qt_sj ?? '').trim() || '오늘의 묵상';
 
-  const rawSummary = String(data.Qt_a2 ?? data.Qt_Brf ?? '');
+  // Qt_Brf = 본문 요약(Brief). Qt_a2는 2번 질문 답변으로 다른 필드임.
+  // ?? 대신 ||: 빈 문자열("")도 fallback 처리
+  const rawSummary = String(data.Qt_Brf || data.Qt_a2 || '');
   const summary = stripHtml(rawSummary) || '말씀으로 하루를 시작하는 은혜가 있기를 바랍니다.';
 
   const audioUrl = String(data.MediaFileUrl ?? '').trim();
