@@ -326,6 +326,12 @@ interface QTDetail {
 async function fetchQTDetail(date: string): Promise<QTDetail> {
   const data = await postApi('BodyMatterDetail', date) as Record<string, unknown>;
 
+  // 진단용: API 응답 필드 목록 + summary 관련 필드 값 확인
+  console.log('[BodyMatterDetail] keys:', Object.keys(data).join(', '));
+  console.log('[BodyMatterDetail] Qt_a2:', JSON.stringify(data.Qt_a2));
+  console.log('[BodyMatterDetail] Qt_Brf:', JSON.stringify(data.Qt_Brf));
+  console.log('[BodyMatterDetail] Qt_sj:', JSON.stringify(data.Qt_sj));
+
   const bibleName = String(data.Bible_name ?? '').replace(/\(.*?\)/, '').trim();
   const bibleChapter = String(data.Bible_chapter ?? '').trim();
   const scripture = bibleName && bibleChapter ? `${bibleName} ${bibleChapter}` : '시편 119:105';
