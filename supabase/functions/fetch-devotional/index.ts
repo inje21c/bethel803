@@ -78,12 +78,14 @@ async function fetchAndStoreQT(
     const existingMap = new Map((existing ?? []).map((r) => [r.church_id as string, r]));
 
     if (existingMap.size === scrapedIds.length) {
-      // 모든 scraped 교회에 데이터 있음 → 완전 캐시
       const first = existingMap.values().next().value;
-      return { date, scripture: first.scripture as string };
-    }
-
-    if (existingMap.size > 0) {
+      // summary가 폴백 기본값이면 불완전 데이터 → 재스크랩 (06:00 재시도 실효화)
+      const hasSummary = first.summary && first.summary !== '말씀으로 하루를 시작하는 은혜가 있기를 바랍니다.';
+      if (hasSummary) {
+        return { date, scripture: first.scripture as string };
+      }
+      console.log(`[fetch-devotional] summary incomplete for ${date}, re-scraping`);
+    } else if (existingMap.size > 0) {
       // 일부만 있음 (신규 교회 추가 등) → 기존 행에서 복사
       const template = existingMap.values().next().value;
       const missingIds = scrapedIds.filter((id) => !existingMap.has(id));
