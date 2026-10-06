@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download, Award } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { BibleReadingSummary } from '@/lib/api';
 
@@ -26,6 +26,7 @@ interface AdminBibleReadingTabProps {
   hasReadingRange: boolean;
   readingRangeFetching: boolean;
   displayedReadingSummaries: BibleReadingSummary[];
+  completionCounts: Map<string, number>;
 }
 
 export default function AdminBibleReadingTab({
@@ -36,6 +37,7 @@ export default function AdminBibleReadingTab({
   hasReadingRange,
   readingRangeFetching,
   displayedReadingSummaries,
+  completionCounts,
 }: AdminBibleReadingTabProps) {
   return (
     <div className="space-y-4">
@@ -132,8 +134,8 @@ export default function AdminBibleReadingTab({
                     ...displayedReadingSummaries.map(r => [r.userName, r.totalChapters]),
                   ]
                 : [
-                    ['이름', '누적 장수', '진행률(%)'],
-                    ...displayedReadingSummaries.map(r => [r.userName, r.totalChapters, Math.round((r.totalChapters / 1189) * 100)]),
+                    ['이름', '누적 장수', '진행률(%)', '완독 횟수'],
+                    ...displayedReadingSummaries.map(r => [r.userName, r.totalChapters, Math.round((r.totalChapters / 1189) * 100), completionCounts.get(r.userId) ?? 0]),
                   ],
               `성경읽기_${hasReadingRange ? `${readingFrom}_${readingTo}` : new Date().toISOString().slice(0, 10)}.csv`
             )}
@@ -147,6 +149,7 @@ export default function AdminBibleReadingTab({
               <TableRow>
                 <TableHead>이름</TableHead>
                 <TableHead className="text-right">{hasReadingRange ? '장수' : '누적 장수'}</TableHead>
+                <TableHead className="text-right">완독</TableHead>
                 {!hasReadingRange && <TableHead>진행률</TableHead>}
               </TableRow>
             </TableHeader>
@@ -155,6 +158,16 @@ export default function AdminBibleReadingTab({
                 <TableRow key={r.userId}>
                   <TableCell className="font-medium">{r.userName}</TableCell>
                   <TableCell className="text-right font-semibold">{r.totalChapters}장</TableCell>
+                  <TableCell className="text-right">
+                    {(completionCounts.get(r.userId) ?? 0) > 0 ? (
+                      <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                        <Award className="h-3.5 w-3.5" />
+                        {completionCounts.get(r.userId)}회
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   {!hasReadingRange && (
                     <TableCell className="w-32">
                       <div className="flex items-center gap-2">
@@ -169,7 +182,7 @@ export default function AdminBibleReadingTab({
               ))}
               {displayedReadingSummaries.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={hasReadingRange ? 2 : 3} className="text-center text-muted-foreground py-4">
+                  <TableCell colSpan={hasReadingRange ? 3 : 4} className="text-center text-muted-foreground py-4">
                     {hasReadingRange ? '선택한 기간에 성경읽기 기록이 없습니다.' : '아직 성경읽기 기록이 없습니다.'}
                   </TableCell>
                 </TableRow>

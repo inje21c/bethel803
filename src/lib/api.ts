@@ -202,6 +202,17 @@ export interface BiblePlanChapterCompletionResult {
   alreadyCompleted: boolean;
 }
 
+export interface BibleReadingCompletion {
+  id: string;
+  userId: string;
+  planId: string | null;
+  scope: string;
+  completedDate: string;
+  lapNumber: number;
+  source: 'auto' | 'self_report';
+  chaptersSnapshot: number | null;
+}
+
 interface BiblePlanChapterRef {
   bookId: number;
   chapter: number;
@@ -1127,7 +1138,7 @@ export async function getPrimaryBibleReadingPlan(userId: string): Promise<BibleR
       .from('bible_reading_plans')
       .select('*')
       .eq('owner_user_id', userId)
-      .eq('status', 'active')
+      .in('status', ['active', 'completed'])
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(1)
@@ -1692,6 +1703,40 @@ export async function completeCurrentBiblePlanChapter(params: {
   });
 }
 
+// 완독 기록 + 배지 증가. 반환값 = 누적 완독 횟수(lap_number).
+export async function recordBibleCompletion(params: {
+  planId: string;
+  source: 'auto' | 'self_report';
+}): Promise<number> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('record_bible_completion', {
+      p_plan_id: params.planId,
+      p_source: params.source,
+    }),
+    '완독 기록'
+  );
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
+// 같은 읽기표로 새 바퀴 시작(읽기표 리셋, 누적 장수는 보존).
+export async function restartBibleReadingPlan(planId: string): Promise<void> {
+  const { error } = await withApiTimeout(
+    supabase.rpc('restart_bible_reading_plan', { p_plan_id: planId }),
+    '읽기표 재시작'
+  );
+  if (error) throw error;
+}
+
+export async function getBibleCompletionCount(userId: string): Promise<number> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_bible_completion_count', { p_user_id: userId }),
+    '완독 횟수 조회'
+  );
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
 export async function getBibleReadingLogs(userId: string): Promise<BibleReadingLog[]> {
   const { data, error } = await withApiTimeout(
     supabase
@@ -1781,6 +1826,20 @@ export async function getAllBibleReadingSummaries(districtId: string): Promise<B
     userName: row.user_name,
     totalChapters: Number(row.total_chapters),
   }));
+}
+
+export async function getBibleCompletionCounts(districtId: string): Promise<Map<string, number>> {
+  const { data, error } = await withApiTimeout(
+    supabase.rpc('get_bible_completion_counts', { p_district_id: districtId }),
+    '구역 완독 횟수 조회'
+  );
+  if (error) throw error;
+  return new Map(
+    (data ?? []).map((row: { user_id: string; completion_count: number }) => [
+      row.user_id,
+      Number(row.completion_count),
+    ])
+  );
 }
 
 export async function getBibleReadingSummariesByRange(

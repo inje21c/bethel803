@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  Award,
   Bookmark,
   BookmarkCheck,
   BookOpen,
@@ -13,8 +14,10 @@ import {
   Lock,
   Pencil,
   Plus,
+  RotateCcw,
   Trash2,
   TrendingUp,
+  Trophy,
   X,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,10 +36,13 @@ import {
   getBibleBookmarks,
   getBibleBooks,
   getBibleChapter,
+  getBibleCompletionCount,
   getBibleReadingLogs,
   getCurrentLockStatus,
   getKSTDateString,
   getPrimaryBibleReadingPlan,
+  recordBibleCompletion,
+  restartBibleReadingPlan,
   setBiblePlanItemCompleted,
   updateBibleReadingLog,
   updateBibleReadingPlan,
@@ -51,6 +57,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/components/AppLayout';
 import CommunitySubNav from '@/components/CommunitySubNav';
@@ -146,6 +153,24 @@ function getActivePlanDay(plan: BibleReadingPlan | null | undefined, today: stri
     plan.days.find(day => day.items.some(item => !item.completedAt)) ??
     plan.days[0] ??
     null
+  );
+}
+
+// 완독 횟수 → 등급별 색/아이콘. 1독부터 표시, 마일스톤에서 색이 올라간다.
+function getCompletionTier(count: number) {
+  if (count >= 10) return 'bg-violet-100 text-violet-700 ring-violet-300 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-400/30';
+  if (count >= 5) return 'bg-amber-100 text-amber-700 ring-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/30';
+  if (count >= 3) return 'bg-slate-200 text-slate-700 ring-slate-300 dark:bg-slate-500/20 dark:text-slate-200 dark:ring-slate-400/30';
+  return 'bg-orange-100 text-orange-700 ring-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-400/30';
+}
+
+function CompletionBadge({ count, className = '' }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${getCompletionTier(count)} ${className}`}>
+      <Award className="h-3.5 w-3.5" />
+      완독 {count}회
+    </span>
   );
 }
 
@@ -285,6 +310,16 @@ export default function BibleReading() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: completionCount = 0 } = useQuery({
+    queryKey: ['bible_completion_count', user?.id],
+    queryFn: () => getBibleCompletionCount(user!.id),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // 완독 축하 모달 상태 (lap = 몇 번째 완독인가)
+  const [celebration, setCelebration] = useState<{ lap: number } | null>(null);
+
   useEffect(() => {
     if (!readingPlan || editingPlan) return;
     setPlanTitle(readingPlan.title);
@@ -412,6 +447,7 @@ export default function BibleReading() {
   const invalidatePlanQueries = () => {
     return Promise.all([
       queryClient.invalidateQueries({ queryKey: ['bible_reading_plan_primary', user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['bible_completion_count', user?.id] }),
       invalidateReadingQueries(),
     ]);
   };
@@ -514,6 +550,32 @@ export default function BibleReading() {
     },
   });
 
+  const recordCompletionMutation = useMutation({
+    mutationFn: (source: 'auto' | 'self_report') => recordBibleCompletion({
+      planId: readingPlan!.id,
+      source,
+    }),
+    onSuccess: async (lap) => {
+      await invalidatePlanQueries();
+      setCelebration({ lap });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '완독 기록에 실패했습니다.');
+    },
+  });
+
+  const restartPlanMutation = useMutation({
+    mutationFn: () => restartBibleReadingPlan(readingPlan!.id),
+    onSuccess: async () => {
+      await invalidatePlanQueries();
+      setCelebration(null);
+      toast.success('새로운 완독 여정을 시작합니다. 오늘부터 다시 일정이 배치되었어요.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '읽기표 재시작에 실패했습니다.');
+    },
+  });
+
   // 권/장/절 피커에서 선택 → 해당 위치로 이동 + 스크롤
   const applyReference = (bookId: number, chapter: number, verse: number) => {
     setSelectedBookId(bookId);
@@ -610,6 +672,21 @@ export default function BibleReading() {
   const activePlanDay = getActivePlanDay(readingPlan, today);
   const activePlanItemsLabel = activePlanDay ? formatPlanItems(activePlanDay.items) : '';
   const planDayCompleted = activePlanDay?.items.every(item => item.completedAt) ?? false;
+  const planFullyRead = planStats.total > 0 && planStats.completed >= planStats.total;
+  const planCompleted = readingPlan?.status === 'completed';
+
+  // 읽기표의 모든 장을 다 읽으면 완독으로 자동 기록(1회). 서버가 멱등 처리.
+  useEffect(() => {
+    if (
+      readingPlan &&
+      readingPlan.status === 'active' &&
+      planFullyRead &&
+      !recordCompletionMutation.isPending
+    ) {
+      recordCompletionMutation.mutate('auto');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingPlan?.id, readingPlan?.status, planFullyRead]);
 
   // 읽기 현황: 연간 계획(약 400일)을 한 번에 펼치지 않고 월별로 접어서 표시
   const [openPlanMonth, setOpenPlanMonth] = useState<string | null>(null);
@@ -794,18 +871,20 @@ export default function BibleReading() {
                               {selectedBook?.koreanName ?? '성경'} {selectedChapter}장
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {currentPlanItem
-                                ? currentChapterCompleted
-                                  ? '이 장은 읽기표와 읽기 기록에 반영되어 있습니다.'
-                                  : `${readingPlan.title} 읽기표에 체크하고 오늘 기록에 누적합니다.`
-                                : '현재 장은 대표 읽기표에 포함되어 있지 않습니다.'}
+                              {planCompleted
+                                ? '완독을 마친 읽기표입니다. 읽기표 탭에서 새 바퀴를 시작하면 다시 체크할 수 있어요.'
+                                : currentPlanItem
+                                  ? currentChapterCompleted
+                                    ? '이 장은 읽기표와 읽기 기록에 반영되어 있습니다.'
+                                    : `${readingPlan.title} 읽기표에 체크하고 오늘 기록에 누적합니다.`
+                                  : '현재 장은 대표 읽기표에 포함되어 있지 않습니다.'}
                             </p>
                           </div>
                           <Button
                             type="button"
                             className="gap-1.5"
                             onClick={() => completeCurrentChapterMutation.mutate()}
-                            disabled={!user || !currentPlanItem || completeCurrentChapterMutation.isPending}
+                            disabled={!user || !currentPlanItem || planCompleted || completeCurrentChapterMutation.isPending}
                           >
                             {currentChapterCompleted ? (
                               <CheckCircle2 className="h-4 w-4" />
@@ -989,7 +1068,10 @@ export default function BibleReading() {
                       <p className="text-sm text-muted-foreground">
                         {readingPlan.startDate} ~ {readingPlan.endDate}
                       </p>
-                      <h2 className="font-display mt-1 text-xl font-bold">{readingPlan.title}</h2>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <h2 className="font-display text-xl font-bold">{readingPlan.title}</h2>
+                        <CompletionBadge count={completionCount} />
+                      </div>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {PLAN_SCOPE_LABELS[readingPlan.scope as BibleReadingPlanScope] ?? '성경'} · {readingPlan.translation}
                       </p>
@@ -1015,6 +1097,52 @@ export default function BibleReading() {
                     />
                   </div>
                 </section>
+
+                {(planCompleted || planFullyRead) ? (
+                  <section className="rounded-lg border-2 border-primary/30 bg-primary/5 p-5 text-center">
+                    <Trophy className="mx-auto mb-2 h-10 w-10 text-amber-500" />
+                    <h3 className="font-display text-lg font-bold">
+                      {completionCount > 0 ? `${completionCount}번째 완독을 마쳤습니다!` : '성경 완독을 축하합니다!'}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      새 바퀴를 시작하면 오늘부터 일정이 다시 배치되고, 그동안의 누적 장수는 그대로 보존됩니다.
+                    </p>
+                    <Button
+                      className="mt-4 gap-1.5"
+                      onClick={() => restartPlanMutation.mutate()}
+                      disabled={restartPlanMutation.isPending}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {restartPlanMutation.isPending ? '시작하는 중...' : '다시 읽기 시작하기'}
+                    </Button>
+                  </section>
+                ) : (
+                  <section className="rounded-lg border bg-card p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">이미 완독하셨나요?</p>
+                        <p className="text-xs text-muted-foreground">
+                          오프라인에서 다 읽으신 경우에도 완독으로 기록하고 새 바퀴를 시작할 수 있어요.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 shrink-0"
+                        onClick={() => {
+                          if (confirm('완독으로 기록하고 새 바퀴를 시작하시겠습니까?')) {
+                            recordCompletionMutation.mutate('self_report');
+                          }
+                        }}
+                        disabled={recordCompletionMutation.isPending}
+                      >
+                        <Award className="h-4 w-4" />
+                        완독 기록하기
+                      </Button>
+                    </div>
+                  </section>
+                )}
 
                 {editingPlan && (
                   <section className="rounded-lg border bg-card p-5">
@@ -1235,6 +1363,7 @@ export default function BibleReading() {
                       {totalChapters}
                       <span className="ml-1 text-base font-normal text-muted-foreground">/ {target}장</span>
                     </p>
+                    <CompletionBadge count={completionCount} className="mt-2" />
                   </div>
                   <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-4 border-muted">
                     <svg className="absolute inset-0 h-16 w-16 -rotate-90">
@@ -1360,6 +1489,34 @@ export default function BibleReading() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={!!celebration} onOpenChange={(open) => { if (!open) setCelebration(null); }}>
+          <DialogContent className="text-center">
+            <DialogHeader className="items-center">
+              <Trophy className="mb-1 h-12 w-12 text-amber-500" />
+              <DialogTitle className="font-display text-xl">
+                {celebration ? `${celebration.lap}번째 완독을 축하합니다!` : '완독을 축하합니다!'}
+              </DialogTitle>
+              <DialogDescription>
+                말씀 한 바퀴를 끝까지 읽어내셨어요. 새로운 바퀴를 시작하면 오늘부터 다시 일정이 배치되고,
+                지금까지의 누적 장수는 그대로 이어집니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-center">
+              <Button variant="outline" onClick={() => setCelebration(null)}>
+                나중에
+              </Button>
+              <Button
+                className="gap-1.5"
+                onClick={() => restartPlanMutation.mutate()}
+                disabled={restartPlanMutation.isPending}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {restartPlanMutation.isPending ? '시작하는 중...' : '다시 읽기 시작하기'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

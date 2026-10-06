@@ -6,7 +6,7 @@ import {
   getSharedPrayerRequests, updatePrayerRequest,
   getAccessInfo, getWeeklyReports, triggerWeeklyClose, unlockWeeklyReport,
   getQTDistrictSummary, getTodayQT, updateQTLeaderComment,
-  getAllBibleReadingSummaries, getBibleReadingSummariesByRange,
+  getAllBibleReadingSummaries, getBibleReadingSummariesByRange, getBibleCompletionCounts,
   getKSTDateString,
 } from '@/lib/api';
 import type { AccessInfo } from '@/lib/api';
@@ -95,6 +95,13 @@ export default function AdminStatsTab() {
     queryKey: ['reading_summaries_range', currentDistrictId, readingFrom, readingTo],
     queryFn: () => getBibleReadingSummariesByRange(currentDistrictId, readingFrom, readingTo),
     enabled: subTab === 'bible' && !!currentDistrictId && hasReadingRange,
+  });
+
+  const { data: completionCounts = new Map<string, number>() } = useQuery({
+    queryKey: ['bible_completion_counts', currentDistrictId],
+    queryFn: () => getBibleCompletionCounts(currentDistrictId),
+    enabled: subTab === 'bible' && !!currentDistrictId,
+    placeholderData: prev => prev,
   });
 
   const displayedReadingSummaries = hasReadingRange ? readingSummariesByRange : readingSummaries;
@@ -250,6 +257,7 @@ export default function AdminStatsTab() {
               hasReadingRange={hasReadingRange}
               readingRangeFetching={readingRangeFetching}
               displayedReadingSummaries={displayedReadingSummaries}
+              completionCounts={completionCounts}
             />
           </Suspense>
         </TabsContent>
