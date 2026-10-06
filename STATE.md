@@ -11,14 +11,12 @@
 - 장소/도구: 회사 · 윈도우 · C:\dev\bethel803-web · Claude Code
 
 ## 지금까지
-- 성경 완독(회독) 기능 추가 (migration 061 + api + BibleReading UI + 구역장 대시보드).
-  완독 후 "다시 읽기" 리셋으로 누적 장수 재증가 문제 해소. 완독 횟수 배지.
-- main 직접 커밋 → staging DB 자동 적용(workflow), Vercel prod 프론트 배포.
+- 성경 완독(회독) 기능 추가 (migration 061 + 062 + api + BibleReading UI + 구역장 대시보드). **prod 검증 완료.**
+  - 완독 후 배지(회독 횟수), "다시 읽기" 리셋으로 누적 장수 재증가, 완독 기록(자동/수동) 동작 확인.
+  - 062: restart 시 UNIQUE 날짜 충돌(409) 2단계 UPDATE로 해결.
 
 ## 다음에 할 차례
-- [ ] **prod DB에 migration 061 수동 적용** (supabase-prod.yml, confirm=deploy-prod)
-      → 안 하면 prod에서 완독 RPC 에러. 프론트는 main 머지로 이미 prod 배포됨.
-- [ ] staging에서 완독→재시작 플로우 실제 검증
+- [ ] staging에서 완독→재시작 전체 플로우 재검증 (선택)
 - [ ] dance-2027 EC2→로컬 이전
 - [ ] EC2 나머지 레포(7개) 미push 변경 점검
 - [ ] EC2 stop → 관찰 → terminate
